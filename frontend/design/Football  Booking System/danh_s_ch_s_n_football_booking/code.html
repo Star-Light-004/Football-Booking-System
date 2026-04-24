@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#29a847",
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#131f16",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<title>Danh sách sân bóng - Football Booking</title>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 transition-colors duration-300">
+<div class="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden">
+<div class="layout-container flex h-full grow flex-col">
+<!-- Header -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-primary/10 px-6 py-3 lg:px-40 bg-white dark:bg-background-dark">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-4 text-primary">
+<div class="size-8 flex items-center justify-center bg-primary text-white rounded-lg">
+<span class="material-symbols-outlined">sports_soccer</span>
+</div>
+<h2 class="text-slate-900 dark:text-slate-100 text-lg font-bold leading-tight tracking-tight">Football Booking</h2>
+</div>
+<div class="hidden md:flex items-center gap-9">
+<a class="text-slate-700 dark:text-slate-300 text-sm font-medium hover:text-primary transition-colors" href="#">Trang chủ</a>
+<a class="text-primary text-sm font-bold border-b-2 border-primary pb-1" href="#">Sân bóng</a>
+<a class="text-slate-700 dark:text-slate-300 text-sm font-medium hover:text-primary transition-colors" href="#">Tin tức</a>
+<a class="text-slate-700 dark:text-slate-300 text-sm font-medium hover:text-primary transition-colors" href="#">Liên hệ</a>
+</div>
+</div>
+<div class="flex flex-1 justify-end gap-4 items-center">
+<label class="hidden sm:flex flex-col min-w-40 h-10 max-w-64">
+<div class="flex w-full flex-1 items-stretch rounded-xl h-full bg-slate-100 dark:bg-slate-800">
+<div class="text-slate-400 flex items-center justify-center pl-4">
+<span class="material-symbols-outlined text-xl">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 border-none bg-transparent focus:ring-0 h-full placeholder:text-slate-400 px-4 pl-2 text-sm font-normal" placeholder="Tìm kiếm sân bóng..." value=""/>
+</div>
+</label>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 ring-2 ring-primary/20" data-alt="User profile avatar circle" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuADM4mVYulAahAVc7lAOj9cRzPDQb0lnxd8gQd8U4XSCLGahqhFC-Dc4nIDVYuoC3d1vTc4ABEbV4aGjLnJaXu__Umk7hFu1MmNC_GD6XDnDRGpoBBznnD3saJzXHN2p_3HVbspbs3OcKob_7pIKcjjD4mfpBkbBoXyVUXSnsVptIXICtBQ0grrfYT918nconQaLGbGEOlRd0vW6oLJfbMioE3hiFb0ABcsQqXF1zcEtjA2vAWmYnepzhPZNOOh7Se819N4tMYLMi8");'></div>
+</div>
+</header>
+<main class="px-6 lg:px-40 py-8">
+<!-- Title & Filter Section -->
+<div class="flex flex-col gap-6 mb-8">
+<div class="flex flex-col gap-2">
+<h1 class="text-slate-900 dark:text-slate-100 text-4xl font-black leading-tight tracking-tight">Danh sách sân bóng</h1>
+<p class="text-slate-600 dark:text-slate-400 text-base font-normal">Tìm kiếm và đặt sân bóng phù hợp nhất với đội của bạn tại khu vực Hà Nội</p>
+</div>
+<!-- Quick Filter Bar -->
+<div class="flex flex-wrap gap-3 py-2">
+<button class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 text-slate-700 dark:text-slate-200 hover:border-primary transition-all">
+<span class="material-symbols-outlined text-lg">location_on</span>
+<p class="text-sm font-medium leading-normal">Khu vực</p>
+<span class="material-symbols-outlined text-lg">expand_more</span>
+</button>
+<button class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 text-slate-700 dark:text-slate-200 hover:border-primary transition-all">
+<span class="material-symbols-outlined text-lg">groups</span>
+<p class="text-sm font-medium leading-normal">Loại sân</p>
+<span class="material-symbols-outlined text-lg">expand_more</span>
+</button>
+<button class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 text-slate-700 dark:text-slate-200 hover:border-primary transition-all">
+<span class="material-symbols-outlined text-lg">payments</span>
+<p class="text-sm font-medium leading-normal">Khoảng giá</p>
+<span class="material-symbols-outlined text-lg">expand_more</span>
+</button>
+<div class="h-10 w-px bg-slate-200 dark:bg-slate-700 mx-2 hidden sm:block"></div>
+<button class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-primary px-4 text-white font-medium hover:bg-primary/90 transition-all">
+<span class="material-symbols-outlined text-lg">filter_list</span>
+<p class="text-sm">Lọc nâng cao</p>
+</button>
+</div>
+<!-- Tabs -->
+<div class="border-b border-slate-200 dark:border-slate-700">
+<nav class="flex gap-8 overflow-x-auto no-scrollbar">
+<a class="flex flex-col items-center justify-center border-b-[3px] border-primary text-slate-900 dark:text-slate-100 pb-3 pt-2 whitespace-nowrap" href="#">
+<p class="text-sm font-bold leading-normal">Tất cả</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-transparent text-slate-500 dark:text-slate-400 pb-3 pt-2 hover:text-primary transition-all whitespace-nowrap" href="#">
+<p class="text-sm font-bold leading-normal">Sân 5 người</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-transparent text-slate-500 dark:text-slate-400 pb-3 pt-2 hover:text-primary transition-all whitespace-nowrap" href="#">
+<p class="text-sm font-bold leading-normal">Sân 7 người</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-transparent text-slate-500 dark:text-slate-400 pb-3 pt-2 hover:text-primary transition-all whitespace-nowrap" href="#">
+<p class="text-sm font-bold leading-normal">Sân 11 người</p>
+</a>
+</nav>
+</div>
+</div>
+<!-- Grid of Pitch Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+<!-- Card 1 -->
+<div class="flex flex-col rounded-xl overflow-hidden bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow group border border-slate-100 dark:border-slate-700">
+<div class="relative w-full aspect-video overflow-hidden">
+<div class="absolute top-3 right-3 z-10 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm px-2 py-1 rounded-lg text-primary text-xs font-bold shadow-sm">
+                                500.000đ - 800.000đ/giờ
+                            </div>
+<div class="w-full h-full bg-center bg-cover transition-transform duration-500 group-hover:scale-105" data-alt="Professional outdoor artificial turf football field" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBJib7jYBimnKK-sT5cyHcwq4YMGH1yjbQAw_L3AWybCIepnqY6uslfGeiZxkQ0FDHZO25YTDIDj0QNbSlxIDBy8Uv0AABnnqL1GzLwJdhgjakdGn96xjk7dUtTB9S4FHQ6_oHIIojHp98mjxF_UiTCVjYRg_pRgUMoIx3Kd342np9DGX4BMA2V9hJgXk7_0a1AU3R7NyMLVjEqCPnPW8dLzyUpxjut2J6Xgpt-rxjb7c59-tOfx1qcvfHBt3KA8MYA5GzhOivhCyM");'></div>
+</div>
+<div class="flex flex-col p-5 gap-2">
+<div class="flex justify-between items-start">
+<h3 class="text-slate-900 dark:text-slate-100 text-lg font-bold leading-tight group-hover:text-primary transition-colors">Sân bóng Đại học Y</h3>
+<div class="flex items-center text-amber-500">
+<span class="material-symbols-outlined text-sm fill-1">star</span>
+<span class="text-xs font-bold ml-1 text-slate-700 dark:text-slate-300">4.8</span>
+</div>
+</div>
+<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
+<span class="material-symbols-outlined text-base">location_on</span>
+<p class="truncate">8 Tôn Thất Tùng, Đống Đa, Hà Nội</p>
+</div>
+<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
+<span class="material-symbols-outlined text-base">groups</span>
+<p>Sân 7 người • 4 sân</p>
+</div>
+<div class="mt-4 flex gap-2">
+<button class="flex-1 h-10 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-all">Đặt ngay</button>
+<button class="flex items-center justify-center w-10 h-10 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-500 hover:text-primary transition-all">
+<span class="material-symbols-outlined">info</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="flex flex-col rounded-xl overflow-hidden bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow group border border-slate-100 dark:border-slate-700">
+<div class="relative w-full aspect-video overflow-hidden">
+<div class="absolute top-3 right-3 z-10 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm px-2 py-1 rounded-lg text-primary text-xs font-bold shadow-sm">
+                                400.000đ - 650.000đ/giờ
+                            </div>
+<div class="w-full h-full bg-center bg-cover transition-transform duration-500 group-hover:scale-105" data-alt="Night view of illuminated green football field" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA5ZoViUuojrnGtl3vTZjBqw0n1D8Slxfzh9Wjk3fgh3SWkk6nI5NCpitvisAwWNdn_4edCth4mQYKPcVpnNUr7B0S9TR0eeufC3vPFC1P42ayCcYE3Wkva1lCNLWhrYwz0EonU7Vgru9NrgDSqDfenFExO0-Q5nNnrQ4z5NNaEZh1tsjuWqTV9UOepGhmQvR-jPd-QvQuIIfvUHBKi_1lp6H1hlBkKYJduZWEiazdjVAO9jaLKdNpBHwpyHvQO9jK7pO-HSDCIXrc");'></div>
+</div>
+<div class="flex flex-col p-5 gap-2">
+<div class="flex justify-between items-start">
+<h3 class="text-slate-900 dark:text-slate-100 text-lg font-bold leading-tight group-hover:text-primary transition-colors">Sân bóng Mỹ Đình 2</h3>
+<div class="flex items-center text-amber-500">
+<span class="material-symbols-outlined text-sm fill-1">star</span>
+<span class="text-xs font-bold ml-1 text-slate-700 dark:text-slate-300">4.5</span>
+</div>
+</div>
+<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
+<span class="material-symbols-outlined text-base">location_on</span>
+<p class="truncate">Đường Lê Đức Thọ, Nam Từ Liêm, HN</p>
+</div>
+<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
+<span class="material-symbols-outlined text-base">groups</span>
+<p>Sân 5 người &amp; 7 người</p>
+</div>
+<div class="mt-4 flex gap-2">
+<button class="flex-1 h-10 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-all">Đặt ngay</button>
+<button class="flex items-center justify-center w-10 h-10 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-500 hover:text-primary transition-all">
+<span class="material-symbols-outlined">info</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="flex flex-col rounded-xl overflow-hidden bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow group border border-slate-100 dark:border-slate-700">
+<div class="relative w-full aspect-video overflow-hidden">
+<div class="absolute top-3 right-3 z-10 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm px-2 py-1 rounded-lg text-primary text-xs font-bold shadow-sm">
+                                800.000đ - 1.200.000đ/giờ
+                            </div>
+<div class="w-full h-full bg-center bg-cover transition-transform duration-500 group-hover:scale-105" data-alt="Large 11-a-side football stadium pitch" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBFFeE0xciZ_Jhu2edFpBnfxO3S8CyxGfviDD1hnrDjWYMQ4jjIlYPfzMuIwQR9cgFSiQ-9sS_q4l740XLaWZZ5NbpDGX_B5RQ6fX7BoIj3eNiG9XwUWQUKL4pJ28fHuHcN-sJ7Rkw-TbxDu-RHs2HaDbfVpZUxIJekdZS0BqWiDRRDkdR0P8aua8yjtYTN1YSFpN8hUjJCDoUYlZQDSEOJTUghpTnaoVM-kp2dTRPqCgq0ru6DF1IZ7hN_CRJVe2NJHPlcURw2BiA");'></div>
+</div>
+<div class="flex flex-col p-5 gap-2">
+<div class="flex justify-between items-start">
+<h3 class="text-slate-900 dark:text-slate-100 text-lg font-bold leading-tight group-hover:text-primary transition-colors">Sân vận động Bách Khoa</h3>
+<div class="flex items-center text-amber-500">
+<span class="material-symbols-outlined text-sm fill-1">star</span>
+<span class="text-xs font-bold ml-1 text-slate-700 dark:text-slate-300">4.2</span>
+</div>
+</div>
+<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
+<span class="material-symbols-outlined text-base">location_on</span>
+<p class="truncate">A1 Lê Thanh Nghị, Hai Bà Trưng, HN</p>
+</div>
+<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
+<span class="material-symbols-outlined text-base">groups</span>
+<p>Sân 11 người • Sân cỏ tự nhiên</p>
+</div>
+<div class="mt-4 flex gap-2">
+<button class="flex-1 h-10 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-all">Đặt ngay</button>
+<button class="flex items-center justify-center w-10 h-10 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-500 hover:text-primary transition-all">
+<span class="material-symbols-outlined">info</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="flex flex-col rounded-xl overflow-hidden bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow group border border-slate-100 dark:border-slate-700">
+<div class="relative w-full aspect-video overflow-hidden">
+<div class="absolute top-3 right-3 z-10 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm px-2 py-1 rounded-lg text-primary text-xs font-bold shadow-sm">
+                                300.000đ - 500.000đ/giờ
+                            </div>
+<div class="w-full h-full bg-center bg-cover transition-transform duration-500 group-hover:scale-105" data-alt="Small 5-a-side indoor football court" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDIpZ-rHasLkY50Sp2pZ3Ql0PTfj61OtuF9ddcLZ-FFI0BeGaw_Pr9VSZ9JM0zlKPWcFRpGZcjSu03nB1UOiXO7fUxNZYgzzE60gHgXw0h4Va1AGyme5wY-fyF4BnOngTziSF5BGm90A_m2Ble89IarXT_PF5gTXgeniNX0mnZOMQA20GolKTPeF1blysxn6dxaLP8-pfE-IhCumQpdADTVt9_lkQRwTxU-y8VOZHu98iq7tsb8hQ656sHV8071yXaBgmTmleeluF8");'></div>
+</div>
+<div class="flex flex-col p-5 gap-2">
+<div class="flex justify-between items-start">
+<h3 class="text-slate-900 dark:text-slate-100 text-lg font-bold leading-tight group-hover:text-primary transition-colors">Sân Futsal Cầu Giấy</h3>
+<div class="flex items-center text-amber-500">
+<span class="material-symbols-outlined text-sm fill-1">star</span>
+<span class="text-xs font-bold ml-1 text-slate-700 dark:text-slate-300">4.7</span>
+</div>
+</div>
+<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
+<span class="material-symbols-outlined text-base">location_on</span>
+<p class="truncate">35 Trần Quý Kiên, Cầu Giấy, HN</p>
+</div>
+<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
+<span class="material-symbols-outlined text-base">groups</span>
+<p>Sân 5 người • Sân trong nhà</p>
+</div>
+<div class="mt-4 flex gap-2">
+<button class="flex-1 h-10 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-all">Đặt ngay</button>
+<button class="flex items-center justify-center w-10 h-10 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-500 hover:text-primary transition-all">
+<span class="material-symbols-outlined">info</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 5 -->
+<div class="flex flex-col rounded-xl overflow-hidden bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow group border border-slate-100 dark:border-slate-700">
+<div class="relative w-full aspect-video overflow-hidden">
+<div class="absolute top-3 right-3 z-10 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm px-2 py-1 rounded-lg text-primary text-xs font-bold shadow-sm">
+                                450.000đ - 700.000đ/giờ
+                            </div>
+<div class="w-full h-full bg-center bg-cover transition-transform duration-500 group-hover:scale-105" data-alt="Artificial grass field with goal post focus" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBmxOHKErzPIvP1M__LxTb7h-Ns8-O1x4AQkKooPMbDkSzrmOPY6ajyJKo4QmGuxnIBoYHcC6HG-WSqBvbU2c8I90RRf9jfNuqoBqeyykuAYz8GyBxDtB4CgJQZLvTwl2G7d73edvXDQmTodnQ4Dc-n42Tn9XR8cZRWhDaZiN4ByeVpAqPpBUIJlD_t2VB4U49qPi2U-dz-b0b8GmzpNeEyaFFwOs4tjquiffSEmzyCSdg5i4tCl9-4lhVfzkOIWSuPNEh5-sOr-q4");'></div>
+</div>
+<div class="flex flex-col p-5 gap-2">
+<div class="flex justify-between items-start">
+<h3 class="text-slate-900 dark:text-slate-100 text-lg font-bold leading-tight group-hover:text-primary transition-colors">Sân bóng Chu Văn An</h3>
+<div class="flex items-center text-amber-500">
+<span class="material-symbols-outlined text-sm fill-1">star</span>
+<span class="text-xs font-bold ml-1 text-slate-700 dark:text-slate-300">4.4</span>
+</div>
+</div>
+<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
+<span class="material-symbols-outlined text-base">location_on</span>
+<p class="truncate">Số 10 Thụy Khuê, Tây Hồ, HN</p>
+</div>
+<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
+<span class="material-symbols-outlined text-base">groups</span>
+<p>Sân 7 người • Khuôn viên đẹp</p>
+</div>
+<div class="mt-4 flex gap-2">
+<button class="flex-1 h-10 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-all">Đặt ngay</button>
+<button class="flex items-center justify-center w-10 h-10 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-500 hover:text-primary transition-all">
+<span class="material-symbols-outlined">info</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 6 -->
+<div class="flex flex-col rounded-xl overflow-hidden bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow group border border-slate-100 dark:border-slate-700">
+<div class="relative w-full aspect-video overflow-hidden">
+<div class="absolute top-3 right-3 z-10 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm px-2 py-1 rounded-lg text-primary text-xs font-bold shadow-sm">
+                                550.000đ - 900.000đ/giờ
+                            </div>
+<div class="w-full h-full bg-center bg-cover transition-transform duration-500 group-hover:scale-105" data-alt="Football pitch lines on green grass" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuC-DhtKRaOnl2uvO_9KP00go9pTevcQ1A7LFFUyM8fL7k2RIV5o6qYzboktw5wPfR7r9xd9lVprWyhm22csOzfdPZ1Dde4uDaQhG60MftB8GTaPqNjaBK4ZsyPLTXIemtQaUPxrFYOZqWrS06kurTLs3IJd-KfPuX1D6GsvtQZpTcE1wRR9jUtpv0qml8LftETfbwSa0jV7y2c_CPy-jI8vm6_YgSK03UiRHWBRYLRp3AeIyBDHb4ibSQzMX2Ja2elzpXRKirXwUuY");'></div>
+</div>
+<div class="flex flex-col p-5 gap-2">
+<div class="flex justify-between items-start">
+<h3 class="text-slate-900 dark:text-slate-100 text-lg font-bold leading-tight group-hover:text-primary transition-colors">Sân bóng PVF</h3>
+<div class="flex items-center text-amber-500">
+<span class="material-symbols-outlined text-sm fill-1">star</span>
+<span class="text-xs font-bold ml-1 text-slate-700 dark:text-slate-300">4.9</span>
+</div>
+</div>
+<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
+<span class="material-symbols-outlined text-base">location_on</span>
+<p class="truncate">Hưng Yên (Cách Hà Nội 15km)</p>
+</div>
+<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
+<span class="material-symbols-outlined text-base">groups</span>
+<p>Sân 11 người • Tiêu chuẩn FIFA</p>
+</div>
+<div class="mt-4 flex gap-2">
+<button class="flex-1 h-10 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-all">Đặt ngay</button>
+<button class="flex items-center justify-center w-10 h-10 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-500 hover:text-primary transition-all">
+<span class="material-symbols-outlined">info</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Pagination -->
+<div class="flex items-center justify-center gap-2 mt-12 pb-10">
+<button class="flex items-center justify-center size-10 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-primary transition-all">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="flex items-center justify-center size-10 rounded-xl bg-primary text-white font-bold">1</button>
+<button class="flex items-center justify-center size-10 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all font-medium">2</button>
+<button class="flex items-center justify-center size-10 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all font-medium">3</button>
+<div class="text-slate-400 px-1">...</div>
+<button class="flex items-center justify-center size-10 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all font-medium">10</button>
+<button class="flex items-center justify-center size-10 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-primary transition-all">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</main>
+<!-- Footer Small -->
+<footer class="mt-auto px-6 lg:px-40 py-10 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-background-dark">
+<div class="flex flex-col md:flex-row justify-between items-center gap-6">
+<div class="flex items-center gap-4 text-primary opacity-60">
+<span class="material-symbols-outlined">sports_soccer</span>
+<h2 class="text-slate-500 text-sm font-bold">Football Booking © 2024</h2>
+</div>
+<div class="flex gap-8">
+<a class="text-slate-500 hover:text-primary text-sm transition-colors" href="#">Chính sách bảo mật</a>
+<a class="text-slate-500 hover:text-primary text-sm transition-colors" href="#">Điều khoản dịch vụ</a>
+<a class="text-slate-500 hover:text-primary text-sm transition-colors" href="#">Hỗ trợ khách hàng</a>
+</div>
+</div>
+</footer>
+</div>
+</div>
+</body></html>

@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Football Booking - Đặt sân bóng đá trực tuyến</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#29a847",
+              "background-light": "#f6f8f6",
+              "background-dark": "#131f16",
+            },
+            fontFamily: {
+              "display": ["Lexend", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Lexend', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100">
+<!-- Header Section -->
+<header class="sticky top-0 z-50 w-full bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-primary/10">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex justify-between items-center h-20">
+<div class="flex items-center gap-2">
+<div class="bg-primary p-1.5 rounded-lg text-white">
+<span class="material-symbols-outlined block text-2xl">sports_soccer</span>
+</div>
+<h1 class="text-xl font-bold tracking-tight text-primary">Football Booking</h1>
+</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Trang chủ</a>
+<a class="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-primary transition-colors" href="#">Sân bóng</a>
+<a class="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-primary transition-colors" href="#">Đặt sân</a>
+<a class="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-primary transition-colors" href="#">Tra cứu</a>
+<a class="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-primary transition-colors" href="#">Lịch sử</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="bg-primary text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-primary/90 transition-all shadow-lg shadow-primary/20">
+                        Đăng nhập
+                    </button>
+</div>
+</div>
+</div>
+</header>
+<main>
+<!-- Hero Section -->
+<section class="relative w-full h-[600px] flex items-center justify-center overflow-hidden">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="Toàn cảnh sân bóng đá cỏ nhân tạo xanh mướt ban đêm" style="background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.7)), url('https://lh3.googleusercontent.com/aida-public/AB6AXuAK6WUVAd4U0q2e94rmo9daIUTGrCQIjSp4PNooM4_sDkdpcWxJZjr5jdUhEUsHRH_4z9UCS0E5HefRVUy9l49OHs7rAbJonmAkWiFAougJTicpzya0XOJDcva1xAaLfxmwkLgLsXyoGkI9MlU4pajIwrsbdKHNPCncKAlfOKCoPEPepNwgZGX0Ln0_hLm9ZZuCGkBmr07qMVa-MK4wjgGqdRb_29RHKE1fP0duNMdDk696w9mqAq5DFmNW1Q1hzPUvJ9QThHDeIWo')"></div>
+<div class="relative z-10 max-w-4xl px-4 text-center">
+<h2 class="text-4xl md:text-6xl font-extrabold text-white mb-6 leading-tight">
+                    Đặt sân bóng nhanh chóng – <span class="text-primary">Trải nghiệm</span> bóng đá trọn vẹn
+                </h2>
+<p class="text-lg md:text-xl text-slate-200 mb-10 max-w-2xl mx-auto">
+                    Tìm sân gần bạn, xem khung giờ trống và đặt sân chỉ trong vài giây. Hệ thống đặt sân uy tín nhất hiện nay.
+                </p>
+<div class="flex flex-col sm:flex-row gap-4 justify-center">
+<button class="bg-primary text-white px-8 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 hover:scale-105 transition-transform">
+<span class="material-symbols-outlined">event_available</span> Đặt sân ngay
+                    </button>
+<button class="bg-white/10 backdrop-blur-md text-white border border-white/20 px-8 py-4 rounded-xl font-bold text-lg hover:bg-white/20 transition-all">
+                        Xem danh sách sân
+                    </button>
+</div>
+</div>
+</section>
+<!-- Search Bar Section -->
+<section class="relative -mt-16 z-20 px-4">
+<div class="max-w-5xl mx-auto bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 md:p-8 border border-slate-100 dark:border-slate-700">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+<div class="space-y-2">
+<label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Khu vực</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">location_on</span>
+<select class="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-primary">
+<option>Tất cả khu vực</option>
+<option>Quận 1, TP.HCM</option>
+<option>Quận 7, TP.HCM</option>
+<option>Cầu Giấy, Hà Nội</option>
+</select>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Loại sân</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">groups</span>
+<select class="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-primary">
+<option>Loại sân (5, 7, 11 người)</option>
+<option>Sân 5 người</option>
+<option>Sân 7 người</option>
+<option>Sân 11 người</option>
+</select>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Ngày đặt</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">calendar_today</span>
+<input class="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-primary" type="date"/>
+</div>
+</div>
+<div class="flex items-end">
+<button class="w-full bg-primary text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined">search</span> Tìm sân
+                        </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Features Section -->
+<section class="py-24 px-4 max-w-7xl mx-auto">
+<div class="text-center mb-16">
+<h3 class="text-3xl font-bold mb-4">Tại sao nên chọn Football Booking?</h3>
+<div class="h-1 w-20 bg-primary mx-auto rounded-full"></div>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+<div class="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-100 dark:border-slate-700 hover:border-primary transition-colors group">
+<div class="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-white transition-all">
+<span class="material-symbols-outlined text-3xl">bolt</span>
+</div>
+<h4 class="text-xl font-bold mb-3">Đặt sân nhanh chóng</h4>
+<p class="text-slate-500 dark:text-slate-400 leading-relaxed">Tiết kiệm thời gian với quy trình đặt sân tối giản chỉ trong 30 giây.</p>
+</div>
+<div class="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-100 dark:border-slate-700 hover:border-primary transition-colors group">
+<div class="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-white transition-all">
+<span class="material-symbols-outlined text-3xl">schedule</span>
+</div>
+<h4 class="text-xl font-bold mb-3">Cập nhật khung giờ</h4>
+<p class="text-slate-500 dark:text-slate-400 leading-relaxed">Thông tin lịch trống được cập nhật liên tục theo thời gian thực từ các chủ sân.</p>
+</div>
+<div class="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-100 dark:border-slate-700 hover:border-primary transition-colors group">
+<div class="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-white transition-all">
+<span class="material-symbols-outlined text-3xl">assignment_turned_in</span>
+</div>
+<h4 class="text-xl font-bold mb-3">Quản lý lịch đặt</h4>
+<p class="text-slate-500 dark:text-slate-400 leading-relaxed">Dễ dàng theo dõi, thay đổi hoặc hủy lịch đặt ngay trên ứng dụng di động.</p>
+</div>
+<div class="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-100 dark:border-slate-700 hover:border-primary transition-colors group">
+<div class="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-white transition-all">
+<span class="material-symbols-outlined text-3xl">account_balance_wallet</span>
+</div>
+<h4 class="text-xl font-bold mb-3">Thanh toán nhanh</h4>
+<p class="text-slate-500 dark:text-slate-400 leading-relaxed">Hỗ trợ đa dạng phương thức thanh toán: Ví điện tử, Thẻ ngân hàng, QR Code.</p>
+</div>
+</div>
+</section>
+<!-- Featured Fields Section -->
+<section class="py-20 bg-primary/5 dark:bg-primary/10 px-4">
+<div class="max-w-7xl mx-auto">
+<div class="flex justify-between items-end mb-12">
+<div>
+<h3 class="text-3xl font-bold mb-2">Sân bóng nổi bật</h3>
+<p class="text-slate-500 dark:text-slate-400">Các sân bóng chất lượng cao, được yêu thích nhất khu vực</p>
+</div>
+<a class="text-primary font-bold flex items-center gap-1 hover:underline" href="#">
+                        Xem tất cả <span class="material-symbols-outlined text-lg">arrow_forward</span>
+</a>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+<!-- Card 1 -->
+<div class="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-xl transition-shadow group">
+<div class="relative h-56 overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" data-alt="Cận cảnh mặt cỏ sân bóng đá nhân tạo chất lượng cao" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC2OPQhBheYigLAwzlfb_6xjrQKJHtwLAqQ5G8PEkSdleqFwczYZAWIUalGpNwHlCycTGPk2XJkJXM4mR2nhknv7E8gmz5y0UtnKM7EwwgT5jrrHmcQFPIycm8ELuRlkIoqIeoMkkl6BJiTEqjx4ZTUzb1C-UCFPUNK1pFTWJFDWo4mMYrjxFDdhvE8xcl7N9gxdRE-cqKTOIybReUae4IGo45-17KWSFN5vG_Xk6abDT6aVI1NRCzN6fXSzcJzR85Tj3DTw1e8ybY"/>
+<div class="absolute top-4 left-4 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full uppercase">Sân 7 người</div>
+</div>
+<div class="p-6">
+<h5 class="text-xl font-bold mb-2">Sân vận động Đại Nam</h5>
+<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm mb-4">
+<span class="material-symbols-outlined text-sm">location_on</span>
+                                123 Đường ABC, Quận 7, TP.HCM
+                            </div>
+<div class="flex justify-between items-center py-4 border-t border-slate-100 dark:border-slate-700">
+<div>
+<span class="text-primary text-lg font-bold">350.000đ</span>
+<span class="text-slate-400 text-xs">/ trận</span>
+</div>
+<button class="bg-slate-900 dark:bg-white dark:text-slate-900 text-white px-5 py-2 rounded-xl text-sm font-bold hover:bg-primary hover:dark:bg-primary hover:text-white transition-colors">
+                                    Xem chi tiết
+                                </button>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-xl transition-shadow group">
+<div class="relative h-56 overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" data-alt="Sân bóng đá buổi tối dưới ánh đèn pha sáng loáng" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAPWyys-qCB4eW6dpUxVaDR_Fag0x0VokVNEEpZ40lBZiL6R6l_5-9BraAhcIi4w0d4tO4thgQlG4wEJ_Cs7G0ODgFFWEY2roFrDXyeOVk85YfosayTXTdE8rbCxdi0mL6DDBtrZOh-u6uQu4A02dQwYmug0CXp_C4QjdLxRqxzzdahS8H58r6iUZ88WgDxvd7dyh7cQVXJepiuHHEba20iyfzQG1CdQf_O3AOhpIUfCgHSTzBlNMlitWRXMS8DYV4MB2Rfe5U7W7Y"/>
+<div class="absolute top-4 left-4 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full uppercase">Sân 5 người</div>
+</div>
+<div class="p-6">
+<h5 class="text-xl font-bold mb-2">Trung tâm thể thao Thanh Xuân</h5>
+<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm mb-4">
+<span class="material-symbols-outlined text-sm">location_on</span>
+                                Khu dân cư Nam Long, Quận 9, TP.HCM
+                            </div>
+<div class="flex justify-between items-center py-4 border-t border-slate-100 dark:border-slate-700">
+<div>
+<span class="text-primary text-lg font-bold">280.000đ</span>
+<span class="text-slate-400 text-xs">/ trận</span>
+</div>
+<button class="bg-slate-900 dark:bg-white dark:text-slate-900 text-white px-5 py-2 rounded-xl text-sm font-bold hover:bg-primary hover:dark:bg-primary hover:text-white transition-colors">
+                                    Xem chi tiết
+                                </button>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-xl transition-shadow group">
+<div class="relative h-56 overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" data-alt="Sân cỏ xanh mướt nhìn từ phía cầu môn" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB9-Ah-gGAE5VzUvfOhLGtbDF9-cwAEHrXcIzGEXFHBTKXzmpDHRzq3ybLIWE2WqBeNULF5e78MoOWX6mMy8evSMAKZTbvc-tH1yH8fPgqiolOwz8beadV65T1QXPYGAfhKpQueYBMGMIaKlJWWoE09vCCLdDe5GtDO-2EXkZBYwGeyUJyRJABWpgGd7PtY8FyzKVoH0Y51SCzA35kM6JD_m0mLfb7xw8dEEpLt-8m1r4JS_6IvqPnS-tlB2_4KOMtuLVexLBF0ONE"/>
+<div class="absolute top-4 left-4 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full uppercase">Sân 11 người</div>
+</div>
+<div class="p-6">
+<h5 class="text-xl font-bold mb-2">Khu liên hợp thể thao Mỹ Đình</h5>
+<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm mb-4">
+<span class="material-symbols-outlined text-sm">location_on</span>
+                                Phố Duy Tân, Cầu Giấy, Hà Nội
+                            </div>
+<div class="flex justify-between items-center py-4 border-t border-slate-100 dark:border-slate-700">
+<div>
+<span class="text-primary text-lg font-bold">1.200.000đ</span>
+<span class="text-slate-400 text-xs">/ trận</span>
+</div>
+<button class="bg-slate-900 dark:bg-white dark:text-slate-900 text-white px-5 py-2 rounded-xl text-sm font-bold hover:bg-primary hover:dark:bg-primary hover:text-white transition-colors">
+                                    Xem chi tiết
+                                </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Booking Process Section -->
+<section class="py-24 px-4 max-w-7xl mx-auto overflow-hidden">
+<div class="text-center mb-16">
+<h3 class="text-3xl font-bold mb-4">Quy trình đặt sân đơn giản</h3>
+<p class="text-slate-500 dark:text-slate-400">Bạn chỉ cần thực hiện 4 bước để có ngay sân bóng ưng ý</p>
+</div>
+<div class="relative grid grid-cols-1 md:grid-cols-4 gap-8">
+<!-- Line Decor -->
+<div class="hidden md:block absolute top-1/3 left-[15%] right-[15%] h-0.5 bg-dashed bg-primary/20 border-t-2 border-dashed border-primary/30 z-0"></div>
+<!-- Step 1 -->
+<div class="relative z-10 text-center space-y-4">
+<div class="w-20 h-20 bg-primary text-white rounded-full flex items-center justify-center mx-auto shadow-xl shadow-primary/30 text-3xl font-bold">
+<span class="material-symbols-outlined text-4xl">search_insights</span>
+</div>
+<h5 class="text-lg font-bold">1. Chọn sân</h5>
+<p class="text-slate-500 text-sm px-4">Tìm kiếm và lựa chọn sân bóng phù hợp với vị trí của bạn.</p>
+</div>
+<!-- Step 2 -->
+<div class="relative z-10 text-center space-y-4">
+<div class="w-20 h-20 bg-primary text-white rounded-full flex items-center justify-center mx-auto shadow-xl shadow-primary/30 text-3xl font-bold">
+<span class="material-symbols-outlined text-4xl">event</span>
+</div>
+<h5 class="text-lg font-bold">2. Chọn ngày/giờ</h5>
+<p class="text-slate-500 text-sm px-4">Kiểm tra khung giờ trống và chọn thời điểm ra sân lý tưởng.</p>
+</div>
+<!-- Step 3 -->
+<div class="relative z-10 text-center space-y-4">
+<div class="w-20 h-20 bg-primary text-white rounded-full flex items-center justify-center mx-auto shadow-xl shadow-primary/30 text-3xl font-bold">
+<span class="material-symbols-outlined text-4xl">contact_page</span>
+</div>
+<h5 class="text-lg font-bold">3. Nhập thông tin</h5>
+<p class="text-slate-500 text-sm px-4">Điền thông tin liên hệ và hình thức thanh toán mong muốn.</p>
+</div>
+<!-- Step 4 -->
+<div class="relative z-10 text-center space-y-4">
+<div class="w-20 h-20 bg-primary text-white rounded-full flex items-center justify-center mx-auto shadow-xl shadow-primary/30 text-3xl font-bold">
+<span class="material-symbols-outlined text-4xl">task_alt</span>
+</div>
+<h5 class="text-lg font-bold">4. Xác nhận</h5>
+<p class="text-slate-500 text-sm px-4">Nhận mã đặt sân qua tin nhắn/email và sẵn sàng thi đấu.</p>
+</div>
+</div>
+</section>
+<!-- Big CTA Section -->
+<section class="max-w-7xl mx-auto px-4 pb-20">
+<div class="bg-primary rounded-3xl p-8 md:p-16 flex flex-col md:flex-row items-center justify-between gap-10 overflow-hidden relative">
+<div class="absolute -right-20 -bottom-20 opacity-10">
+<span class="material-symbols-outlined text-[300px] text-white">sports_soccer</span>
+</div>
+<div class="relative z-10 max-w-xl text-center md:text-left">
+<h3 class="text-3xl md:text-4xl font-extrabold text-white mb-6">Bạn đã sẵn sàng cho trận bóng hôm nay?</h3>
+<p class="text-primary/10 bg-white/10 backdrop-blur-sm p-4 rounded-xl text-white/90 text-lg">Hơn 500+ sân bóng đang chờ bạn trên khắp cả nước. Đặt ngay để nhận ưu đãi lên đến 20% cho khung giờ vàng.</p>
+</div>
+<div class="relative z-10 shrink-0">
+<button class="bg-white text-primary px-10 py-5 rounded-2xl font-black text-xl hover:bg-slate-50 transition-all shadow-2xl flex items-center gap-3">
+                        ĐẶT SÂN NGAY <span class="material-symbols-outlined">rocket_launch</span>
+</button>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-slate-900 text-slate-300 pt-16 pb-8 px-4">
+<div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 mb-12 border-b border-slate-800 pb-12">
+<div class="space-y-6">
+<div class="flex items-center gap-2">
+<div class="bg-primary p-1.5 rounded-lg text-white">
+<span class="material-symbols-outlined block text-2xl">sports_soccer</span>
+</div>
+<h1 class="text-xl font-bold tracking-tight text-white">Football Booking</h1>
+</div>
+<p class="text-sm leading-relaxed">Nền tảng đặt sân bóng đá hàng đầu Việt Nam. Kết nối đam mê, nâng tầm trải nghiệm thể thao cộng đồng.</p>
+<div class="flex gap-4">
+<a class="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-primary transition-colors" href="#">
+<svg class="w-5 h-5 fill-current" viewbox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"></path></svg>
+</a>
+<a class="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-primary transition-colors" href="#">
+<svg class="w-5 h-5 fill-current" viewbox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.84 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"></path></svg>
+</a>
+</div>
+</div>
+<div>
+<h6 class="text-white font-bold mb-6">Sân bóng phổ biến</h6>
+<ul class="space-y-4 text-sm">
+<li><a class="hover:text-primary transition-colors" href="#">Sân Quận 1</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Sân Quận 7</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Sân Quận Tân Bình</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Sân Quận Bình Thạnh</a></li>
+</ul>
+</div>
+<div>
+<h6 class="text-white font-bold mb-6">Hỗ trợ khách hàng</h6>
+<ul class="space-y-4 text-sm">
+<li><a class="hover:text-primary transition-colors" href="#">Hướng dẫn đặt sân</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Chính sách bảo mật</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Điều khoản dịch vụ</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Câu hỏi thường gặp</a></li>
+</ul>
+</div>
+<div>
+<h6 class="text-white font-bold mb-6">Liên hệ với chúng tôi</h6>
+<ul class="space-y-4 text-sm">
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary text-xl">mail</span>
+                        contact@footballbooking.vn
+                    </li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary text-xl">call</span>
+                        1900 123 456
+                    </li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary text-xl">distance</span>
+                        Tòa nhà X, Đường Y, Quận Z, TP. Hồ Chí Minh
+                    </li>
+</ul>
+</div>
+</div>
+<div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center text-xs text-slate-500">
+<p>© 2024 Football Booking System. Tất cả quyền được bảo lưu.</p>
+<div class="flex gap-6 mt-4 md:mt-0">
+<a class="hover:text-white" href="#">Tiếng Việt</a>
+<a class="hover:text-white" href="#">English</a>
+</div>
+</div>
+</footer>
+</body></html>

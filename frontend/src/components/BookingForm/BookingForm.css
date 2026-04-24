@@ -1,0 +1,186 @@
+/* BookingForm component styles */
+
+/* ─── Calendar dropdown ──────────────────────────────────────── */
+.bf-calendar-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 280px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.875rem;
+  padding: 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+}
+
+.bf-cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.bf-cal-nav button {
+  background: #f1f5f9;
+  border: none;
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-weight: 700;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.bf-cal-nav button:hover {
+  background: #e2e8f0;
+}
+
+.bf-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.bf-cal-weekdays {
+  margin-bottom: 4px;
+}
+
+.bf-cal-weekdays span {
+  text-align: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.bf-cal-day {
+  aspect-ratio: 1;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  background: transparent;
+  color: #1e293b;
+}
+
+.bf-cal-day:hover:not(:disabled) {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.bf-cal-day.selected {
+  background: #2563eb;
+  color: #fff;
+  font-weight: 700;
+}
+
+.bf-cal-day.past {
+  color: #cbd5e1;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ─── Time-slot dropdown ─────────────────────────────────────── */
+.bf-slots-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.875rem;
+  padding: 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+}
+
+.bf-slots-hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-bottom: 10px;
+}
+
+.hint-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.hint-dot.available {
+  background: #22c55e;
+}
+
+.hint-dot.booked {
+  background: #ef4444;
+}
+
+.bf-slots-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.bf-slot-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 6px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: #fff;
+  color: #1e293b;
+  transition: all 0.2s ease;
+}
+
+.bf-slot-btn:hover:not(:disabled):not(.selected) {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+/* Selected */
+.bf-slot-btn.selected {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+}
+
+/* Booked = red, disabled */
+.bf-slot-btn.booked {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #ef4444;
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+.slot-time-label {
+  font-size: 0.78rem;
+}
+
+.slot-badge-booked {
+  font-size: 0.62rem;
+  font-weight: 700;
+  background: #ef4444;
+  color: #fff;
+  border-radius: 20px;
+  padding: 1px 7px;
+  letter-spacing: 0.02em;
+}

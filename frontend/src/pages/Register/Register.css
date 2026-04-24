@@ -1,0 +1,75 @@
+/* Register page styles */
+
+.register-page .input-group {
+  position: relative;
+}
+
+.register-page .input-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+  font-size: 20px;
+}
+
+.register-page input[type="text"],
+.register-page input[type="email"],
+.register-page input[type="tel"],
+.register-page input[type="password"] {
+  width: 100%;
+  padding-left: 48px; /* đủ cho icon */
+  padding-right: 16px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #1e293b;
+  transition: all 0.2s ease;
+}
+
+.register-page input[type="text"]:focus,
+.register-page input[type="email"]:focus,
+.register-page input[type="tel"]:focus,
+.register-page input[type="password"]:focus {
+  outline: none;
+  border-color: #29a847;
+  box-shadow: 0 0 0 3px rgba(41, 168, 71, 0.1);
+}
+
+.register-page .register-button {
+  width: 100%;
+  background-color: #29a847;
+  color: white;
+  font-weight: bold;
+  padding: 14px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.register-page .register-button:hover {
+  background-color: #218838;
+}
+
+.register-page .register-button .material-icons {
+  font-size: 20px;
+}
+
+/* Fallback nếu icon không load */
+.register-page .register-button .material-icons::before {
+  content: "👤";
+  font-size: 20px;
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  text-align: center;
+  line-height: 20px;
+}
+

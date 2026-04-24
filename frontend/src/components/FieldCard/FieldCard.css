@@ -1,0 +1,84 @@
+/* FieldCard component styles */
+
+.field-card {
+  background: white;
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.field-card:hover {
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  transform: translateY(-2px);
+}
+
+.field-image-container {
+  position: relative;
+  height: 14rem;
+  overflow: hidden;
+}
+
+.field-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.field-card:hover .field-image {
+  transform: scale(1.1);
+}
+
+.field-badge {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  background: #667eea;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  text-transform: uppercase;
+}
+
+.field-content {
+  padding: 1.5rem;
+}
+
+.field-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1a202c;
+  margin-bottom: 0.5rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.field-location {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #718096;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.field-location-icon {
+  font-size: 0.875rem;
+}
+
+.field-price {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #38a169;
+}
+
+.field-price-range {
+  color: #4a5568;
+}

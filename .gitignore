@@ -1,0 +1,36 @@
+# Django
+__pycache__/
+*.py[cod]
+*.sqlite3
+db.sqlite3
+
+.env
+backend/.env
+*.log
+
+venv/
+env/
+.venv/
+
+media/
+staticfiles/
+
+# React
+frontend/node_modules/
+frontend/build/
+frontend/dist/
+
+frontend/.env
+frontend/.cache/
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

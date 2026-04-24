@@ -1,0 +1,160 @@
+/* Lookup page styles */
+
+.lookup-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.lookup-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.lookup-header h1 {
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: #1a202c;
+  margin-bottom: 1rem;
+}
+
+.lookup-header p {
+  font-size: 1.125rem;
+  color: #718096;
+}
+
+.lookup-form {
+  background: white;
+  padding: 2rem;
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  margin-bottom: 2rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #4a5568;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  transition: border-color 0.3s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.lookup-button {
+  background: #667eea;
+  color: white;
+  padding: 0.75rem 2rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.lookup-button:hover {
+  background: #5a67d8;
+}
+
+.lookup-results {
+  background: white;
+  padding: 2rem;
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.result-item {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 1.5rem 0;
+}
+
+.result-item:last-child {
+  border-bottom: none;
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.result-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1a202c;
+}
+
+.result-status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-confirmed {
+  background: #c6f6d5;
+  color: #22543d;
+}
+
+.status-pending {
+  background: #fef5e7;
+  color: #744210;
+}
+
+.status-cancelled {
+  background: #fed7d7;
+  color: #742a2a;
+}
+
+.result-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  color: #718096;
+}
+
+.result-detail-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.result-detail-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+
+.result-detail-value {
+  font-size: 1rem;
+  color: #4a5568;
+}
+
+.no-results {
+  text-align: center;
+  color: #718096;
+  font-size: 1.125rem;
+  padding: 2rem;
+}
+

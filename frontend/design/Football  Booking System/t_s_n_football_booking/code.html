@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "primary": "#29a847",
+                "background-light": "#f6f8f6",
+                "background-dark": "#131f16",
+              },
+              fontFamily: {
+                "display": ["Lexend"]
+              },
+              borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+            },
+          },
+        }
+      </script>
+<title>Xác nhận đặt sân - Football Booking</title>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100">
+<div class="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden">
+<div class="layout-container flex h-full grow flex-col">
+<!-- Header -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-primary/10 bg-white dark:bg-background-dark px-6 md:px-40 py-3 sticky top-0 z-50">
+<div class="flex items-center gap-4 text-primary">
+<div class="size-8 flex items-center justify-center bg-primary/10 rounded-lg">
+<span class="material-symbols-outlined text-primary text-2xl">sports_soccer</span>
+</div>
+<h2 class="text-slate-900 dark:text-slate-100 text-lg font-bold leading-tight tracking-[-0.015em]">Football Booking</h2>
+</div>
+<div class="flex flex-1 justify-end gap-8">
+<div class="hidden md:flex items-center gap-9">
+<a class="text-slate-700 dark:text-slate-300 text-sm font-medium hover:text-primary transition-colors" href="#">Sân bóng</a>
+<a class="text-slate-700 dark:text-slate-300 text-sm font-medium hover:text-primary transition-colors" href="#">Dịch vụ</a>
+<a class="text-slate-700 dark:text-slate-300 text-sm font-medium hover:text-primary transition-colors" href="#">Liên hệ</a>
+</div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-primary/20" data-alt="User profile avatar image" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuARNtx0K3uJw2_1RAZ_jrywI6pUGF1JqofGxRX8pMrlXrBWpd2WawyoSEgRnPwvkLeHwCpvBHV8S-twZj4Eti-bzC8KofvdInZMRHTw8bO3ECqkqGBInw5L8dF1_8VLk7BnSgCUgglJ4dlUES9ba5V9MZV8-6xwoYl3c0GmijC5CRA1FvVcKHM2twFaF4_FN4JOT06YG7i4cZFHUzqQo87SAv9kmIOMyMsJIopETJ6d0bINbdbKiSxzZfvcImANLXLFgqXQ_wYiXAw");'></div>
+</div>
+</header>
+<main class="px-4 md:px-40 flex flex-1 justify-center py-10">
+<div class="layout-content-container flex flex-col max-w-[960px] flex-1 gap-8">
+<div class="flex flex-col gap-2">
+<h1 class="text-slate-900 dark:text-slate-100 tracking-tight text-3xl font-bold leading-tight">Xác nhận đặt sân</h1>
+<p class="text-primary font-medium text-sm leading-normal">Vui lòng kiểm tra lại thông tin và hoàn tất biểu mẫu bên dưới</p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Left Column: Form -->
+<div class="lg:col-span-2 flex flex-col gap-6">
+<div class="bg-white dark:bg-slate-900/50 p-6 rounded-xl shadow-sm border border-primary/5">
+<h3 class="text-slate-900 dark:text-slate-100 text-lg font-bold mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">person</span>
+                                    Thông tin khách hàng
+                                </h3>
+<form class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="flex flex-col gap-1 md:col-span-2">
+<label class="text-sm font-medium text-slate-700 dark:text-slate-300">Họ và tên *</label>
+<input class="w-full rounded-lg border-primary/20 bg-background-light dark:bg-slate-800 focus:border-primary focus:ring-primary" placeholder="Nguyễn Văn A" type="text"/>
+</div>
+<div class="flex flex-col gap-1">
+<label class="text-sm font-medium text-slate-700 dark:text-slate-300">Số điện thoại *</label>
+<input class="w-full rounded-lg border-primary/20 bg-background-light dark:bg-slate-800 focus:border-primary focus:ring-primary" placeholder="090 123 4567" type="tel"/>
+</div>
+<div class="flex flex-col gap-1">
+<label class="text-sm font-medium text-slate-700 dark:text-slate-300">Email (Tùy chọn)</label>
+<input class="w-full rounded-lg border-primary/20 bg-background-light dark:bg-slate-800 focus:border-primary focus:ring-primary" placeholder="example@gmail.com" type="email"/>
+</div>
+<div class="flex flex-col gap-1 md:col-span-2">
+<label class="text-sm font-medium text-slate-700 dark:text-slate-300">Ghi chú thêm</label>
+<textarea class="w-full rounded-lg border-primary/20 bg-background-light dark:bg-slate-800 focus:border-primary focus:ring-primary" placeholder="Yêu cầu thêm về dụng cụ hoặc nước uống..." rows="3"></textarea>
+</div>
+</form>
+</div>
+<div class="bg-white dark:bg-slate-900/50 p-6 rounded-xl shadow-sm border border-primary/5">
+<h3 class="text-slate-900 dark:text-slate-100 text-lg font-bold mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">payments</span>
+                                    Phương thức thanh toán
+                                </h3>
+<div class="grid grid-cols-1 gap-3">
+<label class="flex items-center gap-4 p-4 border border-primary/20 rounded-lg bg-primary/5 cursor-pointer">
+<input checked="" class="text-primary focus:ring-primary" name="payment" type="radio"/>
+<div class="flex flex-col">
+<span class="font-bold text-slate-900 dark:text-slate-100">Thanh toán tại sân</span>
+<span class="text-sm text-slate-600 dark:text-slate-400">Trả tiền mặt hoặc chuyển khoản tại quầy</span>
+</div>
+</label>
+<label class="flex items-center gap-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg cursor-not-allowed opacity-60">
+<input class="text-primary focus:ring-primary" disabled="" name="payment" type="radio"/>
+<div class="flex flex-col">
+<span class="font-bold text-slate-900 dark:text-slate-100">Ví điện tử MoMo / ZaloPay</span>
+<span class="text-sm text-slate-600 dark:text-slate-400">Sắp ra mắt</span>
+</div>
+</label>
+</div>
+</div>
+</div>
+<!-- Right Column: Summary Card -->
+<div class="lg:col-span-1">
+<div class="bg-white dark:bg-slate-900/50 p-6 rounded-xl shadow-md border border-primary/10 sticky top-24">
+<h3 class="text-slate-900 dark:text-slate-100 text-lg font-bold pb-4 border-b border-slate-100 dark:border-slate-800 mb-4">Chi tiết đặt sân</h3>
+<div class="flex flex-col gap-4">
+<div class="flex justify-between items-start gap-4">
+<div>
+<p class="text-slate-500 text-xs uppercase tracking-wider font-semibold">Sân bóng</p>
+<p class="text-slate-900 dark:text-slate-100 font-bold">Sân 7 - Mỹ Đình Luxury</p>
+</div>
+<span class="material-symbols-outlined text-primary">stadium</span>
+</div>
+<div class="flex justify-between items-start gap-4">
+<div>
+<p class="text-slate-500 text-xs uppercase tracking-wider font-semibold">Thời gian</p>
+<p class="text-slate-900 dark:text-slate-100 font-medium">18:00 - 19:30</p>
+<p class="text-slate-600 dark:text-slate-400 text-sm">Thứ Hai, 25/10/2023</p>
+</div>
+<span class="material-symbols-outlined text-primary">event</span>
+</div>
+<div class="py-4 border-t border-dashed border-slate-200 dark:border-slate-700 mt-2">
+<div class="flex justify-between items-center mb-2">
+<p class="text-slate-600 dark:text-slate-400">Giá thuê sân</p>
+<p class="text-slate-900 dark:text-slate-100 font-medium">600.000đ</p>
+</div>
+<div class="flex justify-between items-center mb-2">
+<p class="text-slate-600 dark:text-slate-400">Phí dịch vụ</p>
+<p class="text-slate-900 dark:text-slate-100 font-medium">0đ</p>
+</div>
+</div>
+<div class="pt-4 border-t border-slate-200 dark:border-slate-700">
+<div class="flex justify-between items-center mb-6">
+<p class="text-slate-900 dark:text-slate-100 font-bold text-lg">Tổng cộng</p>
+<p class="text-primary font-bold text-2xl tracking-tight">600.000đ</p>
+</div>
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">check_circle</span>
+                                            XÁC NHẬN ĐẶT SÂN
+                                        </button>
+<p class="text-center text-xs text-slate-500 dark:text-slate-400 mt-4 leading-relaxed">
+                                            Bằng cách nhấn nút này, bạn đồng ý với các <a class="underline" href="#">Điều khoản &amp; Chính sách</a> của chúng tôi.
+                                        </p>
+</div>
+</div>
+</div>
+<div class="mt-4 p-4 bg-primary/5 rounded-lg border border-primary/10 flex items-start gap-3">
+<span class="material-symbols-outlined text-primary text-xl">info</span>
+<p class="text-xs text-slate-700 dark:text-slate-300">
+                                    Chúng tôi sẽ gửi tin nhắn xác nhận đến số điện thoại của bạn ngay sau khi bạn đặt sân thành công.
+                                </p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<footer class="mt-auto py-10 border-t border-primary/10 bg-white dark:bg-slate-900 px-4 md:px-40">
+<div class="flex flex-col md:flex-row justify-between items-center gap-6">
+<div class="flex items-center gap-3">
+<div class="size-6 bg-primary rounded flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-sm">sports_soccer</span>
+</div>
+<span class="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-widest text-sm">Football Booking</span>
+</div>
+<div class="flex gap-6 text-slate-500 dark:text-slate-400 text-sm font-medium">
+<a class="hover:text-primary transition-colors" href="#">Trang chủ</a>
+<a class="hover:text-primary transition-colors" href="#">Điều khoản</a>
+<a class="hover:text-primary transition-colors" href="#">Bảo mật</a>
+<a class="hover:text-primary transition-colors" href="#">Trợ giúp</a>
+</div>
+<p class="text-slate-400 text-xs">© 2023 Football Booking. All rights reserved.</p>
+</div>
+</footer>
+</div>
+</div>
+</body></html>

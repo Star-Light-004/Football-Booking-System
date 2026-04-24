@@ -1,0 +1,92 @@
+/* Login page styles */
+
+.login-page .input-group {
+  position: relative;
+}
+
+.login-page .input-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+  font-size: 20px;
+}
+
+.login-page .input-group input {
+  width: 100%;
+  padding-left: 48px;
+  padding-right: 16px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #1e293b;
+  transition: all 0.2s ease;
+}
+
+.login-page .input-group input:focus {
+  outline: none;
+  border-color: #29a847;
+  box-shadow: 0 0 0 3px rgba(41, 168, 71, 0.12);
+}
+
+.login-page .login-button {
+  width: 100%;
+  background-color: #29a847;
+  color: white;
+  font-weight: 700;
+  padding: 14px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.login-page .login-button:hover {
+  background-color: #218838;
+}
+
+.login-page .social-buttons {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.login-page .social-buttons button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  background: white;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.login-page .social-buttons button:hover {
+  background-color: #f3f4f6;
+}
+
+.login-page .google-login {
+  border-color: #d1d5db;
+}
+
+.login-page .facebook-login {
+  border-color: #3b5998;
+}
+
+.login-page .social-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+}
+
