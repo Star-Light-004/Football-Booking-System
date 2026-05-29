@@ -11,6 +11,7 @@ import MyBookings from "../pages/MyBookings/MyBookings";
 import BookingDetail from "../pages/BookingDetail/BookingDetail";
 import Login from "../pages/Login/Login";
 import Register from "../pages/Register/Register";
+import Profile from "../pages/Profile/Profile";
 
 /* ADMIN */
 
@@ -19,6 +20,8 @@ import AdminFields from "../pages/admin/fields/fields";
 import Bookings from "../pages/admin/bookings/bookings";
 import Users from "../pages/admin/users/users";
 import Revenue from "../pages/admin/revenue/revenue";
+import Timeslots from "../pages/admin/timeslots/timeslots";
+import AdminServices from "../pages/admin/services/services";
 
 const AppRoutes = () => (
   <Routes>
@@ -34,6 +37,7 @@ const AppRoutes = () => (
     <Route path="/my-bookings/:id" element={<BookingDetail />} />
     <Route path="/login" element={<Login />} />
     <Route path="/register" element={<Register />} />
+    <Route path="/profile" element={<Profile />} />
 
     {/* ADMIN */}
     <Route path="/admin/dashboard" element={<Dashboard />} />
@@ -41,6 +45,8 @@ const AppRoutes = () => (
     <Route path="/admin/bookings" element={<Bookings />} />
     <Route path="/admin/users" element={<Users />} />
     <Route path="/admin/revenue" element={<Revenue />} />
+    <Route path="/admin/timeslots" element={<Timeslots />} />
+    <Route path="/admin/services" element={<AdminServices />} />
 
   </Routes>
 );

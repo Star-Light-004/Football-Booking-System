@@ -1,0 +1,7 @@
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('create/', views.create_review, name='create-review'),
+    path('<str:field_id>/', views.get_reviews, name='get-reviews'),
+]

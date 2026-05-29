@@ -81,3 +81,8 @@
   color: #666;
 }
 
+.bg-dashed-line {
+  background-image: linear-gradient(to right, #29a847 50%, transparent 50%);
+  background-size: 20px 100%;
+  background-repeat: repeat-x;
+}

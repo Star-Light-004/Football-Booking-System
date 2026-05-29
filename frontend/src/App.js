@@ -1,6 +1,7 @@
 import React from "react";
 import { useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar/Navbar";
+import Footer from "./components/Footer/Footer";
 import AppRoutes from "./routes/AppRoutes";
 import "./styles/global.css";
 
@@ -18,6 +19,9 @@ function App() {
       {!isAdminRoute && <Navbar />}
 
       <AppRoutes />
+
+      {/* chỉ hiển thị footer khi không phải admin */}
+      {!isAdminRoute && <Footer />}
 
     </div>
   );

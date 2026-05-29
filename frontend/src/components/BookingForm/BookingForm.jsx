@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import axios from "axios";
 import "./BookingForm.css";
 
-const BookingForm = ({ fieldId, fieldName, fieldAddress, onSlotSelect }) => {
+const BookingForm = ({ fieldId, fieldName, fieldAddress, onSlotSelect, externalServicesPrice = 0, selectedServices = {} }) => {
 
   const today = new Date();
   const initialYear = today.getFullYear();
@@ -19,64 +19,46 @@ const BookingForm = ({ fieldId, fieldName, fieldAddress, onSlotSelect }) => {
   const [currentYear, setCurrentYear] = useState(initialYear);
   const [currentMonth, setCurrentMonth] = useState(initialMonth);
 
-  // ─── Booked slots state ──────────────────────────────────────────────────
-  const [bookedSlots, setBookedSlots] = useState([]);
+  // ─── Time slots state ──────────────────────────────────────────────────
+  const [availableSlots, setAvailableSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
-  const timeSlots = [
-    "07:00 - 08:00",
-    "08:00 - 09:00",
-    "09:00 - 10:00",
-    "10:00 - 11:00",
-    "17:00 - 18:00",
-    "18:00 - 19:00",
-    "19:00 - 20:00",
-    "20:00 - 21:00",
-  ];
-
-  // ─── Fetch booked slots whenever date or fieldId changes ─────────────────
-  const fetchBookedSlots = useCallback(async (date) => {
+  // ─── Fetch slots from TimeSlots API ─────────────────
+  const fetchTimeSlots = useCallback(async (date) => {
     if (!fieldId || !date) return;
     setLoadingSlots(true);
     try {
       const res = await axios.get(
-        `http://127.0.0.1:8000/api/bookings/booked-slots/?field_id=${fieldId}&date=${date}`
+        `http://127.0.0.1:8000/api/timeslots/get-by-field/?field_id=${fieldId}&date=${date}`
       );
-      setBookedSlots(res.data.booked_slots || []);
+      setAvailableSlots(res.data || []);
     } catch (err) {
-      console.error("Lỗi lấy booked slots:", err);
-      setBookedSlots([]);
+      console.error("Lỗi lấy slots:", err);
+      setAvailableSlots([]);
     } finally {
       setLoadingSlots(false);
     }
   }, [fieldId]);
 
   useEffect(() => {
-    fetchBookedSlots(selectedDate);
-  }, [selectedDate, fetchBookedSlots]);
+    fetchTimeSlots(selectedDate);
+  }, [selectedDate, fetchTimeSlots]);
 
   // Notify parent (FieldDetail) to update the schedule display
   useEffect(() => {
     if (onSlotSelect) {
-      onSlotSelect({ selectedDate, selectedTimeSlot, bookedSlots });
+      onSlotSelect({ selectedDate, selectedTimeSlot, availableSlots });
     }
-  }, [selectedDate, selectedTimeSlot, bookedSlots, onSlotSelect]);
+  }, [selectedDate, selectedTimeSlot, availableSlots, onSlotSelect]);
 
   // ─── Helpers ─────────────────────────────────────────────────────────────
-  const calculatePrice = (slot) => {
-    const startHour = parseInt(slot.split(":")[0]);
-    if (startHour >= 7 && startHour < 12) return 200000;
-    if (startHour >= 12 && startHour < 17) return 300000;
-    if (startHour >= 17 && startHour < 22) return 400000;
-    return 0;
-  };
-
-  const isBooked = (slot) => bookedSlots.includes(slot);
+  const isBooked = (slot) => slot.status !== 'available';
 
   const handleTimeSlotSelect = (slot) => {
-    if (isBooked(slot)) return; // blocked
-    setSelectedTimeSlot(slot);
-    setPrice(calculatePrice(slot));
+    if (isBooked(slot)) return;
+    const timeRange = `${slot.start_time} - ${slot.end_time}`;
+    setSelectedTimeSlot(timeRange);
+    setPrice(slot.price);
     setShowTimeSlots(false);
   };
 
@@ -113,6 +95,8 @@ const BookingForm = ({ fieldId, fieldName, fieldAddress, onSlotSelect }) => {
       day: "numeric",
     });
   };
+
+  const totalPrice = price + externalServicesPrice;
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl">
@@ -162,7 +146,7 @@ const BookingForm = ({ fieldId, fieldName, fieldAddress, onSlotSelect }) => {
 
                 {/* Weekday headers */}
                 <div className="bf-cal-grid bf-cal-weekdays">
-                  {["CN","T2","T3","T4","T5","T6","T7"].map((d) => (
+                  {["CN", "T2", "T3", "T4", "T5", "T6", "T7"].map((d) => (
                     <span key={d}>{d}</span>
                   ))}
                 </div>
@@ -242,12 +226,13 @@ const BookingForm = ({ fieldId, fieldName, fieldAddress, onSlotSelect }) => {
                   <span className="hint-dot booked" /> Đã đặt
                 </p>
                 <div className="bf-slots-grid">
-                  {timeSlots.map((slot) => {
+                  {availableSlots.map((slot) => {
                     const booked = isBooked(slot);
-                    const selected = selectedTimeSlot === slot;
+                    const timeRange = `${slot.start_time} - ${slot.end_time}`;
+                    const selected = selectedTimeSlot === timeRange;
                     return (
                       <button
-                        key={slot}
+                        key={slot.id}
                         disabled={booked}
                         title={booked ? "Khung giờ này đã có người đặt" : ""}
                         className={[
@@ -257,7 +242,10 @@ const BookingForm = ({ fieldId, fieldName, fieldAddress, onSlotSelect }) => {
                         ].join(" ")}
                         onClick={() => handleTimeSlotSelect(slot)}
                       >
-                        <span className="slot-time-label">{slot}</span>
+                        <span className="slot-time-label">{timeRange}</span>
+                        <span className="text-[10px] opacity-60">
+                          {slot.price.toLocaleString()}đ
+                        </span>
                         {booked && (
                           <span className="slot-badge-booked">Đã đặt</span>
                         )}
@@ -277,13 +265,13 @@ const BookingForm = ({ fieldId, fieldName, fieldAddress, onSlotSelect }) => {
             <span>{price ? price.toLocaleString() + "đ" : "—"}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span>Phí dịch vụ (0%)</span>
-            <span>0đ</span>
+            <span>Dịch vụ thêm</span>
+            <span>{externalServicesPrice ? externalServicesPrice.toLocaleString() + "đ" : "0đ"}</span>
           </div>
           <div className="flex justify-between font-bold text-lg pt-2">
             <span>Tổng cộng</span>
             <span className="text-primary">
-              {price ? price.toLocaleString() + "đ" : "—"}
+              {totalPrice ? totalPrice.toLocaleString() + "đ" : "—"}
             </span>
           </div>
         </div>
@@ -297,6 +285,9 @@ const BookingForm = ({ fieldId, fieldName, fieldAddress, onSlotSelect }) => {
             selectedDate,
             selectedTimeSlot,
             price,
+            selectedServices,
+            totalServicePrice: externalServicesPrice,
+            totalPrice
           }}
           className={[
             "w-full font-bold py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2",

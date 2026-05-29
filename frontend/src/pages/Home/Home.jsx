@@ -1,39 +1,24 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import FieldCard from "../../components/FieldCard/FieldCard";
+import { getFields } from "../../api/fieldsApi";
 import "./Home.css";
 
 const Home = () => {
-  // sample static data for featured fields
-  const featured = [
-    {
-      id: 1,
-      image:
-        "https://lh3.googleusercontent.com/aida-public/AB6AXuC2OPQhBheYigLAwzlfb_6xjrQKJHtwLAqQ5G8PEkSdleqFwczYZAWIUalGpNwHlCycTGPk2XJkJXM4mR2nhknv7E8gmz5y0UtnKM7EwwgT5jrrHmcQFPIycm8ELuRlkIoqIeoMkkl6BJiTEqjx4ZTUzb1C-UCFPUNK1pFTWJFDWo4mMYrjxFDdhvE8xcl7N9gxdRE-cqKTOIybReUae4IGo45-17KWSFN5vG_Xk6abDT6aVI1NRCzN6fXSzcJzR85Tj3DTw1e8ybY",
-      type: "Sân 7 người",
-      name: "Sân vận động Đại Nam",
-      location: "123 Đường ABC, Quận 7, TP.HCM",
-      price: "350.000đ",
-    },
-    {
-      id: 2,
-      image:
-        "https://lh3.googleusercontent.com/aida-public/AB6AXuAPWyys-qCB4eW6dpUxVaDR_Fag0x0VokVNEEpZ40lBZiL6R6l_5-9BraAhcIi4w0d4tO4thgQlG4wEJ_Cs7G0ODgFFWEY2roFrDXyeOVk85YfosayTXTdE8rbCxdi0mL6DDBtrZOh-u6uQu4A02dQwYmug0CXp_C4QjdLxRqxzzdahS8H58r6iUZ88WgDxvd7dyh7cQVXJepiuHHEba20iyfzQG1CdQf_O3AOhpIUfCgHSTzBlNMlitWRXMS8DYV4MB2Rfe5U7W7Y",
-      type: "Sân 5 người",
-      name: "Sân thể thao Cầu Giấy",
-      location: "456 Đường XYZ, Hà Nội",
-      price: "250.000đ",
-    },
-    {
-      id: 3,
-      image:
-        "https://lh3.googleusercontent.com/aida-public/AB6AXuB9-Ah-gGAE5VzUvfOhLGtbDF9-cwAEHrXcIzGEXFHBTKXzmpDHRzq3ybLIWE2WqBeNULF5e78MoOWX6mMy8evSMAKZTbvc-tH1yH8fPgqiolOwz8beadV65T1QXPYGAfhKpQueYBMGMIaKlJWWoE09vCCLdDe5GtDO-2EXkZBYwGeyUJyRJABWpgGd7PtY8FyzKVoH0Y51SCzA35kM6JD_m0mLfb7xw8dEEpLt-8m1r4JS_6IvqPnS-tlB2_4KOMtuLVexLBF0ONE",
-      type: "Sân 11 người",
-      name: "Sân Mỹ Đình Luxury",
-      location: "7 Đại lộ Thăng Long, Hà Nội",
-      price: "600.000đ",
-    },
-  ];
+  const [featured, setFeatured] = useState([]);
+
+  useEffect(() => {
+    const fetchFields = async () => {
+      try {
+        const res = await getFields();
+        // Lấy 6 sân đầu tiên
+        setFeatured(res.data.fields.slice(0, 6));
+      } catch (error) {
+        console.log("Lỗi lấy sân nổi bật:", error);
+      }
+    };
+    fetchFields();
+  }, []);
 
   return (
     <>
@@ -171,13 +156,102 @@ const Home = () => {
               </Link>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {featured.map((f) => (
-                <FieldCard key={f.id} {...f} />
+              {featured.map((field) => (
+                <FieldCard
+                  key={field.id}
+                  id={field.id}
+                  image={field.image_url}
+                  type={field.field_type}
+                  name={field.field_name}
+                  location={field.location}
+                  price={`${field.price_per_hour?.toLocaleString()}đ/giờ`}
+                  bookingCount={field.booking_count}
+                  rating={field.rating_avg}
+                />
               ))}
             </div>
           </div>
         </section>
+        {/* Booking Process */}
+        <section className="py-24 px-4 bg-white dark:bg-slate-900">
+          <div className="max-w-7xl mx-auto text-center">
+            <h3 className="text-3xl font-bold mb-4">Quy trình đặt sân đơn giản</h3>
+            <p className="text-slate-500 dark:text-slate-400 mb-16">Bạn chỉ cần thực hiện 4 bước để có ngay sân bóng ưng ý</p>
+            
+            <div className="relative grid grid-cols-1 md:grid-cols-4 gap-8">
+              {/* Connector line (desktop only) */}
+              <div className="hidden md:block absolute top-8 left-1/2 -translate-x-1/2 w-3/4 h-[2px] bg-dashed-line z-0"></div>
+              
+              {/* Step 1 */}
+              <div className="relative z-10 flex flex-col items-center">
+                <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center text-white mb-6 shadow-lg shadow-primary/30">
+                  <span className="material-symbols-outlined text-3xl">search</span>
+                </div>
+                <h4 className="text-lg font-bold mb-2">1. Chọn sân</h4>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Tìm kiếm và lựa chọn sân bóng phù hợp với vị trí của bạn.</p>
+              </div>
+
+              {/* Step 2 */}
+              <div className="relative z-10 flex flex-col items-center">
+                <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center text-white mb-6 shadow-lg shadow-primary/30">
+                  <span className="material-symbols-outlined text-3xl">calendar_month</span>
+                </div>
+                <h4 className="text-lg font-bold mb-2">2. Chọn ngày/giờ</h4>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Kiểm tra khung giờ trống và chọn thời điểm ra sân lý tưởng.</p>
+              </div>
+
+              {/* Step 3 */}
+              <div className="relative z-10 flex flex-col items-center">
+                <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center text-white mb-6 shadow-lg shadow-primary/30">
+                  <span className="material-symbols-outlined text-3xl">description</span>
+                </div>
+                <h4 className="text-lg font-bold mb-2">3. Nhập thông tin</h4>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Điền thông tin liên hệ và hình thức thanh toán mong muốn.</p>
+              </div>
+
+              {/* Step 4 */}
+              <div className="relative z-10 flex flex-col items-center">
+                <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center text-white mb-6 shadow-lg shadow-primary/30">
+                  <span className="material-symbols-outlined text-3xl">check_circle</span>
+                </div>
+                <h4 className="text-lg font-bold mb-2">4. Xác nhận</h4>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Nhận mã đặt sân qua tin nhắn/email và sẵn sàng thi đấu.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* CTA Banner */}
+        <section className="py-16 px-4">
+          <div className="max-w-7xl mx-auto">
+            <div className="relative overflow-hidden bg-primary rounded-3xl p-8 md:p-16 flex flex-col md:flex-row items-center justify-between text-white">
+              {/* Background pattern (placeholder for soccer ball pattern) */}
+              <div className="absolute top-0 right-0 w-64 h-64 opacity-10 -mr-20 -mt-20">
+                <span className="material-symbols-outlined text-[200px]">sports_soccer</span>
+              </div>
+              <div className="absolute bottom-0 left-0 w-48 h-48 opacity-10 -ml-16 -mb-16">
+                <span className="material-symbols-outlined text-[150px]">sports_soccer</span>
+              </div>
+
+              <div className="relative z-10 mb-8 md:mb-0 max-w-2xl">
+                <h3 className="text-3xl md:text-4xl font-bold mb-4">Bạn đã sẵn sàng cho trận bóng hôm nay?</h3>
+                <p className="text-primary-foreground/80 text-lg opacity-90">
+                  Hơn 500+ sân bóng đang chờ bạn trên khắp cả nước. Đặt ngay để nhận ưu đãi lên đến 20% cho khung giờ vàng.
+                </p>
+              </div>
+              <div className="relative z-10">
+                <Link
+                  to="/booking"
+                  className="bg-white text-primary px-8 py-4 rounded-xl font-bold text-lg flex items-center gap-3 hover:bg-slate-100 transition-colors shadow-xl"
+                >
+                  ĐẶT SÂN NGAY <span className="material-symbols-outlined">directions_run</span>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
+
     </>
   );
 };

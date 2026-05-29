@@ -1,6 +1,6 @@
 import React, { useState } from "react"; // ✅ thêm useState
 import { Link, useNavigate } from "react-router-dom"; // ✅ thêm useNavigate
-import axios from "axios"; // ✅ thêm axios
+import { login } from "../../api/authApi"; // ✅ thêm axios
 import "./Login.css";
 
 const Login = () => {
@@ -26,7 +26,7 @@ const Login = () => {
     e.preventDefault();
 
     try {
-      const res = await axios.post("http://127.0.0.1:8000/api/users/login/", {
+      const res = await login({
         identifier: formData.identifier,
         password: formData.password
       });

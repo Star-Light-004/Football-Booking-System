@@ -22,6 +22,9 @@ def register(request):
 
     if Customers.objects.filter(phone=phone).exists():
         return Response({"error": "Số điện thoại đã tồn tại"}, status=400)
+        
+    if email and Customers.objects.filter(email=email).exists():
+        return Response({"error": "Email đã tồn tại"}, status=400)
 
     from django.contrib.auth.hashers import make_password
     hashed_password = make_password(password)
@@ -81,18 +84,9 @@ def login(request):
 def get_users(request):
     users = Customers.objects.all()
 
-    data = []
-    for u in users:
-        data.append({
-            "id": str(u.id),
-            "name": u.full_name,
-            "email": u.email,
-            "phone": u.phone,
-            "role": "customer",
-            "status": "active"
-        })
-
-    return Response(data)
+    from .serializers import CustomersSerializer
+    serializer = CustomersSerializer(users, many=True)
+    return Response(serializer.data)
 
 
 
@@ -111,9 +105,35 @@ def get_profile(request):
     except Customers.DoesNotExist:
         return Response({"error": "User không tồn tại"}, status=404)
 
-    return Response({
-        "id": str(user.id),
-        "fullname": user.full_name,
-        "email": user.email,
-        "phone": user.phone
-    })
+    from .serializers import ProfileSerializer
+    serializer = ProfileSerializer(user)
+    return Response(serializer.data)
+
+@api_view(['PUT'])
+def update_user(request, user_id):
+    try:
+        user = Customers.objects.get(id=user_id)
+        data = request.data
+        if "fullname" in data:
+            user.full_name = data["fullname"]
+        if "email" in data:
+            user.email = data["email"]
+        if "phone" in data:
+            user.phone = data["phone"]
+        user.save()
+        return Response({"message": "Cập nhật thành công"})
+    except Customers.DoesNotExist:
+        return Response({"error": "Không tìm thấy user"}, status=404)
+    except Exception as e:
+        return Response({"error": str(e)}, status=400)
+
+@api_view(['DELETE'])
+def delete_user(request, user_id):
+    try:
+        user = Customers.objects.get(id=user_id)
+        user.delete()
+        return Response({"message": "Xóa thành công"})
+    except Customers.DoesNotExist:
+        return Response({"error": "Không tìm thấy user"}, status=404)
+    except Exception as e:
+        return Response({"error": str(e)}, status=400)

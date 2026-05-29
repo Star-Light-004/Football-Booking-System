@@ -9,7 +9,8 @@ const navLinks = [
   { icon: 'event_available', label: 'Bookings', path: '/admin/bookings' },
   { icon: 'group', label: 'Users', path: '/admin/users' },
   { icon: 'payments', label: 'Revenue', path: '/admin/revenue' },
-  { icon: 'settings', label: 'Settings', path: '/admin/settings' },
+  { icon: 'calendar_month', label: 'Time Slots', path: '/admin/timeslots' },
+  { icon: 'inventory_2', label: 'Services', path: '/admin/services' },
 ];
 
 const barData = [

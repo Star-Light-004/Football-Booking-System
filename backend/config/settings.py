@@ -44,6 +44,10 @@ INSTALLED_APPS = [
     'apps.fields',
     'apps.bookings',
     'apps.payments',
+    'apps.reviews',
+    'apps.timeslots',
+    'apps.servicesadd',
+    'apps.notifications',
     'corsheaders',
     'rest_framework',
 ]

@@ -1,34 +1,31 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
-
+from django.db.models import Avg
 from .models import FootballFields, FieldTypes
+from apps.reviews.models import Reviews
 
 # ===============================
 # GET ALL FIELDS
 # ===============================
 @csrf_exempt
 def get_football_fields(request):
+    show_all = request.GET.get('show_all') == 'true'
+    
+    query = FootballFields.objects.select_related('field_type').annotate(
+        avg_from_reviews=Avg('reviews__rating')
+    )
 
-    fields = FootballFields.objects.select_related('field_type').all()
+    if show_all:
+        fields = query.all()
+    else:
+        fields = query.filter(is_available=True)
 
-    data = []
-
-    for field in fields:
-        data.append({
-            "id": str(field.id),
-            "field_name": field.field_name,
-            "field_type": field.field_type.name if field.field_type else None,
-            "location": field.location,
-            "price_per_hour": float(field.price_per_hour) if field.price_per_hour else 0,
-            "is_available": field.is_available,
-            "created_at": field.created_at,
-            "image": field.image.url if field.image else None,  # admin
-            "image_url": request.build_absolute_uri(field.image.url) if field.image else None,  # frontend
-        })
+    from .serializers import FootballFieldsSerializer
+    serializer = FootballFieldsSerializer(fields, many=True, context={'request': request})
 
     return JsonResponse({
-        "fields": data
+        "fields": serializer.data
     })
 
 
@@ -40,20 +37,14 @@ def get_football_field_detail(request, id):
 
     try:
         field = FootballFields.objects.select_related('field_type').get(id=id)
+        
+        # 🔹 Tính điểm đánh giá trung bình từ reviews
+        avg_rating = Reviews.objects.filter(field_id=id).aggregate(Avg('rating'))['rating__avg']
+        field.avg_from_reviews = avg_rating
 
-        data = {
-            "id": str(field.id),
-            "field_name": field.field_name,
-            "field_type": field.field_type.name if field.field_type else None,
-            "location": field.location,
-            "price_per_hour": float(field.price_per_hour) if field.price_per_hour else 0,
-            "is_available": field.is_available,
-            "created_at": field.created_at,
-            "image": field.image.url if field.image else None,  # admin
-            "image_url": request.build_absolute_uri(field.image.url) if field.image else None,  # frontend
-        }
-
-        return JsonResponse(data)
+        from .serializers import FootballFieldsSerializer
+        serializer = FootballFieldsSerializer(field, context={'request': request})
+        return JsonResponse(serializer.data)
 
     except FootballFields.DoesNotExist:
         return JsonResponse({
@@ -87,6 +78,10 @@ def create_football_field(request):
                 location=location,
                 price_per_hour=price_per_hour,
                 image=image,
+                description=request.POST.get("description"),
+                phone=request.POST.get("phone"),
+                booking_count=request.POST.get("booking_count", 0),
+                rating_avg=request.POST.get("rating_avg", 0),
                 is_available=True
             )
 
@@ -123,6 +118,10 @@ def update_football_field(request, id):
             field.location = body.get("location", field.location)
             field.price_per_hour = body.get("price_per_hour", field.price_per_hour)
             field.is_available = body.get("is_available", field.is_available)
+            field.description = body.get("description", field.description)
+            field.phone = body.get("phone", field.phone)
+            field.booking_count = body.get("booking_count", field.booking_count)
+            field.rating_avg = body.get("rating_avg", field.rating_avg)
 
             # cập nhật field_type nếu có
             field_type_name = body.get("field_type")

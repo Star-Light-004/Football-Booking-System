@@ -6,6 +6,8 @@ from .models import Bookings
 import uuid
 from datetime import datetime
 
+from apps.fields.models import FootballFields
+
 @api_view(['POST'])
 def create_booking(request):
     data = request.data
@@ -26,9 +28,46 @@ def create_booking(request):
             created_at=datetime.now()
         )
 
+        # 🔹 Tăng số lượt đặt cho sân này
+        try:
+            field = FootballFields.objects.get(id=data.get("field_id"))
+            if field.booking_count is None:
+                field.booking_count = 1
+            else:
+                field.booking_count += 1
+            field.save()
+        except Exception as field_err:
+            print("Lỗi tăng booking_count:", field_err)
+
+        # 🔹 Cập nhật trạng thái TimeSlot thành 'booked'
+        try:
+            from apps.timeslots.models import TimeSlots
+            TimeSlots.objects.filter(
+                field_id=data.get("field_id"),
+                slot_date=data.get("booking_date"),
+                start_time=data.get("start_time")
+            ).update(status='booked')
+        except Exception as ts_err:
+            print("Lỗi update status timeslot:", ts_err)
+
+        # 🔹 Lưu dịch vụ thêm nếu có
+        services_data = data.get("services", [])
+        if services_data:
+            from apps.servicesadd.models import BookingServices
+            for s in services_data:
+                BookingServices.objects.create(
+                    id=uuid.uuid4(),
+                    booking_id=booking.id,
+                    service_id=s['service_id'],
+                    quantity=s['quantity'],
+                    total_price=s.get('total_price', 0),
+                    status='active'
+                )
+
         return Response({
             "message": "Đặt sân thành công",
-            "booking_id": str(booking.id)
+            "booking_id": str(booking.id),
+            "booking_id_short": str(booking.id)[:8].upper()
         })
 
     except Exception as e:
@@ -40,42 +79,19 @@ def create_booking(request):
 def get_bookings(request):
     bookings = Bookings.objects.select_related('customer', 'field').all()
 
-    data = []
-    for b in bookings:
-        data.append({
-            "id": str(b.id),
-            "name": b.customer.full_name,
-            "phone": b.customer.phone,
-            "field": b.field.field_name,
-            "date": b.booking_date,
-            "time": f"{b.start_time} - {b.end_time}",
-            "price": float(b.total_price),
-            "status": b.status
-        })
-
-    return Response(data)
+    from .serializers import BookingsSerializer
+    serializer = BookingsSerializer(bookings, many=True)
+    return Response(serializer.data)
 
 
 @api_view(['GET'])
 def get_user_bookings(request, user_id):
-    bookings = Bookings.objects.filter(customer_id=user_id)
+    from apps.reviews.models import Reviews
+    bookings = Bookings.objects.filter(customer_id=user_id).order_by('-created_at')
 
-    data = []
-    for b in bookings:
-        data.append({
-            "id": str(b.id),
-            "fieldName": b.field.field_name,
-            "fieldAddress": b.field.location,
-            "bookingDate": b.booking_date,
-            "timeSlot": f"{b.start_time} - {b.end_time}",
-            "customerName": b.customer.full_name,
-            "phone": b.customer.phone if hasattr(b.customer, "phone") else None,
-            "price": float(b.total_price),
-            "status": b.status,
-            "image": b.field.image.url if b.field.image else None,
-        })
-
-    return Response(data)
+    from .serializers import UserBookingsSerializer
+    serializer = UserBookingsSerializer(bookings, many=True, context={'request': request})
+    return Response(serializer.data)
 
 
 @api_view(['GET'])
@@ -83,37 +99,34 @@ def lookup_booking(request):
     try:
         phone = request.GET.get('phone')
         date = request.GET.get('date')
+        booking_id = request.GET.get('booking_id')
 
         # convert date string -> date object
         date_obj = parse_date(date) if date else None
 
-        bookings = Bookings.objects.all()
+        bookings = Bookings.objects.all().order_by('-created_at')
 
-        if phone:
-            bookings = bookings.filter(customer__phone=phone)
+        # Ưu tiên tìm theo mã đặt sân nếu có
+        if booking_id:
+            clean_id = booking_id.replace('#', '').replace('BK', '').strip()
+            if clean_id:
+                bookings = bookings.filter(id__istartswith=clean_id)
+            else:
+                # Nếu chỉ nhập tiền tố mà không có số, có thể tìm theo phone/date
+                if phone:
+                    bookings = bookings.filter(customer__phone=phone)
+                if date_obj:
+                    bookings = bookings.filter(booking_date=date_obj)
+        else:
+            # Nếu không có mã đặt sân, tìm theo phone và date
+            if phone:
+                bookings = bookings.filter(customer__phone=phone)
+            if date_obj:
+                bookings = bookings.filter(booking_date=date_obj)
 
-        if date_obj:
-            bookings = bookings.filter(booking_date=date_obj)
-
-        data = []
-        for b in bookings:
-            data.append({
-                    "id": str(b.id),
-
-                    # sân
-                    "fieldName": b.field.field_name,
-                    "fieldAddress": b.field.location,
-                    "fieldImage": b.field.image.url if b.field.image else None,
-
-                    # booking
-                    "bookingDate": b.booking_date,
-                    "timeSlot": f"{b.start_time} - {b.end_time}",
-                    "customerName": b.customer.full_name,
-                    "phone": b.customer.phone,
-                    "price": float(b.total_price),
-                    "status": b.status,
-                })
-        return Response(data)
+        from .serializers import LookupBookingSerializer
+        serializer = LookupBookingSerializer(bookings, many=True, context={'request': request})
+        return Response(serializer.data)
 
     except Exception as e:
         print("LOOKUP ERROR:", e)
@@ -155,3 +168,56 @@ def get_booked_slots(request):
     except Exception as e:
         print("GET_BOOKED_SLOTS ERROR:", e)
         return Response({"error": str(e)}, status=500)
+
+@api_view(['PUT'])
+def update_booking(request, booking_id):
+    try:
+        booking = Bookings.objects.get(id=booking_id)
+        data = request.data
+        
+        if data.get("status"):
+            booking.status = data["status"]
+        if data.get("booking_date"):
+            booking.booking_date = data["booking_date"]
+        if data.get("start_time"):
+            booking.start_time = data["start_time"]
+        if data.get("end_time"):
+            booking.end_time = data["end_time"]
+        if data.get("total_price") is not None and data.get("total_price") != "":
+            booking.total_price = data["total_price"]
+            
+        booking.save()
+
+        # Update services
+        if "services" in data:
+            services_data = data["services"]
+            from apps.servicesadd.models import BookingServices
+            BookingServices.objects.filter(booking_id=booking.id).delete()
+            for s in services_data:
+                BookingServices.objects.create(
+                    id=uuid.uuid4(),
+                    booking_id=booking.id,
+                    service_id=s['service_id'],
+                    quantity=s['quantity'],
+                    total_price=s.get('total_price', 0),
+                    status='active'
+                )
+
+        return Response({"message": "Cập nhật thành công"})
+    except Bookings.DoesNotExist:
+        return Response({"error": "Không tìm thấy booking"}, status=404)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response({"error": str(e)}, status=400)
+
+@api_view(['DELETE'])
+def delete_booking(request, booking_id):
+    try:
+        booking = Bookings.objects.get(id=booking_id)
+        booking.delete()
+        return Response({"message": "Xóa thành công"})
+    except Bookings.DoesNotExist:
+        return Response({"error": "Không tìm thấy booking"}, status=404)
+    except Exception as e:
+        return Response({"error": str(e)}, status=400)

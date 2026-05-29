@@ -512,60 +512,39 @@ body {
   box-shadow: 0 0 0 2px #10b981;
 }
  
-/* Bar Chart */
-.bar-chart {
-  height: 16rem;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
+.line-chart-wrapper {
+  width: 100%;
   position: relative;
+  overflow: visible;
+  padding-top: 1rem;
 }
- 
-.bar-chart-grid {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  pointer-events: none;
-  opacity: 0.1;
-}
- 
-.bar-chart-grid-line {
-  border-bottom: 1px solid var(--color-on-surface);
+
+.line-chart-svg {
   width: 100%;
+  height: auto;
+  overflow: visible;
 }
- 
-.bar-col {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
+
+.chart-point {
+  transition: all 0.2s;
+  cursor: pointer;
 }
- 
-.bar-col:hover .bar-fill { filter: brightness(0.9); }
- 
-.bar-fill {
-  width: 100%;
-  border-radius: 0.375rem 0.375rem 0 0;
-  transition: filter 0.2s;
+
+.chart-point-group:hover .chart-point {
+  r: 8;
+  fill: #3b82f6;
+  stroke: #fff;
 }
- 
-.bar-fill.h-40 { height: 40%; background: #a7f3d0; }
-.bar-fill.h-65 { height: 65%; background: #6ee7b7; }
-.bar-fill.h-50 { height: 50%; background: #a7f3d0; }
-.bar-fill.h-90 { height: 90%; background: #059669; }
-.bar-fill.h-75 { height: 75%; background: #6ee7b7; }
-.bar-fill.h-85 { height: 85%; background: #34d399; }
-.bar-fill.h-60 { height: 60%; background: #86efac; }
- 
-.bar-label {
-  font-size: 0.625rem;
-  font-weight: 700;
-  color: var(--color-on-surface-variant);
-  text-transform: uppercase;
+
+.chart-point-value {
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  transform: translateY(5px);
+}
+
+.chart-point-group:hover .chart-point-value {
+  opacity: 1;
+  transform: translateY(0);
 }
  
 /* Donut chart card */
@@ -791,8 +770,13 @@ tbody td {
   background: #fef3c7;
   color: #92400e;
 }
- 
 .badge.pending .badge-dot { background: #f59e0b; }
+
+.badge.cancelled {
+  background: #fef2f2;
+  color: #dc2626;
+}
+.badge.cancelled .badge-dot { background: #ef4444; }
  
 /* ─── FAB ─── */
 .fab {

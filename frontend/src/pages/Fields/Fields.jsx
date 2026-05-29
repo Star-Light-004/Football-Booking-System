@@ -1,27 +1,25 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import { getFields } from "../../api/fieldsApi";
 import FieldCard from "../../components/FieldCard/FieldCard";
 import "./Fields.css";
- 
+
 const Fields = () => {
   const [fields, setFields] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
- 
+
   const tabs = [
     { key: "all", label: "Tất cả" },
     { key: "5", label: "Sân 5 người" },
     { key: "7", label: "Sân 7 người" },
     { key: "11", label: "Sân 11 người" },
   ];
- 
+
   useEffect(() => {
     const fetchFields = async () => {
       try {
-        const res = await axios.get(
-          "http://127.0.0.1:8000/api/football-fields/"
-        );
+        const res = await getFields();
         setFields(res.data.fields);
       } catch (error) {
         console.log("Lỗi lấy sân:", error);
@@ -29,14 +27,14 @@ const Fields = () => {
         setLoading(false);
       }
     };
- 
+
     fetchFields();
   }, []);
- 
+
   if (loading) {
     return <h2 style={{ padding: 20 }}>Đang tải danh sách sân...</h2>;
   }
- 
+
   return (
     <main className="fields-page">
       {/* Header */}
@@ -44,7 +42,7 @@ const Fields = () => {
         <h1>Danh sách sân bóng</h1>
         <p>Tìm kiếm và đặt sân bóng phù hợp nhất với đội của bạn tại khu vực Hà Nội</p>
       </div>
- 
+
       {/* Filter Bar */}
       <div className="fields-filter-bar">
         <button className="filter-dropdown-btn">
@@ -67,7 +65,7 @@ const Fields = () => {
           Lọc nâng cao
         </button>
       </div>
- 
+
       {/* Tabs */}
       <div className="fields-tabs">
         {tabs.map((tab) => (
@@ -80,7 +78,7 @@ const Fields = () => {
           </button>
         ))}
       </div>
- 
+
       {/* Grid */}
       <div className="fields-grid">
         {fields.map((field) => (
@@ -92,10 +90,12 @@ const Fields = () => {
             name={field.field_name}
             location={field.location}
             price={`${field.price_per_hour?.toLocaleString()}đ/giờ`}
+            bookingCount={field.booking_count}
+            rating={field.rating_avg}
           />
         ))}
       </div>
- 
+
       {/* Pagination */}
       <div className="fields-pagination">
         <button className="page-btn nav-btn">‹</button>
@@ -120,5 +120,5 @@ const Fields = () => {
     </main>
   );
 };
- 
+
 export default Fields;

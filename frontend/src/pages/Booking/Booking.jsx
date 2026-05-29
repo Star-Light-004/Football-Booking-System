@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import axios from "axios";
+import { getUserProfile } from "../../api/usersApi";
+import { createBooking } from "../../api/bookingsApi";
+import { getServices, createBookingService } from "../../api/servicesApi";
 import "./Booking.css";
 
 const COUNTDOWN_SECONDS = 15;
@@ -14,6 +16,38 @@ const Booking = () => {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
 
+  // Services state
+  const [allServices, setAllServices] = useState([]);
+  const [selectedServicesList, setSelectedServicesList] = useState([]);
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const res = await getServices();
+        setAllServices(res.data || []);
+      } catch (err) {
+        console.error("Lỗi lấy dịch vụ:", err);
+      }
+    };
+    fetchServices();
+  }, []);
+
+  useEffect(() => {
+    if (allServices.length > 0 && bookingData?.selectedServices) {
+      const selected = [];
+      Object.keys(bookingData.selectedServices).forEach(id => {
+        const qty = bookingData.selectedServices[id];
+        if (qty > 0) {
+          const service = allServices.find(s => s.id === id);
+          if (service) {
+            selected.push({ ...service, quantity: qty });
+          }
+        }
+      });
+      setSelectedServicesList(selected);
+    }
+  }, [allServices, bookingData]);
+
   /* ── Countdown modal state ─────────────────────────────────────── */
   const [showModal, setShowModal] = useState(false);
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
@@ -25,9 +59,7 @@ const Booking = () => {
       const user = JSON.parse(localStorage.getItem("user"));
       if (!user) return;
       try {
-        const res = await axios.get(
-          `http://127.0.0.1:8000/api/users/profile/?user_id=${user.id}`
-        );
+        const res = await getUserProfile(user.id);
         setCustomerName(res.data.fullname);
         setPhoneNumber(res.data.phone);
       } catch (err) {
@@ -83,16 +115,24 @@ const Booking = () => {
       booking_date: bookingData.selectedDate,
       start_time: bookingData.selectedTimeSlot.split("-")[0].trim(),
       end_time: bookingData.selectedTimeSlot.split("-")[1].trim(),
-      total_price: bookingData.price,
+      total_price: bookingData.totalPrice, // Use total price including services
     };
 
     try {
-      const res = await axios.post(
-        "http://127.0.0.1:8000/api/bookings/create/",
-        booking
-      );
-      const bookingCode = res.data.booking_id;
-      navigate("/booking/success", { state: { bookingCode } });
+      const res = await createBooking(booking);
+      const { booking_id, booking_id_short } = res.data;
+      
+      // Save selected services
+      for (const item of selectedServicesList) {
+        await createBookingService({
+          booking_id: booking_id,
+          service_id: item.id,
+          quantity: item.quantity,
+          total_price: item.price * item.quantity
+        });
+      }
+
+      navigate("/booking/success", { state: { bookingCode: booking_id_short, fullId: booking_id } });
     } catch (err) {
       console.log("Lỗi đặt sân:", err);
       setSubmitting(false);
@@ -282,9 +322,25 @@ const Booking = () => {
                         : "—"}
                     </span>
                   </div>
+                  {selectedServicesList.length > 0 && (
+                    <div className="bk-services-summary">
+                      <div className="bk-summary-label mt-4">DỊCH VỤ ĐÃ CHỌN</div>
+                      {selectedServicesList.map(item => (
+                        <div key={item.id} className="bk-price-row">
+                          <span>{item.name} (x{item.quantity})</span>
+                          <span>{(item.price * item.quantity).toLocaleString()}đ</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <div className="bk-price-row">
-                    <span>Phí dịch vụ</span>
-                    <span>0đ</span>
+                    <span>Tổng phí dịch vụ</span>
+                    <span>
+                      {bookingData.totalServicePrice
+                        ? bookingData.totalServicePrice.toLocaleString() + "đ"
+                        : "0đ"}
+                    </span>
                   </div>
 
                   <div className="bk-summary-divider" />
@@ -292,8 +348,8 @@ const Booking = () => {
                   <div className="bk-total-row">
                     <span>Tổng cộng</span>
                     <span className="bk-total-price">
-                      {bookingData.price
-                        ? bookingData.price.toLocaleString() + "đ"
+                      {bookingData.totalPrice
+                        ? bookingData.totalPrice.toLocaleString() + "đ"
                         : "—"}
                     </span>
                   </div>
@@ -362,8 +418,8 @@ const Booking = () => {
               <div className="cd-info-row cd-info-row--total">
                 <span className="cd-info-label">💰 Tổng</span>
                 <span className="cd-info-value cd-info-price">
-                  {bookingData?.price
-                    ? bookingData.price.toLocaleString() + "đ"
+                  {bookingData?.totalPrice
+                    ? bookingData.totalPrice.toLocaleString() + "đ"
                     : "—"}
                 </span>
               </div>

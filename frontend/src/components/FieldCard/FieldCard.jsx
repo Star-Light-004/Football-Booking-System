@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import "./FieldCard.css";
 
-const FieldCard = ({ id, image, type, name, location, price }) => (
+const FieldCard = ({ id, image, type, name, location, price, bookingCount, rating }) => (
   <div className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-xl transition-shadow group">
     <div className="relative h-56 overflow-hidden">
       <img
@@ -10,15 +10,28 @@ const FieldCard = ({ id, image, type, name, location, price }) => (
         src={image}
         alt={name}
       />
-      <div className="absolute top-4 left-4 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full uppercase">
-        {type}
+      <div className="absolute top-4 left-4">
+        <div className="bg-primary text-white text-xs font-bold px-3 py-1 rounded-full uppercase">
+          {type}
+        </div>
       </div>
     </div>
     <div className="p-6">
       <h5 className="text-xl font-bold mb-2">{name}</h5>
-      <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm mb-4">
-        <span className="material-symbols-outlined text-sm">location_on</span>
-        {location}
+      <div className="flex flex-col gap-1 mb-4">
+        <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
+          <span className="material-symbols-outlined text-sm">location_on</span>
+          {location}
+        </div>
+        <div className="flex items-center gap-2 text-emerald-600 font-medium text-xs">
+          <span className="material-symbols-outlined text-xs">history</span>
+          Đã có {bookingCount || 0} lượt đặt
+        </div>
+        <div className="flex items-center gap-1 text-yellow-600 font-medium text-xs">
+          <span className="material-symbols-outlined text-xs fill-1">star</span>
+          {rating || "0.0"}/5
+          <span className="material-symbols-outlined text-xs fill-1">star</span>
+        </div>
       </div>
       <div className="flex justify-between items-center py-4 border-t border-slate-100 dark:border-slate-700">
         <div>

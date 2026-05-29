@@ -4,7 +4,7 @@ import "./BookingSuccess.css";
 
 const BookingSuccess = () => {
   const location = useLocation();
-  const { bookingCode } = location.state || { bookingCode: "FB123456" }; // Default for demo
+  const { bookingCode, fullId } = location.state || { bookingCode: "BK123456", fullId: "" };
 
   return (
     <main className="flex-1 w-full max-w-[960px] mx-auto px-4 py-8 md:py-12">
@@ -25,14 +25,18 @@ const BookingSuccess = () => {
           <h2 className="text-slate-900 dark:text-slate-100 text-xl font-semibold mb-4">
             Mã đặt sân của bạn
           </h2>
-          <div className="text-2xl font-mono font-bold text-primary mb-4">
-            {bookingCode}
+          <div className="text-3xl font-mono font-bold text-primary mb-6 tracking-wider">
+            #BK{bookingCode}
           </div>
-          <div className="flex justify-center">
-            {/* Placeholder for QR code - in real app, generate QR with bookingCode */}
-            <div className="w-32 h-32 bg-slate-200 dark:bg-slate-700 rounded-lg flex items-center justify-center">
-              <span className="text-slate-500">QR Code</span>
+          <div className="flex flex-col items-center gap-3">
+            <div className="p-4 bg-white rounded-xl shadow-md">
+              <img 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${fullId || bookingCode}`} 
+                alt="QR Code" 
+                className="w-32 h-32"
+              />
             </div>
+            <p className="text-xs text-slate-500 mt-2 italic">Đưa mã QR này cho nhân viên khi đến sân để nhận chỗ.</p>
           </div>
         </div>
 

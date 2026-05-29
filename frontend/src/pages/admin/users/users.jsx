@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import axios from "axios";
+import { getUsers, createUser, updateUser, deleteUser } from "../../../api/usersApi";
 
 import './users.css';
 /* ── Data ── */
@@ -10,7 +10,8 @@ const navLinks = [
   { icon: 'event_available', label: 'Bookings', path: '/admin/bookings' },
   { icon: 'group', label: 'Users', path: '/admin/users' },
   { icon: 'payments', label: 'Revenue', path: '/admin/revenue' },
-  { icon: 'settings', label: 'Settings', path: '/admin/settings' },
+  { icon: 'calendar_month', label: 'Time Slots', path: '/admin/timeslots' },
+  { icon: 'inventory_2', label: 'Services', path: '/admin/services' },
 ];
  
 
@@ -111,7 +112,7 @@ function StatsGrid({ stats }) {
   );
 }
  
-function UserRow({ user }) {
+function UserRow({ user, onEdit, onDelete }) {
   return (
     <tr>
       <td>{user.name}</td>
@@ -134,7 +135,7 @@ function UserRow({ user }) {
       <td className="action-cell">
         <div className="row-actions">
 
-          <button className="action-btn edit" title="Edit">
+          <button className="action-btn edit" title="Edit" onClick={() => onEdit(user)}>
             <span className="material-symbols-outlined">edit</span>
           </button>
 
@@ -148,7 +149,7 @@ function UserRow({ user }) {
             </button>
           )}
 
-          <button className="action-btn delete" title="Delete">
+          <button className="action-btn delete" title="Delete" onClick={() => onDelete(user.id)}>
             <span className="material-symbols-outlined">delete</span>
           </button>
 
@@ -159,7 +160,7 @@ function UserRow({ user }) {
 }
 
  
-function UsersTable({ users }) {
+function UsersTable({ users, onEdit, onDelete }) {
   return (
     <div className="table-card">
       <div className="table-wrapper">
@@ -175,7 +176,7 @@ function UsersTable({ users }) {
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => <UserRow key={u.id} user={u} />)}
+            {users.map((u) => <UserRow key={u.id} user={u} onEdit={onEdit} onDelete={onDelete} />)}
           </tbody>
         </table>
       </div>
@@ -218,37 +219,197 @@ function TipCard() {
     </div>
   );
 }
+
+function AddUserModal({ users, onClose, onSuccess }) {
+  const [fullname, setFullname] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!fullname || !phone || !password) {
+      alert("Vui lòng nhập tên, số điện thoại và mật khẩu");
+      return;
+    }
+    
+    // Regex validations
+    const phoneRegex = /^(0|\+84)[3|5|7|8|9][0-9]{8}$/;
+    if (!phoneRegex.test(phone)) {
+      alert("Số điện thoại không hợp lệ. Vui lòng nhập đúng định dạng (VD: 0912345678).");
+      return;
+    }
+
+    if (email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        alert("Email không hợp lệ. Vui lòng nhập đúng định dạng (VD: example@gmail.com).");
+        return;
+      }
+    }
+
+    // Duplication checks
+    const isPhoneDuplicate = users.some(u => u.phone === phone);
+    if (isPhoneDuplicate) {
+      alert("Số điện thoại này đã được sử dụng. Vui lòng nhập số khác.");
+      return;
+    }
+
+    if (email) {
+      const isEmailDuplicate = users.some(u => u.email === email);
+      if (isEmailDuplicate) {
+        alert("Email này đã được sử dụng. Vui lòng nhập email khác.");
+        return;
+      }
+    }
+
+    try {
+      setLoading(true);
+      await createUser({ fullname, email, phone, password });
+      alert("Thêm người dùng thành công");
+      onSuccess();
+      onClose();
+    } catch (err) {
+      console.log(err);
+      alert("Lỗi khi thêm người dùng");
+    } finally {
+      setLoading(false);
+    }
+  };
+  return (
+    <div className="modal-overlay">
+      <div className="modal">
+        <div className="modal-header">
+          <h3>Thêm người dùng</h3>
+          <button className="modal-close" onClick={onClose}><span className="material-symbols-outlined">close</span></button>
+        </div>
+        <div className="modal-body">
+          <div className="form-grid">
+            <div className="form-group full">
+              <label className="form-label">Họ và tên</label>
+              <input className="form-input" type="text" placeholder="VD: Nguyễn Văn A" value={fullname} onChange={e => setFullname(e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Email</label>
+              <input className="form-input" type="email" placeholder="VD: nguyenvana@gmail.com" value={email} onChange={e => setEmail(e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Số điện thoại</label>
+              <input className="form-input" type="text" placeholder="VD: 0912345678" value={phone} onChange={e => setPhone(e.target.value)} />
+            </div>
+            <div className="form-group full">
+              <label className="form-label">Mật khẩu</label>
+              <input className="form-input" type="password" placeholder="Ít nhất 6 ký tự" value={password} onChange={e => setPassword(e.target.value)} />
+            </div>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn-cancel" onClick={onClose}>Hủy bỏ</button>
+          <button className="btn-confirm" onClick={handleSubmit} disabled={loading}>{loading ? "Đang thêm..." : "Thêm"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EditUserModal({ user, onClose, onSuccess }) {
+  const [fullname, setFullname] = useState(user.name || "");
+  const [email, setEmail] = useState(user.email || "");
+  const [phone, setPhone] = useState(user.phone || "");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    try {
+      setLoading(true);
+      await updateUser(user.id, { fullname, email, phone });
+      alert("Cập nhật người dùng thành công");
+      onSuccess();
+      onClose();
+    } catch (err) {
+      console.log(err);
+      alert("Lỗi khi cập nhật");
+    } finally {
+      setLoading(false);
+    }
+  };
+  return (
+    <div className="modal-overlay">
+      <div className="modal">
+        <div className="modal-header">
+          <h3>Sửa người dùng</h3>
+          <button className="modal-close" onClick={onClose}><span className="material-symbols-outlined">close</span></button>
+        </div>
+        <div className="modal-body">
+          <div className="form-grid">
+            <div className="form-group full">
+              <label className="form-label">Họ và tên</label>
+              <input className="form-input" type="text" value={fullname} onChange={e => setFullname(e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Email</label>
+              <input className="form-input" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Số điện thoại</label>
+              <input className="form-input" type="text" value={phone} onChange={e => setPhone(e.target.value)} />
+            </div>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn-cancel" onClick={onClose}>Hủy bỏ</button>
+          <button className="btn-confirm" onClick={handleSubmit} disabled={loading}>{loading ? "Đang cập nhật..." : "Lưu thay đổi"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
  
 /* ── Main Users Component ── */
 export default function Users() {
   
   const [users, setUsers] = useState([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
   const [stats, setStats] = useState({
   total: 0,
   active: 0,
   disabled: 0,
   newThisWeek: 0,
 });
+
+  const loadUsers = () => {
+    getUsers()
+      .then(res => {
+        const data = res.data;
+        setUsers(data);
+        const total = data.length;
+        const active = data.filter(u => u.status === "active").length;
+        const disabled = data.filter(u => u.status === "disabled").length;
+        setStats({
+          total,
+          active,
+          disabled,
+          newThisWeek: 0, 
+        });
+      })
+      .catch(err => console.log(err));
+  };
+
   useEffect(() => {
-  axios.get("http://127.0.0.1:8000/api/users/")
-    .then(res => {
-      const data = res.data;
+    loadUsers();
+  }, []);
 
-      setUsers(data);
-
-      const total = data.length;
-      const active = data.filter(u => u.status === "active").length;
-      const disabled = data.filter(u => u.status === "disabled").length;
-
-      setStats({
-        total,
-        active,
-        disabled,
-        newThisWeek: 0, 
-      });
-    })
-    .catch(err => console.log(err));
-}, []);
+  const handleDelete = async (id) => {
+    if (window.confirm("Bạn có chắc chắn muốn xóa người dùng này không?")) {
+      try {
+        await deleteUser(id);
+        alert("Xóa thành công");
+        loadUsers();
+      } catch (err) {
+        alert("Lỗi khi xóa");
+      }
+    }
+  };
   return (
     <>
       <Sidebar />
@@ -271,7 +432,7 @@ export default function Users() {
                 </select>
                 <span className="material-symbols-outlined select-arrow">expand_more</span>
               </div>
-              <button className="btn-add-user">
+              <button className="btn-add-user" onClick={() => setShowAddModal(true)}>
                 <span className="material-symbols-outlined">person_add</span>
                 Thêm người dùng
               </button>
@@ -282,12 +443,15 @@ export default function Users() {
           <StatsGrid stats={stats} />
  
           {/* Table */}
-          <UsersTable users={users} />
+          <UsersTable users={users} onEdit={setEditingUser} onDelete={handleDelete} />
  
           {/* Tip */}
           <TipCard />
         </div>
       </main>
+
+      {showAddModal && <AddUserModal users={users} onClose={() => setShowAddModal(false)} onSuccess={loadUsers} />}
+      {editingUser && <EditUserModal user={editingUser} onClose={() => setEditingUser(null)} onSuccess={loadUsers} />}
     </>
   );
 }
