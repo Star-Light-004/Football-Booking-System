@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
+import { BASE_URL } from "../../config";
 import "./BookingForm.css";
 
 const BookingForm = ({ fieldId, fieldName, fieldAddress, onSlotSelect, externalServicesPrice = 0, selectedServices = {} }) => {

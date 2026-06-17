@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { NavLink } from "react-router-dom";
 import { getServices, createBookingService } from "../../../api/servicesApi"; // Note: I should add CRUD to servicesApi
 import axios from "axios";
+import { BASE_URL } from "../../../config";
 import './services.css';
 
 /* ── Data ── */
@@ -171,11 +172,11 @@ export default function AdminServices() {
     try {
       setLoading(true);
       // Fetch services with admin=true to see inactive ones
-      const res = await axios.get("${BASE_URL}/services/list/?admin=true");
+      const res = await axios.get(`${BASE_URL}/services/list/?admin=true`);
       setServices(res.data);
 
       // Fetch fields for mapping
-      const fieldsRes = await axios.get("${BASE_URL}/football-fields/");
+      const fieldsRes = await axios.get(`${BASE_URL}/football-fields/`);
       setFields(fieldsRes.data.fields || []);
     } catch (error) {
       console.error("Lỗi lấy dữ liệu:", error);

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { BASE_URL } from "../../config";
 import "./MyBookings.css";
 
 const BookingServiceRowItems = ({ bookingId }) => {
@@ -74,7 +75,7 @@ const MyBookings = () => {
         return;
       }
 
-      const response = await fetch(`http://BASE_URL/api/reviews/create/`, {
+      const response = await fetch(`${BASE_URL}/reviews/create/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

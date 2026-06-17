@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { getFieldDetail } from "../../api/fieldsApi";
 import BookingForm from "../../components/BookingForm/BookingForm";
 import ServiceSection from '../../components/ServiceSection/ServiceSection';
+import { BASE_URL } from "../../config";
 import "./FieldDetail.css";
 
 // List of slots will be fetched dynamically from the API via BookingForm
@@ -52,7 +53,7 @@ const FieldDetail = () => {
 
   const fetchReviews = useCallback(async () => {
     try {
-      const response = await fetch(`${BASE_URL}/api/reviews/${id}/`);
+      const response = await fetch(`${BASE_URL}/reviews/${id}/`);
       if (response.ok) {
         const data = await response.json();
         setReviews(data);

@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { getBookings, createBooking, updateBooking, deleteBooking } from "../../../api/bookingsApi";
 import { getFields } from "../../../api/fieldsApi";
 import { getUsers } from "../../../api/usersApi";
+import { BASE_URL } from "../../../config";
 import './bookings.css';
 /* ── Data ── */
 const navLinks = [
@@ -360,7 +361,7 @@ function AddBookingModal({ onClose, onSuccess }) {
   useEffect(() => {
     getFields().then(res => setFields(res.data.fields || [])).catch(console.error);
     getUsers().then(res => setUsers(res.data || [])).catch(console.error);
-    fetch('${BASE_URL}/services/list/?admin=true')
+    fetch(`${BASE_URL}/services/list/?admin=true`)
       .then(res => res.json())
       .then(data => setAvailableServices(Array.isArray(data) ? data : []))
       .catch(console.error);
@@ -492,7 +493,7 @@ function EditBookingModal({ booking, onClose, onSuccess }) {
   const [selectedServices, setSelectedServices] = useState([]);
 
   useEffect(() => {
-    fetch('${BASE_URL}/services/list/?admin=true')
+    fetch(`${BASE_URL}/services/list/?admin=true`)
       .then(res => res.json())
       .then(data => setAvailableServices(Array.isArray(data) ? data : []))
       .catch(console.error);

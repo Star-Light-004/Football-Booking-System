@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "./Lookup.css";
+import { BASE_URL } from "../../config";
 
 const BookingResultItem = ({ booking, formatDateLong, maskPhone, onReviewClick }) => {
   const [services, setServices] = useState([]);
