@@ -10,23 +10,27 @@ from apps.reviews.models import Reviews
 # ===============================
 @csrf_exempt
 def get_football_fields(request):
-    show_all = request.GET.get('show_all') == 'true'
-    
-    query = FootballFields.objects.select_related('field_type').annotate(
-        avg_from_reviews=Avg('reviews__rating')
-    )
+    try:
+        show_all = request.GET.get('show_all') == 'true'
 
-    if show_all:
-        fields = query.all()
-    else:
-        fields = query.filter(is_available=True)
+        query = FootballFields.objects.select_related('field_type')
 
-    from .serializers import FootballFieldsSerializer
-    serializer = FootballFieldsSerializer(fields, many=True, context={'request': request})
+        fields = query.all() if show_all else query.filter(is_available=True)
 
-    return JsonResponse({
-        "fields": serializer.data
-    })
+        from .serializers import FootballFieldsSerializer
+        serializer = FootballFieldsSerializer(fields, many=True)
+
+        return JsonResponse({"fields": serializer.data})
+
+    except Exception as e:
+        import traceback
+        print(" ERROR:", str(e))
+        print(traceback.format_exc())
+
+        return JsonResponse({
+            "error": str(e),
+            "detail": traceback.format_exc()
+        }, status=500)
 
 
 # ===============================
