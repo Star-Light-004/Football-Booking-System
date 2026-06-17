@@ -161,3 +161,12 @@ def delete_football_field(request, id):
             return JsonResponse({"message": "Xóa sân thành công"})
         except FootballFields.DoesNotExist:
             return JsonResponse({"error": "Không tìm thấy sân"}, status=404)
+
+@csrf_exempt
+def seed_field_types(request):
+    if request.method == "GET":
+        FieldTypes.objects.get_or_create(name="Sân 5")
+        FieldTypes.objects.get_or_create(name="Sân 7")
+        FieldTypes.objects.get_or_create(name="Sân 11")
+
+        return JsonResponse({"message": "seed done"})

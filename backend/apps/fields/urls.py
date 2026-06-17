@@ -12,6 +12,7 @@ urlpatterns = [
     path('football-fields/<uuid:id>/update/', views.update_football_field),
 
     path('football-fields/<uuid:id>/delete/', views.delete_football_field),
+    path('seed-field-types/', views.seed_field_types),
     
 
 ]
