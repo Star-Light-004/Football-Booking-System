@@ -64,13 +64,12 @@ def create_football_field(request):
     if request.method == "POST":
         try:
             field_name = request.POST.get("field_name")
-            field_type_id = request.POST.get("field_type")  # 🔥 FIX 1 DÒNG
+            field_type_name = request.POST.get("field_type")
             location = request.POST.get("location")
             price_per_hour = request.POST.get("price_per_hour")
             image = request.FILES.get("image")
 
-            # 🔥 FIX QUAN TRỌNG
-            field_type = FieldTypes.objects.get(id=field_type_id)
+            field_type, _ = FieldTypes.objects.get_or_create(name=field_type_name)
 
             field = FootballFields.objects.create(
                 field_name=field_name,
@@ -122,10 +121,7 @@ def update_football_field(request, id):
             # cập nhật field_type nếu có
             field_type_name = body.get("field_type")
             if field_type_name:
-                try:
-                    field.field_type = FieldTypes.objects.get(name=field_type_name)
-                except FieldTypes.DoesNotExist:
-                    return JsonResponse({"error": "Loại sân không tồn tại"}, status=400)
+                field.field_type, _ = FieldTypes.objects.get_or_create(name=field_type_name)
 
             field.save()
 
