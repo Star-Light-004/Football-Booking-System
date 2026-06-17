@@ -61,20 +61,16 @@ def get_football_field_detail(request, id):
 # ===============================
 @csrf_exempt
 def create_football_field(request):
-
     if request.method == "POST":
-
         try:
-
             field_name = request.POST.get("field_name")
-            field_type_name = request.POST.get("field_type")
+            field_type_id = request.POST.get("field_type")  # 🔥 FIX 1 DÒNG
             location = request.POST.get("location")
             price_per_hour = request.POST.get("price_per_hour")
-            image = request.FILES.get("image")  # nhận file ảnh
+            image = request.FILES.get("image")
 
-            field_type = FieldTypes.objects.get(
-                name=field_type_name
-            )
+            # 🔥 FIX QUAN TRỌNG
+            field_type = FieldTypes.objects.get(id=field_type_id)
 
             field = FootballFields.objects.create(
                 field_name=field_name,
@@ -92,14 +88,10 @@ def create_football_field(request):
             return JsonResponse({
                 "message": "Thêm sân thành công",
                 "id": str(field.id),
-                "image": field.image.url if field.image else None,  # admin
-                "image_url": request.build_absolute_uri(field.image.url) if field.image else None,  # frontend
             })
 
         except Exception as e:
-            return JsonResponse({
-                "error": str(e)
-            }, status=400)
+            return JsonResponse({"error": str(e)}, status=400)
 
 
 # ===============================
