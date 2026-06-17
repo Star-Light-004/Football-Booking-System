@@ -4,7 +4,7 @@ import FieldCard from "../../components/FieldCard/FieldCard";
 import "./Fields.css";
 
 const Fields = () => {
-  const [fields, setFields] = useState([]);
+  const [fields, setFields] = useState([]); // OK
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -17,20 +17,28 @@ const Fields = () => {
   ];
 
   useEffect(() => {
-   const fetchFields = async () => {
-  try {
-    const res = await getFields();
+    const fetchFields = async () => {
+      try {
+        const res = await getFields();
 
-    console.log("API response:", res.data);
+        console.log("API response:", res.data);
 
-    setFields(res.data?.fields || []);
-  } catch (error) {
-    console.log("Lỗi lấy sân:", error);
-    setFields([]);
-  } finally {
-    setLoading(false);
-  }
-};
+        // 🔥 FIX QUAN TRỌNG NHẤT
+        const data = res.data?.fields;
+
+        if (Array.isArray(data)) {
+          setFields(data);
+        } else {
+          setFields([]); // chống crash
+        }
+
+      } catch (error) {
+        console.log("Lỗi lấy sân:", error);
+        setFields([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
     fetchFields();
   }, []);
@@ -41,33 +49,11 @@ const Fields = () => {
 
   return (
     <main className="fields-page">
+
       {/* Header */}
       <div className="fields-heading">
         <h1>Danh sách sân bóng</h1>
         <p>Tìm kiếm và đặt sân bóng phù hợp nhất với đội của bạn tại khu vực Hà Nội</p>
-      </div>
-
-      {/* Filter Bar */}
-      <div className="fields-filter-bar">
-        <button className="filter-dropdown-btn">
-          <span className="filter-icon">📍</span>
-          Khu vực
-          <span className="chevron">▾</span>
-        </button>
-        <button className="filter-dropdown-btn">
-          <span className="filter-icon">👥</span>
-          Loại sân
-          <span className="chevron">▾</span>
-        </button>
-        <button className="filter-dropdown-btn">
-          <span className="filter-icon">💳</span>
-          Khoảng giá
-          <span className="chevron">▾</span>
-        </button>
-        <button className="filter-advanced-btn">
-          <span className="filter-icon">≡</span>
-          Lọc nâng cao
-        </button>
       </div>
 
       {/* Tabs */}
@@ -83,24 +69,28 @@ const Fields = () => {
         ))}
       </div>
 
-      {/* Grid */}
+      {/* GRID - 🔥 FIX MAP AN TOÀN */}
       <div className="fields-grid">
-        {fields.map((field) => (
-          <FieldCard
-            key={field.id}
-            id={field.id}
-            image={field.image_url}
-            type={field.field_type}
-            name={field.field_name}
-            location={field.location}
-            price={`${field.price_per_hour?.toLocaleString()}đ/giờ`}
-            bookingCount={field.booking_count}
-            rating={field.rating_avg}
-          />
-        ))}
+        {Array.isArray(fields) && fields.length > 0 ? (
+          fields.map((field) => (
+            <FieldCard
+              key={field.id}
+              id={field.id}
+              image={field.image_url}
+              type={field.field_type}
+              name={field.field_name}
+              location={field.location}
+              price={`${field.price_per_hour?.toLocaleString()}đ/giờ`}
+              bookingCount={field.booking_count}
+              rating={field.rating_avg}
+            />
+          ))
+        ) : (
+          <p style={{ padding: 20 }}>Không có sân nào</p>
+        )}
       </div>
 
-      {/* Pagination */}
+      {/* Pagination (giữ nguyên) */}
       <div className="fields-pagination">
         <button className="page-btn nav-btn">‹</button>
         {[1, 2, 3].map((p) => (
@@ -121,6 +111,7 @@ const Fields = () => {
         </button>
         <button className="page-btn nav-btn">›</button>
       </div>
+
     </main>
   );
 };
