@@ -10,10 +10,12 @@ class TimeSlots(models.Model):
     )
 
     field = models.ForeignKey(
-        FootballFields,
-        models.DO_NOTHING,
-        db_column='field_id'
-    )
+    FootballFields,
+    models.DO_NOTHING,
+    db_column='field_id',
+    null=True,
+    blank=True
+)
 
     slot_date = models.DateField()
     start_time = models.TimeField()
@@ -36,7 +38,7 @@ class TimeSlots(models.Model):
     )
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'time_slots'
         unique_together = (('field', 'slot_date', 'start_time'),)
 

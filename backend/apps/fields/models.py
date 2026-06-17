@@ -12,7 +12,7 @@ class FieldTypes(models.Model):
     description = models.TextField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'field_types'
 
 
@@ -80,7 +80,7 @@ class FootballFields(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'football_fields'
 
 # 🔹 Thêm method trả JSON có image.url
@@ -120,10 +120,12 @@ class FieldSchedules(models.Model):
     )
 
     field = models.ForeignKey(
-        FootballFields,
-        models.DO_NOTHING,
-        db_column='field_id'
-    )
+    FootballFields,
+    models.DO_NOTHING,
+    db_column='field_id',
+    null=True,
+    blank=True
+)
 
     work_date = models.DateField()
     start_time = models.TimeField()
@@ -131,5 +133,5 @@ class FieldSchedules(models.Model):
     created_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'field_schedules'

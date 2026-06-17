@@ -11,7 +11,7 @@ class Admin(models.Model):
     created_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'admins'
 
 
@@ -32,5 +32,5 @@ class Customers(models.Model):
     created_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'customers'

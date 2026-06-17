@@ -21,10 +21,12 @@ class Reviews(models.Model):
     )
 
     booking = models.OneToOneField(
-        Bookings,
-        models.DO_NOTHING,
-        db_column='booking_id'
-    )
+    Bookings,
+    models.DO_NOTHING,
+    db_column='booking_id',
+    null=True,
+    blank=True
+)
 
     rating = models.IntegerField()
     comment = models.TextField(blank=True, null=True)
@@ -32,6 +34,6 @@ class Reviews(models.Model):
     created_at = models.DateTimeField()
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'reviews'
 

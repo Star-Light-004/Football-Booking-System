@@ -17,13 +17,18 @@ class Bookings(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'bookings'
 
 
 class BookingLogs(models.Model):
     id = models.UUIDField(primary_key=True)
-    booking = models.ForeignKey('Bookings', models.DO_NOTHING)
+    booking = models.ForeignKey(
+    'Bookings',
+    models.DO_NOTHING,
+    null=True,
+    blank=True
+)
     action = models.CharField(max_length=50, blank=True, null=True)
     performed_by = models.CharField(max_length=150, blank=True, null=True)
     old_value = models.TextField(blank=True, null=True)
@@ -32,5 +37,5 @@ class BookingLogs(models.Model):
     timestamp = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'booking_logs'

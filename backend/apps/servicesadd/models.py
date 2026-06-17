@@ -15,7 +15,7 @@ class ServicesAdd(models.Model):
     fields = models.ManyToManyField('fields.FootballFields', related_name='services', db_table='service_field_mapping')
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'servicesadd' 
         verbose_name_plural = "ServicesAdd"
 
@@ -24,14 +24,26 @@ class ServicesAdd(models.Model):
 
 class BookingServices(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    booking = models.ForeignKey('bookings.Bookings', on_delete=models.CASCADE, related_name='booking_services')
-    service = models.ForeignKey(ServicesAdd, on_delete=models.CASCADE, related_name='service_bookings') # Updated reference
+    booking = models.ForeignKey(
+    'bookings.Bookings',
+    on_delete=models.CASCADE,
+    related_name='booking_services',
+    null=True,
+    blank=True
+)
+    service = models.ForeignKey(
+    ServicesAdd,
+    on_delete=models.CASCADE,
+    related_name='service_bookings',
+    null=True,
+    blank=True
+)
     quantity = models.IntegerField(default=1)
     total_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     status = models.CharField(max_length=20, default='active')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'booking_services'
         verbose_name_plural = "Booking Services"

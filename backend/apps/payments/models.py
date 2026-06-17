@@ -14,5 +14,5 @@ class Payments(models.Model):
     payment_date = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'payments'
