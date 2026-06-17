@@ -74,17 +74,21 @@ def timeslot_detail(request, pk):
 
 @api_view(['GET'])
 def get_timeslots_by_field(request):
-    field_id = request.GET.get('field_id')
-    date_param = request.GET.get('date')
+    try:
+        field_id = request.GET.get('field_id')
+        date_param = request.GET.get('date')
 
-    if not field_id or not date_param:
-        return Response({"error": "Missing field_id or date"}, status=400)
+        if not field_id or not date_param:
+            return Response({"error": "Missing field_id or date"}, status=400)
 
-    slots = TimeSlots.objects.filter(field_id=field_id, slot_date=date_param).order_by('start_time')
+        slots = TimeSlots.objects.filter(field_id=field_id, slot_date=date_param).order_by('start_time')
 
-    from .serializers import TimeSlotSimpleSerializer
-    serializer = TimeSlotSimpleSerializer(slots, many=True)
-    return Response(serializer.data)
+        from .serializers import TimeSlotSimpleSerializer
+        serializer = TimeSlotSimpleSerializer(slots, many=True)
+        return Response(serializer.data)
+    except Exception as e:
+        import traceback
+        return Response({"error": str(e), "traceback": traceback.format_exc()}, status=500)
 
 
 @api_view(['POST'])
