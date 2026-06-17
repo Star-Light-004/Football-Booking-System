@@ -52,7 +52,7 @@ const FieldDetail = () => {
 
   const fetchReviews = useCallback(async () => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/reviews/${id}/`);
+      const response = await fetch(`${BASE_URL}/api/reviews/${id}/`);
       if (response.ok) {
         const data = await response.json();
         setReviews(data);
@@ -94,7 +94,7 @@ const FieldDetail = () => {
   const allImages = field.image_url ? [field.image_url, field.image_url, field.image_url] : [];
 
   // Tính điểm đánh giá trung bình
-  const averageRating = reviews.length > 0 
+  const averageRating = reviews.length > 0
     ? (reviews.reduce((sum, r) => sum + Number(r.rating), 0) / reviews.length).toFixed(1)
     : "0.0";
 
@@ -105,8 +105,8 @@ const FieldDetail = () => {
     if (s.status !== "available") status = "booked";
     else if (selectedTimeSlot === timeRange) status = "selected";
 
-    return { 
-      ...s, 
+    return {
+      ...s,
       status,
       timeRange,
       displayPrice: (s.price / 1000) + "k"
@@ -130,8 +130,8 @@ const FieldDetail = () => {
                 </div>
                 <div className="fd-gallery-thumbs">
                   {allImages.map((img, idx) => (
-                    <div 
-                      key={idx} 
+                    <div
+                      key={idx}
                       className={`fd-thumb ${currentImage === img ? 'active' : ''}`}
                       onClick={() => setCurrentImage(img)}
                     >
@@ -245,8 +245,8 @@ const FieldDetail = () => {
 
             {/* Đánh giá người dùng - Moved below Schedule and added collapse feature */}
             <div className="fd-section" style={{ borderTop: '2px solid #00b14f', paddingTop: '20px', marginTop: '30px' }}>
-              <div 
-                className="fd-section-header" 
+              <div
+                className="fd-section-header"
                 onClick={() => setShowReviews(!showReviews)}
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
               >
@@ -257,7 +257,7 @@ const FieldDetail = () => {
                   expand_more
                 </span>
               </div>
-              
+
               {showReviews && (
                 <div className="fd-reviews-content" style={{ marginTop: '20px', animation: 'fadeIn 0.5s' }}>
                   {reviews.length === 0 ? (
@@ -265,10 +265,10 @@ const FieldDetail = () => {
                   ) : (
                     <div className="fd-reviews-list">
                       {reviews.map((rev) => (
-                        <div key={rev.id} style={{ 
-                          background: '#fff', 
-                          padding: '15px', 
-                          borderRadius: '12px', 
+                        <div key={rev.id} style={{
+                          background: '#fff',
+                          padding: '15px',
+                          borderRadius: '12px',
                           marginBottom: '15px',
                           boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
                           border: '1px solid #f0f0f0'
@@ -286,10 +286,10 @@ const FieldDetail = () => {
                           </div>
                           <div style={{ marginBottom: '8px', fontSize: '0.9em' }}>
                             {[...Array(5)].map((_, i) => (
-                              <span 
-                                key={i} 
+                              <span
+                                key={i}
                                 className="material-symbols-outlined"
-                                style={{ 
+                                style={{
                                   color: i < Number(rev.rating) ? '#FFD700' : '#ccc',
                                   fontVariationSettings: i < Number(rev.rating) ? "'FILL' 1" : "'FILL' 0",
                                   fontSize: '20px',

@@ -29,7 +29,7 @@ const BookingForm = ({ fieldId, fieldName, fieldAddress, onSlotSelect, externalS
     setLoadingSlots(true);
     try {
       const res = await axios.get(
-        `${process.env.REACT_APP_API_URL}/timeslots/get-by-field/?field_id=${fieldId}&date=${date}`
+        `${BASE_URL}/timeslots/get-by-field/?field_id=${fieldId}&date=${date}`
       );
       setAvailableSlots(res.data || []);
     } catch (err) {

@@ -198,7 +198,7 @@ const BookingServiceRowItems = ({ bookingId }) => {
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const res = await fetch(`${process.env.REACT_APP_API_URL}/services/booking-services/${bookingId}/`);
+        const res = await fetch(`${BASE_URL}/services/booking-services/${bookingId}/`);
         const data = await res.json();
         setServices(data || []);
       } catch (err) {
@@ -360,7 +360,7 @@ function AddBookingModal({ onClose, onSuccess }) {
   useEffect(() => {
     getFields().then(res => setFields(res.data.fields || [])).catch(console.error);
     getUsers().then(res => setUsers(res.data || [])).catch(console.error);
-    fetch('${process.env.REACT_APP_API_URL}/services/list/?admin=true')
+    fetch('${BASE_URL}/services/list/?admin=true')
       .then(res => res.json())
       .then(data => setAvailableServices(Array.isArray(data) ? data : []))
       .catch(console.error);
@@ -492,12 +492,12 @@ function EditBookingModal({ booking, onClose, onSuccess }) {
   const [selectedServices, setSelectedServices] = useState([]);
 
   useEffect(() => {
-    fetch('${process.env.REACT_APP_API_URL}/services/list/?admin=true')
+    fetch('${BASE_URL}/services/list/?admin=true')
       .then(res => res.json())
       .then(data => setAvailableServices(Array.isArray(data) ? data : []))
       .catch(console.error);
 
-    fetch(`${process.env.REACT_APP_API_URL}/services/booking-services/${booking.id}/`)
+    fetch(`${BASE_URL}/services/booking-services/${booking.id}/`)
       .then(res => res.json())
       .then(data => {
         setSelectedServices(data.map(s => ({

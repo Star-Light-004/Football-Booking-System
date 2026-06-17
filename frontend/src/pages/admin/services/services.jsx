@@ -171,11 +171,11 @@ export default function AdminServices() {
     try {
       setLoading(true);
       // Fetch services with admin=true to see inactive ones
-      const res = await axios.get("${process.env.REACT_APP_API_URL}/services/list/?admin=true");
+      const res = await axios.get("${BASE_URL}/services/list/?admin=true");
       setServices(res.data);
 
       // Fetch fields for mapping
-      const fieldsRes = await axios.get("${process.env.REACT_APP_API_URL}/football-fields/");
+      const fieldsRes = await axios.get("${BASE_URL}/football-fields/");
       setFields(fieldsRes.data.fields || []);
     } catch (error) {
       console.error("Lỗi lấy dữ liệu:", error);
@@ -191,7 +191,7 @@ export default function AdminServices() {
   const handleDelete = async (id) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa dịch vụ này không?")) {
       try {
-        await axios.delete(`${process.env.REACT_APP_API_URL}/services/list/${id}/`);
+        await axios.delete(`${BASE_URL}/services/list/${id}/`);
         alert("Xóa dịch vụ thành công");
         fetchServices();
       } catch (error) {
@@ -335,10 +335,10 @@ function ServiceModal({ service, availableFields, onClose, onSuccess }) {
       };
 
       if (service) {
-        await axios.put(`${process.env.REACT_APP_API_URL}/services/list/${service.id}/`, formData, config);
+        await axios.put(`${BASE_URL}/services/list/${service.id}/`, formData, config);
         alert("Cập nhật thành công");
       } else {
-        await axios.post(`${process.env.REACT_APP_API_URL}/services/list/`, formData, config);
+        await axios.post(`${BASE_URL}/services/list/`, formData, config);
         alert("Thêm thành công");
       }
       onSuccess();

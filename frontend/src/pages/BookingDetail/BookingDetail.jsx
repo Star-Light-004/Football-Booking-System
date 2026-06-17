@@ -39,7 +39,7 @@ const BookingDetail = () => {
     if (!confirmCancel) return;
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/bookings/${booking.id}/update/`, {
+      const response = await fetch(`${BASE_URL}/bookings/${booking.id}/update/`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

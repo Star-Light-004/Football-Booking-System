@@ -8,7 +8,7 @@ const BookingServiceRowItems = ({ bookingId }) => {
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const res = await fetch(`${process.env.REACT_APP_API_URL}/services/booking-services/${bookingId}/`);
+        const res = await fetch(`${BASE_URL}/services/booking-services/${bookingId}/`);
         const data = await res.json();
         setServices(data || []);
       } catch (err) {
@@ -55,7 +55,7 @@ const MyBookings = () => {
     if (!userId) return;
     try {
       const res = await fetch(
-        `${process.env.REACT_APP_API_URL}/bookings/user/${userId}/`
+        `${BASE_URL}/bookings/user/${userId}/`
       );
       const data = await res.json();
       setBookings(data);
@@ -74,7 +74,7 @@ const MyBookings = () => {
         return;
       }
 
-      const response = await fetch(`http://process.env.REACT_APP_API_URL/api/reviews/create/`, {
+      const response = await fetch(`http://BASE_URL/api/reviews/create/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -110,7 +110,7 @@ const MyBookings = () => {
     if (!confirmCancel) return;
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/bookings/${bookingId}/update/`, {
+      const response = await fetch(`${BASE_URL}/bookings/${bookingId}/update/`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
