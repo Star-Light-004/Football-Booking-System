@@ -8,18 +8,25 @@ const ServiceSection = ({ fieldId, onServicesChange }) => {
   const [selectedQuantities, setSelectedQuantities] = useState({});
 
   useEffect(() => {
-    const fetchServices = async () => {
-      try {
-        const res = await getServices({ field_id: fieldId });
-        setServices(res.data || []);
-      } catch (err) {
-        console.error("Lỗi lấy dịch vụ:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (fieldId) fetchServices();
-  }, [fieldId]);
+  const fetchServices = async () => {
+    try {
+      const res = await getServices({ field_id: fieldId });
+
+      console.log("Services API:", res.data);
+
+      const data = res.data;
+
+      setServices(Array.isArray(data) ? data : data?.services || []);
+    } catch (err) {
+      console.error("Lỗi lấy dịch vụ:", err);
+      setServices([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (fieldId) fetchServices();
+}, [fieldId]);
 
   const updateQuantity = (serviceId, delta) => {
     const service = services.find((s) => s.id === serviceId);
