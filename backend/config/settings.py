@@ -31,8 +31,10 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = [
-    'localhost',
-    '127.0.0.1',
+    "localhost",
+    "127.0.0.1",
+    "football-booking-system-8m77.onrender.com",
+    ".onrender.com"
 ]
 CORS_ALLOW_ALL_ORIGINS = True
 
