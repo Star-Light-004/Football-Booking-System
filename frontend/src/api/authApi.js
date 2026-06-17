@@ -1,9 +1,9 @@
 import axios from 'axios';
-import { BASE_URL } from '../config'; 
+import { process.env.REACT_APP_API_URL } from '../config';
 export const login = async (credentials) => {
-  return await axios.post(`${BASE_URL}/users/login/`, credentials);
+  return await axios.post(`${process.env.REACT_APP_API_URL}/users/login/`, credentials);
 };
 
 export const register = async (userData) => {
-  return await axios.post(`${BASE_URL}/users/register/`, userData);
+  return await axios.post(`${process.env.REACT_APP_API_URL}/users/register/`, userData);
 };

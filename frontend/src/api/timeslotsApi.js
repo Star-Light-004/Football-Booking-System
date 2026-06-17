@@ -1,28 +1,28 @@
 import axios from 'axios';
-import { BASE_URL } from '../config'; 
+import { process.env.REACT_APP_API_URL } from '../config';
 
 
 const timeslotsApi = {
   getAll: () => {
-    return axios.get(`${BASE_URL}/timeslots/`);
+    return axios.get(`${process.env.REACT_APP_API_URL}/timeslots/`);
   },
   getByField: (fieldId, date) => {
-    return axios.get(`${BASE_URL}/timeslots/get-by-field/?field_id=${fieldId}&date=${date}`);
+    return axios.get(`${process.env.REACT_APP_API_URL}/timeslots/get-by-field/?field_id=${fieldId}&date=${date}`);
   },
   create: (data) => {
-    return axios.post(`${BASE_URL}/timeslots/`, data);
+    return axios.post(`${process.env.REACT_APP_API_URL}/timeslots/`, data);
   },
   update: (id, data) => {
-    return axios.put(`${BASE_URL}/timeslots/${id}/`, data);
+    return axios.put(`${process.env.REACT_APP_API_URL}/timeslots/${id}/`, data);
   },
   delete: (id) => {
-    return axios.delete(`${BASE_URL}/timeslots/${id}/`);
+    return axios.delete(`${process.env.REACT_APP_API_URL}/timeslots/${id}/`);
   },
   generateSlots: (days = 30) => {
-    return axios.post(`${BASE_URL}/timeslots/generate-slots/`, { days });
+    return axios.post(`${process.env.REACT_APP_API_URL}/timeslots/generate-slots/`, { days });
   },
   deleteAll: () => {
-    return axios.delete(`${BASE_URL}/timeslots/delete-all/`);
+    return axios.delete(`${process.env.REACT_APP_API_URL}/timeslots/delete-all/`);
   },
 };
 

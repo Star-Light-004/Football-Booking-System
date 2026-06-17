@@ -198,7 +198,7 @@ const BookingServiceRowItems = ({ bookingId }) => {
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const res = await fetch(`${BASE_URL}/services/booking-services/${bookingId}/`);
+        const res = await fetch(`${process.env.REACT_APP_API_URL}/services/booking-services/${bookingId}/`);
         const data = await res.json();
         setServices(data || []);
       } catch (err) {
@@ -211,11 +211,11 @@ const BookingServiceRowItems = ({ bookingId }) => {
   if (services.length === 0) return <span style={{ color: '#64748b', fontStyle: 'italic', fontSize: '12px' }}>Không</span>;
 
   return (
-    <div style={{display: 'flex', flexWrap: 'wrap', gap: '4px'}}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
       {services.map(s => (
-        <div key={s.id} style={{display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: '#ecfdf5', padding: '2px 6px', borderRadius: '4px', border: '1px solid #d1fae5'}}>
+        <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: '#ecfdf5', padding: '2px 6px', borderRadius: '4px', border: '1px solid #d1fae5' }}>
           {s.service_image && (
-             <img src={s.service_image} alt={s.service_name} style={{width: '20px', height: '20px', objectFit: 'cover', borderRadius: '2px'}} />
+            <img src={s.service_image} alt={s.service_name} style={{ width: '20px', height: '20px', objectFit: 'cover', borderRadius: '2px' }} />
           )}
           <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#059669', whiteSpace: 'nowrap' }}>
             {s.service_name} x{s.quantity}
@@ -360,7 +360,7 @@ function AddBookingModal({ onClose, onSuccess }) {
   useEffect(() => {
     getFields().then(res => setFields(res.data.fields || [])).catch(console.error);
     getUsers().then(res => setUsers(res.data || [])).catch(console.error);
-    fetch('${BASE_URL}/services/list/?admin=true')
+    fetch('${process.env.REACT_APP_API_URL}/services/list/?admin=true')
       .then(res => res.json())
       .then(data => setAvailableServices(Array.isArray(data) ? data : []))
       .catch(console.error);
@@ -422,29 +422,29 @@ function AddBookingModal({ onClose, onSuccess }) {
             </div>
             <div className="form-group full">
               <label className="form-label">Dịch vụ thêm</label>
-              <div style={{display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid #e2e8f0', padding: '8px', borderRadius: '8px', minHeight: '48px', maxHeight: '150px', overflowY: 'auto'}}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid #e2e8f0', padding: '8px', borderRadius: '8px', minHeight: '48px', maxHeight: '150px', overflowY: 'auto' }}>
                 {availableServices.length === 0 ? (
-                  <span style={{color: '#94a3b8', fontSize: '12px', fontStyle: 'italic'}}>Không có dịch vụ nào</span>
+                  <span style={{ color: '#94a3b8', fontSize: '12px', fontStyle: 'italic' }}>Không có dịch vụ nào</span>
                 ) : availableServices.map(s => {
                   const selected = selectedServices.find(x => x.service_id === s.id);
                   return (
-                    <div key={s.id} style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
-                      <label style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px'}}>
+                    <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
                         <input type="checkbox" checked={!!selected} onChange={(e) => {
                           if (e.target.checked) {
-                            setSelectedServices([...selectedServices, {service_id: s.id, quantity: 1, price: s.price}]);
+                            setSelectedServices([...selectedServices, { service_id: s.id, quantity: 1, price: s.price }]);
                           } else {
                             setSelectedServices(selectedServices.filter(x => x.service_id !== s.id));
                           }
                         }} />
-                        {s.image && <img src={s.image} alt="" style={{width:'24px', height:'24px', borderRadius:'4px', objectFit:'cover'}} />}
+                        {s.image && <img src={s.image} alt="" style={{ width: '24px', height: '24px', borderRadius: '4px', objectFit: 'cover' }} />}
                         {s.name} ({Number(s.price).toLocaleString('vi-VN')}đ)
                       </label>
                       {selected && (
                         <input type="number" min="1" value={selected.quantity} onChange={(e) => {
-                           const q = parseInt(e.target.value) || 1;
-                           setSelectedServices(selectedServices.map(x => x.service_id === s.id ? {...x, quantity: q} : x));
-                        }} style={{width: '50px', padding: '2px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '12px'}} />
+                          const q = parseInt(e.target.value) || 1;
+                          setSelectedServices(selectedServices.map(x => x.service_id === s.id ? { ...x, quantity: q } : x));
+                        }} style={{ width: '50px', padding: '2px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '12px' }} />
                       )}
                     </div>
                   )
@@ -492,12 +492,12 @@ function EditBookingModal({ booking, onClose, onSuccess }) {
   const [selectedServices, setSelectedServices] = useState([]);
 
   useEffect(() => {
-    fetch('${BASE_URL}/services/list/?admin=true')
+    fetch('${process.env.REACT_APP_API_URL}/services/list/?admin=true')
       .then(res => res.json())
       .then(data => setAvailableServices(Array.isArray(data) ? data : []))
       .catch(console.error);
-      
-    fetch(`${BASE_URL}/services/booking-services/${booking.id}/`)
+
+    fetch(`${process.env.REACT_APP_API_URL}/services/booking-services/${booking.id}/`)
       .then(res => res.json())
       .then(data => {
         setSelectedServices(data.map(s => ({
@@ -559,29 +559,29 @@ function EditBookingModal({ booking, onClose, onSuccess }) {
             </div>
             <div className="form-group full">
               <label className="form-label">Dịch vụ thêm</label>
-              <div style={{display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid #e2e8f0', padding: '8px', borderRadius: '8px', minHeight: '48px', maxHeight: '150px', overflowY: 'auto'}}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid #e2e8f0', padding: '8px', borderRadius: '8px', minHeight: '48px', maxHeight: '150px', overflowY: 'auto' }}>
                 {availableServices.length === 0 ? (
-                  <span style={{color: '#94a3b8', fontSize: '12px', fontStyle: 'italic'}}>Không có dịch vụ nào</span>
+                  <span style={{ color: '#94a3b8', fontSize: '12px', fontStyle: 'italic' }}>Không có dịch vụ nào</span>
                 ) : availableServices.map(s => {
                   const selected = selectedServices.find(x => x.service_id === s.id);
                   return (
-                    <div key={s.id} style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
-                      <label style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px'}}>
+                    <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
                         <input type="checkbox" checked={!!selected} onChange={(e) => {
                           if (e.target.checked) {
-                            setSelectedServices([...selectedServices, {service_id: s.id, quantity: 1, price: s.price}]);
+                            setSelectedServices([...selectedServices, { service_id: s.id, quantity: 1, price: s.price }]);
                           } else {
                             setSelectedServices(selectedServices.filter(x => x.service_id !== s.id));
                           }
                         }} />
-                        {s.image && <img src={s.image} alt="" style={{width:'24px', height:'24px', borderRadius:'4px', objectFit:'cover'}} />}
+                        {s.image && <img src={s.image} alt="" style={{ width: '24px', height: '24px', borderRadius: '4px', objectFit: 'cover' }} />}
                         {s.name} ({Number(s.price).toLocaleString('vi-VN')}đ)
                       </label>
                       {selected && (
                         <input type="number" min="1" value={selected.quantity} onChange={(e) => {
-                           const q = parseInt(e.target.value) || 1;
-                           setSelectedServices(selectedServices.map(x => x.service_id === s.id ? {...x, quantity: q} : x));
-                        }} style={{width: '50px', padding: '2px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '12px'}} />
+                          const q = parseInt(e.target.value) || 1;
+                          setSelectedServices(selectedServices.map(x => x.service_id === s.id ? { ...x, quantity: q } : x));
+                        }} style={{ width: '50px', padding: '2px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '12px' }} />
                       )}
                     </div>
                   )

@@ -9,7 +9,7 @@ const BookingResultItem = ({ booking, formatDateLong, maskPhone, onReviewClick }
     const fetchServices = async () => {
       try {
         setLoadingServices(true);
-        const res = await fetch(`${BASE_URL}/services/booking-services/${booking.id}/`);
+        const res = await fetch(`${process.env.REACT_APP_API_URL}/services/booking-services/${booking.id}/`);
         const data = await res.json();
         setServices(data || []);
       } catch (err) {
@@ -65,9 +65,9 @@ const BookingResultItem = ({ booking, formatDateLong, maskPhone, onReviewClick }
             {services.length > 0 ? (
               <div className="flex flex-wrap gap-4 mt-2">
                 {services.map(s => (
-                  <div key={s.id} style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px'}}>
+                  <div key={s.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                     {s.service_image && (
-                      <img src={s.service_image} alt={s.service_name} style={{width: '32px', height: '32px', objectFit: 'cover', borderRadius: '4px'}} />
+                      <img src={s.service_image} alt={s.service_name} style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '4px' }} />
                     )}
                     <span className="inline-flex items-center px-2 py-1 rounded bg-slate-100 text-slate-700 text-[10px] font-bold">
                       {s.service_name} x{s.quantity}
@@ -91,9 +91,9 @@ const BookingResultItem = ({ booking, formatDateLong, maskPhone, onReviewClick }
               Tải biên lai
             </button>
             {booking.status === "Completed" && !booking.is_reviewed && (
-              <button 
+              <button
                 onClick={onReviewClick}
-                className="btn-download-receipt" 
+                className="btn-download-receipt"
                 style={{ marginTop: 0, backgroundColor: '#29a847', color: 'white', border: 'none' }}
               >
                 <span className="material-symbols-outlined">star</span>
@@ -101,10 +101,10 @@ const BookingResultItem = ({ booking, formatDateLong, maskPhone, onReviewClick }
               </button>
             )}
             {booking.is_reviewed && (
-               <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
-                 <span className="material-symbols-outlined" style={{fontSize: '18px', color: '#059669'}}>check_circle</span>
-                 <span style={{color: '#059669', fontSize: '13px', fontWeight: '600', whiteSpace: 'nowrap'}}>Đã đánh giá</span>
-               </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#059669' }}>check_circle</span>
+                <span style={{ color: '#059669', fontSize: '13px', fontWeight: '600', whiteSpace: 'nowrap' }}>Đã đánh giá</span>
+              </div>
             )}
           </div>
         </div>
@@ -153,7 +153,7 @@ const Lookup = () => {
         return;
       }
 
-      const response = await fetch(`${BASE_URL}/reviews/create/`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/reviews/create/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -193,7 +193,7 @@ const Lookup = () => {
     setLoading(true);
     try {
       const res = await fetch(
-        `${BASE_URL}/bookings/lookup/?phone=${phoneNumber}&booking_id=${bookingId}`
+        `${process.env.REACT_APP_API_URL}/bookings/lookup/?phone=${phoneNumber}&booking_id=${bookingId}`
       );
       const data = await res.json();
       setResults(data);
@@ -299,11 +299,11 @@ const Lookup = () => {
           ) : (
             <div className="flex flex-col gap-6 w-full max-w-[800px]">
               {results.map((booking) => (
-                <BookingResultItem 
-                  key={booking.id} 
-                  booking={booking} 
-                  formatDateLong={formatDateLong} 
-                  maskPhone={maskPhone} 
+                <BookingResultItem
+                  key={booking.id}
+                  booking={booking}
+                  formatDateLong={formatDateLong}
+                  maskPhone={maskPhone}
                   onReviewClick={() => setReviewingBooking(booking)}
                 />
               ))}
@@ -331,30 +331,30 @@ const Lookup = () => {
 
       {/* Review Modal */}
       {reviewingBooking && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50}}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden" style={{backgroundColor: 'white', borderRadius: '1rem', width: '100%', maxWidth: '28rem', overflow: 'hidden'}}>
-            <div className="p-4 border-b border-slate-200 flex justify-between items-center" style={{padding: '1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-              <h3 className="font-bold text-lg text-slate-900" style={{fontWeight: 700, fontSize: '1.125rem'}}>Đánh giá sân bóng</h3>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden" style={{ backgroundColor: 'white', borderRadius: '1rem', width: '100%', maxWidth: '28rem', overflow: 'hidden' }}>
+            <div className="p-4 border-b border-slate-200 flex justify-between items-center" style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 className="font-bold text-lg text-slate-900" style={{ fontWeight: 700, fontSize: '1.125rem' }}>Đánh giá sân bóng</h3>
               <button
                 onClick={() => setReviewingBooking(null)}
                 className="text-slate-400 hover:text-slate-600"
-                style={{background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8'}}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
-            <div className="p-4 md:p-6" style={{padding: '1.5rem'}}>
+            <div className="p-4 md:p-6" style={{ padding: '1.5rem' }}>
               {submitSuccess ? (
-                <div className="bg-emerald-50 text-emerald-600 p-4 rounded-lg flex items-center gap-2" style={{backgroundColor: '#ecfdf5', color: '#059669', padding: '1rem', borderRadius: '0.5rem', display: 'flex', gap: '0.5rem'}}>
+                <div className="bg-emerald-50 text-emerald-600 p-4 rounded-lg flex items-center gap-2" style={{ backgroundColor: '#ecfdf5', color: '#059669', padding: '1rem', borderRadius: '0.5rem', display: 'flex', gap: '0.5rem' }}>
                   <span className="material-symbols-outlined">check_circle</span>
                   Cảm ơn bạn đã gửi đánh giá!
                 </div>
               ) : (
-                <form onSubmit={handleReviewSubmit} className="flex flex-col gap-4" style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
-                  {submitError && <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg" style={{color: '#ef4444', backgroundColor: '#fef2f2', padding: '0.75rem', borderRadius: '0.5rem', fontSize: '0.875rem'}}>{submitError}</div>}
+                <form onSubmit={handleReviewSubmit} className="flex flex-col gap-4" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {submitError && <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg" style={{ color: '#ef4444', backgroundColor: '#fef2f2', padding: '0.75rem', borderRadius: '0.5rem', fontSize: '0.875rem' }}>{submitError}</div>}
                   <div>
-                    <label className="block text-sm font-medium mb-1" style={{display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem'}}>Mức độ hài lòng</label>
-                    <select value={rating} onChange={(e) => setRating(e.target.value)} className="w-full border rounded-lg p-2.5" style={{width: '100%', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '0.625rem'}}>
+                    <label className="block text-sm font-medium mb-1" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Mức độ hài lòng</label>
+                    <select value={rating} onChange={(e) => setRating(e.target.value)} className="w-full border rounded-lg p-2.5" style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '0.625rem' }}>
                       <option value={5}>⭐⭐⭐⭐⭐ (Rất tuyệt vời)</option>
                       <option value={4}>⭐⭐⭐⭐ (Tuyệt vời)</option>
                       <option value={3}>⭐⭐⭐ (Bình thường)</option>
@@ -363,12 +363,12 @@ const Lookup = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1" style={{display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem'}}>Nhận xét của bạn</label>
-                    <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows="4" className="w-full border rounded-lg p-2.5 resize-none" style={{width: '100%', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '0.625rem', resize: 'none'}}></textarea>
+                    <label className="block text-sm font-medium mb-1" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Nhận xét của bạn</label>
+                    <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows="4" className="w-full border rounded-lg p-2.5 resize-none" style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '0.625rem', resize: 'none' }}></textarea>
                   </div>
-                  <div className="flex justify-end gap-2" style={{display: 'flex', justifyContent: 'flex-end', gap: '0.5rem'}}>
-                    <button type="button" onClick={() => setReviewingBooking(null)} className="px-4 py-2 bg-slate-100 rounded-lg" style={{padding: '0.5rem 1rem', backgroundColor: '#f1f5f9', border: 'none', borderRadius: '0.5rem', cursor: 'pointer'}}>Hủy</button>
-                    <button type="submit" className="px-4 py-2 text-white bg-primary rounded-lg" style={{padding: '0.5rem 1rem', backgroundColor: '#29a847', color: 'white', border: 'none', borderRadius: '0.5rem', cursor: 'pointer'}}>Gửi đánh giá</button>
+                  <div className="flex justify-end gap-2" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                    <button type="button" onClick={() => setReviewingBooking(null)} className="px-4 py-2 bg-slate-100 rounded-lg" style={{ padding: '0.5rem 1rem', backgroundColor: '#f1f5f9', border: 'none', borderRadius: '0.5rem', cursor: 'pointer' }}>Hủy</button>
+                    <button type="submit" className="px-4 py-2 text-white bg-primary rounded-lg" style={{ padding: '0.5rem 1rem', backgroundColor: '#29a847', color: 'white', border: 'none', borderRadius: '0.5rem', cursor: 'pointer' }}>Gửi đánh giá</button>
                   </div>
                 </form>
               )}

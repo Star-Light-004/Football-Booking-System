@@ -171,11 +171,11 @@ export default function AdminServices() {
     try {
       setLoading(true);
       // Fetch services with admin=true to see inactive ones
-      const res = await axios.get("${BASE_URL}/services/list/?admin=true");
+      const res = await axios.get("${process.env.REACT_APP_API_URL}/services/list/?admin=true");
       setServices(res.data);
-      
+
       // Fetch fields for mapping
-      const fieldsRes = await axios.get("${BASE_URL}/football-fields/");
+      const fieldsRes = await axios.get("${process.env.REACT_APP_API_URL}/football-fields/");
       setFields(fieldsRes.data.fields || []);
     } catch (error) {
       console.error("Lỗi lấy dữ liệu:", error);
@@ -191,7 +191,7 @@ export default function AdminServices() {
   const handleDelete = async (id) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa dịch vụ này không?")) {
       try {
-        await axios.delete(`${BASE_URL}/services/list/${id}/`);
+        await axios.delete(`${process.env.REACT_APP_API_URL}/services/list/${id}/`);
         alert("Xóa dịch vụ thành công");
         fetchServices();
       } catch (error) {
@@ -321,7 +321,7 @@ function ServiceModal({ service, availableFields, onClose, onSuccess }) {
       formData.append('stock', stock);
       formData.append('description', description);
       formData.append('is_active', isActive ? 'true' : 'false');
-      
+
       selectedFields.forEach(fid => {
         formData.append('field_ids', fid);
       });
@@ -335,10 +335,10 @@ function ServiceModal({ service, availableFields, onClose, onSuccess }) {
       };
 
       if (service) {
-        await axios.put(`${BASE_URL}/services/list/${service.id}/`, formData, config);
+        await axios.put(`${process.env.REACT_APP_API_URL}/services/list/${service.id}/`, formData, config);
         alert("Cập nhật thành công");
       } else {
-        await axios.post(`${BASE_URL}/services/list/`, formData, config);
+        await axios.post(`${process.env.REACT_APP_API_URL}/services/list/`, formData, config);
         alert("Thêm thành công");
       }
       onSuccess();
@@ -409,27 +409,27 @@ function ServiceModal({ service, availableFields, onClose, onSuccess }) {
             <div className="form-group full">
               <label className="form-label">Áp dụng cho sân ({selectedFields.length} đã chọn)</label>
               <div className="field-dropdown-wrapper">
-                <div 
+                <div
                   className={`field-dropdown-trigger ${showFieldDropdown ? 'active' : ''}`}
                   onClick={() => setShowFieldDropdown(!showFieldDropdown)}
                 >
                   <span className="selected-text">
-                    {selectedFields.length > 0 
-                      ? `Đã chọn ${selectedFields.length} sân bóng` 
+                    {selectedFields.length > 0
+                      ? `Đã chọn ${selectedFields.length} sân bóng`
                       : "Click để chọn sân áp dụng..."}
                   </span>
                   <span className="material-symbols-outlined">
                     {showFieldDropdown ? 'expand_less' : 'expand_more'}
                   </span>
                 </div>
-                
+
                 {showFieldDropdown && (
                   <div className="field-dropdown-content">
                     <div className="field-selection-grid">
                       {availableFields.map(field => (
                         <label key={field.id} className="field-checkbox-label">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={selectedFields.includes(field.id)}
                             onChange={() => toggleField(field.id)}
                           />

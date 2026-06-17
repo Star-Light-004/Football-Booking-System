@@ -8,7 +8,7 @@ const BookingServiceRowItems = ({ bookingId }) => {
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const res = await fetch(`${BASE_URL}/services/booking-services/${bookingId}/`);
+        const res = await fetch(`${process.env.REACT_APP_API_URL}/services/booking-services/${bookingId}/`);
         const data = await res.json();
         setServices(data || []);
       } catch (err) {
@@ -21,11 +21,11 @@ const BookingServiceRowItems = ({ bookingId }) => {
   if (services.length === 0) return <span style={{ color: '#64748b', fontStyle: 'italic', fontSize: '13px' }}>Không</span>;
 
   return (
-    <div className="booking-services-list" style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+    <div className="booking-services-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       {services.map(s => (
-        <div key={s.id} style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px'}}>
+        <div key={s.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
           {s.service_image && (
-             <img src={s.service_image} alt={s.service_name} style={{width: '32px', height: '32px', objectFit: 'cover', borderRadius: '4px'}} />
+            <img src={s.service_image} alt={s.service_name} style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '4px' }} />
           )}
           <span className="service-tag">
             {s.service_name} x{s.quantity}
@@ -55,7 +55,7 @@ const MyBookings = () => {
     if (!userId) return;
     try {
       const res = await fetch(
-        `${BASE_URL}/bookings/user/${userId}/`
+        `${process.env.REACT_APP_API_URL}/bookings/user/${userId}/`
       );
       const data = await res.json();
       setBookings(data);
@@ -110,7 +110,7 @@ const MyBookings = () => {
     if (!confirmCancel) return;
 
     try {
-      const response = await fetch(`${BASE_URL}/bookings/${bookingId}/update/`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/bookings/${bookingId}/update/`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -262,9 +262,9 @@ const MyBookings = () => {
                       </span>
                     </td>
                     <td>
-                      <div className="table-actions" style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                      <div className="table-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         {booking.status === "Completed" && !booking.is_reviewed && (
-                          <button 
+                          <button
                             onClick={() => setReviewingBooking(booking)}
                             className="btn-review-action"
                           >
@@ -272,9 +272,9 @@ const MyBookings = () => {
                           </button>
                         )}
                         {booking.is_reviewed && (
-                          <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
-                            <span className="material-symbols-outlined" style={{fontSize: '18px', color: '#059669'}}>check_circle</span>
-                            <span style={{color: '#059669', fontSize: '13px', fontWeight: '600', whiteSpace: 'nowrap'}}>Đã đánh giá</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#059669' }}>check_circle</span>
+                            <span style={{ color: '#059669', fontSize: '13px', fontWeight: '600', whiteSpace: 'nowrap' }}>Đã đánh giá</span>
                           </div>
                         )}
                         <Link
@@ -296,7 +296,7 @@ const MyBookings = () => {
       </main>
 
       {reviewingBooking && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" style={{position: 'fixed', top:0, left:0, right:0, bottom:0, backgroundColor: 'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex: 100}}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden">
             <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
               <h3 className="font-bold text-lg text-slate-900 dark:text-white">Đánh giá sân bóng</h3>
