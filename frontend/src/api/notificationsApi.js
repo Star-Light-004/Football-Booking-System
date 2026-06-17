@@ -1,5 +1,5 @@
 import axiosClient from './axiosClient';
-
+import { BASE_URL } from "../config";
 export const notificationsApi = {
   /**
    * Lấy thông báo của user

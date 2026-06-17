@@ -52,7 +52,7 @@ const FieldDetail = () => {
 
   const fetchReviews = useCallback(async () => {
     try {
-      const response = await fetch(`http://localhost:8000/api/reviews/${id}/`);
+      const response = await fetch(`http://process.env.REACT_APP_API_URL/api/reviews/${id}/`);
       if (response.ok) {
         const data = await response.json();
         setReviews(data);

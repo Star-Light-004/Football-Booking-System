@@ -1,7 +1,5 @@
 import axios from 'axios';
-
-const BASE_URL = 'http://127.0.0.1:8000/api';
-
+import { BASE_URL } from '../config';
 export const getUserProfile = async (userId) => {
   return await axios.get(`${BASE_URL}/users/profile/?user_id=${userId}`);
 };

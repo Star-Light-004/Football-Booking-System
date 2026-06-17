@@ -9,7 +9,7 @@ const BookingResultItem = ({ booking, formatDateLong, maskPhone, onReviewClick }
     const fetchServices = async () => {
       try {
         setLoadingServices(true);
-        const res = await fetch(`http://127.0.0.1:8000/api/services/booking-services/${booking.id}/`);
+        const res = await fetch(`${BASE_URL}/services/booking-services/${booking.id}/`);
         const data = await res.json();
         setServices(data || []);
       } catch (err) {
@@ -153,7 +153,7 @@ const Lookup = () => {
         return;
       }
 
-      const response = await fetch(`http://127.0.0.1:8000/api/reviews/create/`, {
+      const response = await fetch(`${BASE_URL}/reviews/create/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -193,7 +193,7 @@ const Lookup = () => {
     setLoading(true);
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/api/bookings/lookup/?phone=${phoneNumber}&booking_id=${bookingId}`
+        `${BASE_URL}/bookings/lookup/?phone=${phoneNumber}&booking_id=${bookingId}`
       );
       const data = await res.json();
       setResults(data);

@@ -1,4 +1,5 @@
 import axiosClient from "./axiosClient";
+import { BASE_URL } from '../config'; 
 
 export const getServices = (params = {}) => {
     return axiosClient.get("/services/list/", { params });

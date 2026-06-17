@@ -39,7 +39,7 @@ const BookingDetail = () => {
     if (!confirmCancel) return;
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/bookings/${booking.id}/update/`, {
+      const response = await fetch(`${BASE_URL}/bookings/${booking.id}/update/`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
