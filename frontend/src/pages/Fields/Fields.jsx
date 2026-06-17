@@ -17,16 +17,20 @@ const Fields = () => {
   ];
 
   useEffect(() => {
-    const fetchFields = async () => {
-      try {
-        const res = await getFields();
-        setFields(res.data.fields);
-      } catch (error) {
-        console.log("Lỗi lấy sân:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+   const fetchFields = async () => {
+  try {
+    const res = await getFields();
+
+    console.log("API response:", res.data);
+
+    setFields(res.data?.fields || []);
+  } catch (error) {
+    console.log("Lỗi lấy sân:", error);
+    setFields([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
     fetchFields();
   }, []);
