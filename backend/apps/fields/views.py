@@ -204,3 +204,12 @@ def debug_media(request):
         "files": os.listdir(os.path.join(media_root, "fields")) 
                  if os.path.exists(os.path.join(media_root, "fields")) else []
     })
+
+def debug_path(request):
+    return JsonResponse({
+        "BASE_DIR": str(settings.BASE_DIR),
+        "MEDIA_ROOT": str(settings.MEDIA_ROOT),
+        "media_exists": os.path.exists(settings.MEDIA_ROOT),
+        "fields_exists": os.path.exists(os.path.join(settings.MEDIA_ROOT, "fields")),
+        "sample_file": os.path.exists(os.path.join(settings.MEDIA_ROOT, "fields", "san-bong-nhan-tao.png")),
+    })

@@ -16,6 +16,7 @@ urlpatterns = [
     path('check-media/', views.check_media),
     path('test-image/', views.test_image),
     path('debug-media/', views.debug_media),
+    path("debug-path/", views.debug_path),
     
 
 ]
