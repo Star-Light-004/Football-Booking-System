@@ -153,9 +153,9 @@ function FieldsTable({ fields, onEdit, onDelete }) {
 
           <div className="field-thumb">
                         <img
-  src={f.image_url || f.image}
-  alt="field"
-/>
+              src={`${SERVER_URL}${f.image}`}
+              alt="field"
+            />
           </div>
 
           <div>
