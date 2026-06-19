@@ -21,7 +21,11 @@ def get_football_fields(request):
         fields = query.all() if show_all else query.filter(is_available=True)
 
         from .serializers import FootballFieldsSerializer
-        serializer = FootballFieldsSerializer(fields, many=True)
+        serializer = FootballFieldsSerializer(
+    fields,
+    many=True,
+    context={"request": request}
+)
 
         return JsonResponse({"fields": serializer.data})
 
@@ -173,6 +177,7 @@ def check_media(request):
         "MEDIA_ROOT": str(settings.MEDIA_ROOT),
         "file_path": file_path,
         "exists": os.path.exists(file_path),
+        "DEBUG": settings.DEBUG,
     })
 
 def test_image(request):
