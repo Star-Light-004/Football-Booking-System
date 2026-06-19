@@ -1,6 +1,8 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
+from django.shortcuts import get_object_or_404
+from django.db.models.deletion import ProtectedError
 from django.http import FileResponse
 from django.conf import settings
 import os
@@ -151,12 +153,23 @@ def update_football_field(request, id):
 def delete_football_field(request, id):
     if request.method == "DELETE":
         try:
-            field = FootballFields.objects.get(id=id)
+            field = get_object_or_404(FootballFields, id=id)
             field.delete()
             return JsonResponse({"message": "Xóa sân thành công"})
-        except FootballFields.DoesNotExist:
-            return JsonResponse({"error": "Không tìm thấy sân"}, status=404)
 
+        except ProtectedError:
+            return JsonResponse(
+                {"error": "Không thể xóa vì sân đang có lịch đặt"},
+                status=400
+            )
+
+        except Exception as e:
+            return JsonResponse(
+                {"error": str(e)},
+                status=500
+            )
+
+    return JsonResponse({"error": "Method not allowed"}, status=405)
 @csrf_exempt
 def seed_field_types(request):
     if request.method == "GET":
