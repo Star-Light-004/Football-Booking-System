@@ -15,6 +15,7 @@ urlpatterns = [
     path('seed-field-types/', views.seed_field_types),
     path('check-media/', views.check_media),
     path('test-image/', views.test_image),
+    path('debug-media/', views.debug_media),
     
 
 ]

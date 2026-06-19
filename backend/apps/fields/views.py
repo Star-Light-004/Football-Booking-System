@@ -192,3 +192,15 @@ def test_image(request):
         ),
         content_type="image/png"
     )
+
+def debug_media(request):
+    media_root = settings.MEDIA_ROOT
+
+    return JsonResponse({
+        "MEDIA_ROOT": str(media_root),
+        "exists_MEDIA_ROOT": os.path.exists(media_root),
+        "fields_folder": os.path.join(media_root, "fields"),
+        "exists_fields": os.path.exists(os.path.join(media_root, "fields")),
+        "files": os.listdir(os.path.join(media_root, "fields")) 
+                 if os.path.exists(os.path.join(media_root, "fields")) else []
+    })
