@@ -1,6 +1,8 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
+from django.conf import settings
+import os
 from django.db.models import Avg
 from .models import FootballFields, FieldTypes
 from apps.reviews.models import Reviews
@@ -158,3 +160,16 @@ def seed_field_types(request):
         FieldTypes.objects.get_or_create(name="Sân 11")
 
         return JsonResponse({"message": "seed done"})
+
+def check_media(request):
+    file_path = os.path.join(
+        settings.MEDIA_ROOT,
+        "fields",
+        "san-bong-nhan-tao.png"
+    )
+
+    return JsonResponse({
+        "MEDIA_ROOT": str(settings.MEDIA_ROOT),
+        "file_path": file_path,
+        "exists": os.path.exists(file_path),
+    })
