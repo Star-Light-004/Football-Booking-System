@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404
 from django.db.models.deletion import ProtectedError
 from django.http import FileResponse
 from django.conf import settings
+from django.db import IntegrityError
 import os
 from django.db.models import Avg
 from .models import FootballFields, FieldTypes
@@ -151,25 +152,42 @@ def update_football_field(request, id):
 # ===============================
 @csrf_exempt
 def delete_football_field(request, id):
-    if request.method == "DELETE":
-        try:
-            field = get_object_or_404(FootballFields, id=id)
-            field.delete()
-            return JsonResponse({"message": "Xóa sân thành công"})
+    if request.method != "DELETE":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
 
-        except ProtectedError:
-            return JsonResponse(
-                {"error": "Không thể xóa vì sân đang có lịch đặt"},
-                status=400
-            )
+    try:
+        field = get_object_or_404(FootballFields, id=id)
+        field.delete()
 
-        except Exception as e:
-            return JsonResponse(
-                {"error": str(e)},
-                status=500
-            )
+        return JsonResponse({"message": "Xóa sân thành công"})
 
-    return JsonResponse({"error": "Method not allowed"}, status=405)
+    except ProtectedError:
+        return JsonResponse(
+            {"error": "Sân đang có lịch đặt, không thể xóa"},
+            status=400
+        )
+
+    except IntegrityError:
+        return JsonResponse(
+            {"error": "Lỗi ràng buộc dữ liệu (FK constraint)"},
+            status=400
+        )
+
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())   # 🔥 QUAN TRỌNG để debug Render
+
+        return JsonResponse(
+            {
+                "error": str(e),
+                "detail": traceback.format_exc()
+            },
+            status=500
+        )
+    
+
+
+
 @csrf_exempt
 def seed_field_types(request):
     if request.method == "GET":
