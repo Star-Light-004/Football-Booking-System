@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink } from "react-router-dom";
 import { getFields, createField, updateField, deleteField } from "../../../api/fieldsApi";
+import { SERVER_URL } from "../../../config";
 import './fields.css';
 /* ── Data ── */
 const navLinks = [
@@ -152,7 +153,7 @@ function FieldsTable({ fields, onEdit, onDelete }) {
 
           <div className="field-thumb">
                         <img
-              src={`http://127.0.0.1:8000${f.image}`}
+              src={`${SERVER_URL}${f.image}`}
               alt="field"
             />
           </div>
