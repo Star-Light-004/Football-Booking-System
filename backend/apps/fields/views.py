@@ -1,6 +1,7 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
+from django.http import FileResponse
 from django.conf import settings
 import os
 from django.db.models import Avg
@@ -173,3 +174,16 @@ def check_media(request):
         "file_path": file_path,
         "exists": os.path.exists(file_path),
     })
+
+def test_image(request):
+    return FileResponse(
+        open(
+            os.path.join(
+                settings.MEDIA_ROOT,
+                "fields",
+                "san-bong-nhan-tao.png"
+            ),
+            "rb"
+        ),
+        content_type="image/png"
+    )
