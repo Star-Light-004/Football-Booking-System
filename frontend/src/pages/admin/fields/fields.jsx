@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink } from "react-router-dom";
 import { getFields, createField, updateField, deleteField } from "../../../api/fieldsApi";
-import { SERVER_URL } from "../../../config";
+import { SERVER_URL } from '../../../config';
+import FieldMap from '../../../components/FieldMap/FieldMap';
 import './fields.css';
+import { useToast, ToastContainer } from '../../../components/Toast/Toast';
 /* ── Data ── */
 const navLinks = [
   { icon: 'dashboard', label: 'Dashboard', path: '/admin/dashboard' },
@@ -12,6 +14,7 @@ const navLinks = [
   { icon: 'payments', label: 'Revenue', path: '/admin/revenue' },
   { icon: 'calendar_month', label: 'Time Slots', path: '/admin/timeslots' },
   { icon: 'inventory_2', label: 'Services', path: '/admin/services' },
+  { icon: 'settings', label: 'Settings', path: '/admin/settings' },
 ];
  
 
@@ -152,10 +155,23 @@ function FieldsTable({ fields, onEdit, onDelete }) {
         <div className="field-cell">
 
           <div className="field-thumb">
-                        <img
-              src={`${SERVER_URL}${f.image}`}
-              alt="field"
-            />
+            {f.image ? (
+              <img
+                src={`${SERVER_URL}${f.image}`}
+                alt="field"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.parentNode.innerHTML =
+                    '<span class="material-symbols-outlined" style="font-size:1.5rem;color:#a1a1aa;margin:auto;display:flex;align-items:center;justify-content:center;height:100%">stadium</span>';
+                }}
+              />
+            ) : (
+              <span className="material-symbols-outlined"
+                style={{ fontSize: '1.5rem', color: '#a1a1aa', margin: 'auto',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                stadium
+              </span>
+            )}
           </div>
 
           <div>
@@ -260,7 +276,7 @@ function FieldsTable({ fields, onEdit, onDelete }) {
   );
 }
  
-function AddFieldModal({ onClose, onSuccess }) {
+function AddFieldModal({ onClose, onSuccess, showToast }) {
 const fileInputRef = useRef(null); 
 const [image, setImage] = useState(null);
 const [fieldName, setFieldName] = useState("");
@@ -269,11 +285,31 @@ const [price, setPrice] = useState("");
 const [location, setLocation] = useState("");
 const [description, setDescription] = useState("");
 const [phone, setPhone] = useState("");
+const [latitude, setLatitude] = useState(null);
+const [longitude, setLongitude] = useState(null);
 const [loading, setLoading] = useState(false);
+
+const [debouncedLocation, setDebouncedLocation] = useState("");
+const debounceRef = useRef(null);
+
+const handleLocationChange = (val) => {
+  setLocation(val);
+  setLatitude(null);
+  setLongitude(null);
+  clearTimeout(debounceRef.current);
+  debounceRef.current = setTimeout(() => {
+    setDebouncedLocation(val);
+  }, 700);
+};
+
+const handleCoordsFound = (lat, lng) => {
+  setLatitude(lat);
+  setLongitude(lng);
+};
 const handleAddField = async () => {
 
   if (!fieldName || !price || !location) {
-    alert("Vui lòng nhập đầy đủ thông tin");
+    showToast("Vui lòng nhập đầy đủ thông tin", "warning");
     return;
   }
 
@@ -290,10 +326,12 @@ const handleAddField = async () => {
     formData.append("description", description);
     formData.append("phone", phone);
     formData.append("image", image);
+    if (latitude) formData.append("latitude", latitude);
+    if (longitude) formData.append("longitude", longitude);
 
     await createField(formData);
 
-    alert("Thêm sân thành công");
+    showToast("Đã thêm sân thành công!", "success");
 
     onSuccess();
     onClose();
@@ -301,7 +339,7 @@ const handleAddField = async () => {
   } catch (error) {
 
     console.log(error);
-    alert("Lỗi khi thêm sân");
+    showToast("Ợi khi thêm sân", "error");
 
   } finally {
 
@@ -377,14 +415,33 @@ const handleAddField = async () => {
             </div>
  
             <div className="form-group full">
-              <label className="form-label">Địa điểm / Địa chỉ cụ thể</label>
-                             <input
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '17px', color: '#00b14f' }}>location_on</span>
+                Địa điểm / Địa chỉ cụ thể
+              </label>
+              <input
                 className="form-input"
                 type="text"
-                placeholder="Nhập địa chỉ sân"
+                placeholder="VD: 123 Nguyễn Văn Linh, Hải Châu, Đà Nẵng"
                 value={location}
-                onChange={(e) => setLocation(e.target.value)}
+                onChange={(e) => handleLocationChange(e.target.value)}
               />
+              <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '5px 0 8px', lineHeight: '1.4' }}>
+                💡 Nhập địa chỉ đầy đủ để bản đồ định vị chính xác.
+                Bản đồ sẽ tự cập nhật sau khi bạn gõ xong.
+              </p>
+
+              {/* Live map preview */}
+              {debouncedLocation && (
+                <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1.5px solid #bbf7d0', marginTop: '4px' }}>
+                  <FieldMap
+                    location={debouncedLocation}
+                    fieldName={fieldName}
+                    onCoordsFound={handleCoordsFound}
+                    compact={true}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="form-group">
@@ -436,7 +493,7 @@ const handleAddField = async () => {
   );
 }
 
-function EditFieldModal({ field, onClose, onSuccess }) {
+function EditFieldModal({ field, onClose, onSuccess, showToast }) {
   const [fieldName, setFieldName] = useState(field.field_name || "");
   const [fieldType, setFieldType] = useState(field.field_type || "5 vs 5");
   const [price, setPrice] = useState(field.price_per_hour || "");
@@ -444,11 +501,34 @@ function EditFieldModal({ field, onClose, onSuccess }) {
   const [description, setDescription] = useState(field.description || "");
   const [phone, setPhone] = useState(field.phone || "");
   const [isAvailable, setIsAvailable] = useState(field.is_available);
+  const [latitude, setLatitude] = useState(field.latitude || null);
+  const [longitude, setLongitude] = useState(field.longitude || null);
   const [loading, setLoading] = useState(false);
+
+  // Debounced location: chờ 700ms sau khi gõ xong mới geocode
+  const [debouncedLocation, setDebouncedLocation] = useState(field.location || "");
+  const debounceRef = useRef(null);
+
+  const handleLocationChange = (val) => {
+    setLocation(val);
+    // Reset tọa độ khi địa chỉ thay đổi (bản đồ sẽ geocode lại)
+    setLatitude(null);
+    setLongitude(null);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedLocation(val);
+    }, 700);
+  };
+
+  const handleCoordsFound = (lat, lng) => {
+    // Tự động lưu tọa độ từ geocoding để gửi lên API
+    setLatitude(lat);
+    setLongitude(lng);
+  };
 
   const handleEditField = async () => {
     if (!fieldName || !price || !location) {
-      alert("Vui lòng nhập đầy đủ thông tin");
+      showToast("Vui lòng nhập đầy đủ thông tin", "warning");
       return;
     }
 
@@ -461,16 +541,18 @@ function EditFieldModal({ field, onClose, onSuccess }) {
         price_per_hour: price,
         description: description,
         phone: phone,
-        is_available: isAvailable
+        is_available: isAvailable,
+        latitude: latitude || null,
+        longitude: longitude || null,
       };
 
       await updateField(field.id, data);
-      alert("Cập nhật sân thành công");
+      showToast("Cập nhật sân thành công!", "success");
       onSuccess();
       onClose();
     } catch (error) {
       console.log(error);
-      alert("Lỗi khi cập nhật sân");
+      showToast("Ợi khi cập nhật sân", "error");
     } finally {
       setLoading(false);
     }
@@ -519,16 +601,38 @@ function EditFieldModal({ field, onClose, onSuccess }) {
                 onChange={(e) => setPrice(e.target.value)}
               />
             </div>
+
+            {/* Địa chỉ + live map preview */}
             <div className="form-group full">
-              <label className="form-label">Địa điểm / Địa chỉ cụ thể</label>
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '17px', color: '#00b14f' }}>location_on</span>
+                Địa điểm / Địa chỉ cụ thể
+              </label>
               <input
                 className="form-input"
                 type="text"
-                placeholder="Nhập địa chỉ sân"
+                placeholder="VD: 123 Nguyễn Văn Linh, Hải Châu, Đà Nẵng"
                 value={location}
-                onChange={(e) => setLocation(e.target.value)}
+                onChange={(e) => handleLocationChange(e.target.value)}
               />
+              <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '5px 0 8px', lineHeight: '1.4' }}>
+                💡 Nhập địa chỉ đầy đủ để bản đồ định vị chính xác.
+                Bản đồ sẽ tự cập nhật sau khi bạn gõ xong.
+              </p>
+
+              {/* Live map preview */}
+              {debouncedLocation && (
+                <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1.5px solid #bbf7d0', marginTop: '4px' }}>
+                  <FieldMap
+                    location={debouncedLocation}
+                    fieldName={fieldName}
+                    onCoordsFound={handleCoordsFound}
+                    compact={true}
+                  />
+                </div>
+              )}
             </div>
+
             <div className="form-group">
               <label className="form-label">Số điện thoại liên hệ</label>
               <input
@@ -550,6 +654,7 @@ function EditFieldModal({ field, onClose, onSuccess }) {
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
+
             <div className="form-group full">
               <label className="form-label">Trạng thái hoạt động</label>
               <select
@@ -586,6 +691,7 @@ export default function Fields() {
   const [showModal, setShowModal] = useState(false);
   const [editingField, setEditingField] = useState(null);
   const [activeType, setActiveType] = useState('Tất cả');
+  const { toasts, removeToast, toast } = useToast();
  const fetchFields = async () => {
   try {
     const res = await getFields({ params: { show_all: 'true' } });
@@ -611,61 +717,65 @@ export default function Fields() {
     if (window.confirm("Bạn có chắc chắn muốn xóa sân này không?")) {
       try {
         await deleteField(id);
-        alert("Xóa sân thành công");
+        toast.success("Xóa sân thành công!");
         fetchFields();
       } catch (error) {
         console.log(error);
-        alert("Lỗi khi xóa sân");
+        toast.error("Ợi khi xóa sân");
       }
     }
   };
 
-  if (loading) {
-    return <h2 style={{padding:20}}>Đang tải danh sách sân...</h2>;
-  }
-
   return (
     <>
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
       <Sidebar />
 
       <TopHeader />
 
       <main className="main-content">
-
-        <div className="page-header">
-
-          <div>
-            <h2>Quản lý sân bóng</h2>
-            <p>
-              Theo dõi, điều chỉnh và cập nhật danh sách các sân vận động.
-            </p>
+        {loading ? (
+          <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>
+            <h2>Đang tải danh sách sân...</h2>
           </div>
+        ) : (
+          <>
+            <div className="page-header">
+              <div>
+                <h2>Quản lý sân bóng</h2>
+                <p>
+                  Theo dõi, điều chỉnh và cập nhật danh sách các sân vận động.
+                </p>
+              </div>
 
-          <button
-            className="btn-add-field"
-            onClick={() => setShowModal(true)}
-          >
-            <span className="material-symbols-outlined">
-              add_circle
-            </span>
-            Thêm sân mới
-          </button>
+              <button
+                className="btn-add-field"
+                onClick={() => setShowModal(true)}
+              >
+                <span className="material-symbols-outlined">
+                  add_circle
+                </span>
+                Thêm sân mới
+              </button>
+            </div>
 
-        </div>
             <FilterControls
-              fields={fields}                  // truyền dữ liệu fields
+              fields={fields}
               activeType={activeType}
               onTypeChange={setActiveType}
-              onFiltered={setFilteredFields}   // callback nhận filteredFields
+              onFiltered={setFilteredFields}
             />
 
-      <FieldsTable fields={filteredFields} onEdit={setEditingField} onDelete={handleDelete} />
+            <FieldsTable fields={filteredFields} onEdit={setEditingField} onDelete={handleDelete} />
+          </>
+        )}
       </main>
 
       {showModal && (
   <AddFieldModal
     onClose={() => setShowModal(false)}
     onSuccess={fetchFields}
+    showToast={(msg, type) => toast[type || 'info'](msg)}
   />
 )}
       {editingField && (
@@ -673,6 +783,7 @@ export default function Fields() {
     field={editingField}
     onClose={() => setEditingField(null)}
     onSuccess={fetchFields}
+    showToast={(msg, type) => toast[type || 'info'](msg)}
   />
 )}
     </>

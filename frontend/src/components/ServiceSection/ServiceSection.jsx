@@ -6,6 +6,14 @@ const ServiceSection = ({ fieldId, onServicesChange }) => {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedQuantities, setSelectedQuantities] = useState({});
+  const [selectedShoeSizes, setSelectedShoeSizes] = useState({});
+
+  const isShoeService = (service) => /giày|giay|shoe/i.test(`${service.name || ''} ${service.category || ''}`);
+
+  const notifyChanges = (quantities, shoeSizes) => {
+    const totalPrice = services.reduce((total, service) => total + (service.price * (quantities[service.id] || 0)), 0);
+    onServicesChange(quantities, totalPrice, shoeSizes);
+  };
 
   useEffect(() => {
   const fetchServices = async () => {
@@ -38,16 +46,16 @@ const ServiceSection = ({ fieldId, onServicesChange }) => {
       
       const newQuantities = { ...prev, [serviceId]: newQty };
       
-      // Calculate total price and notify parent
-      let totalPrice = 0;
-      services.forEach(s => {
-        if (newQuantities[s.id]) {
-          totalPrice += s.price * newQuantities[s.id];
-        }
-      });
-      
-      onServicesChange(newQuantities, totalPrice);
+      notifyChanges(newQuantities, selectedShoeSizes);
       return newQuantities;
+    });
+  };
+
+  const updateShoeSize = (serviceId, size) => {
+    setSelectedShoeSizes((previous) => {
+      const newSizes = { ...previous, [serviceId]: size };
+      notifyChanges(selectedQuantities, newSizes);
+      return newSizes;
     });
   };
 
@@ -86,6 +94,16 @@ const ServiceSection = ({ fieldId, onServicesChange }) => {
               <p className="ss-name">{service.name}</p>
               <p className="ss-price">{parseFloat(service.price).toLocaleString()}đ</p>
               
+              {isShoeService(service) && selectedQuantities[service.id] > 0 && (
+                <label className="ss-size-label">
+                  Size giày
+                  <select value={selectedShoeSizes[service.id] || ''} onChange={(event) => updateShoeSize(service.id, event.target.value)}>
+                    <option value="">Chọn size</option>
+                    {[38, 39, 40, 41, 42, 43, 44].map((size) => <option value={size} key={size}>{size}</option>)}
+                  </select>
+                </label>
+              )}
+
               <div className="ss-actions">
                 <button 
                   className="ss-btn ss-btn-minus"

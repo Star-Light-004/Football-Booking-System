@@ -10,7 +10,7 @@ class FootballFieldsSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = FootballFields
-        fields = ['id', 'field_name', 'field_type', 'location', 'price_per_hour', 'is_available', 'created_at', 'image', 'image_url', 'booking_count', 'rating_avg', 'description', 'phone']
+        fields = ['id', 'field_name', 'field_type', 'location', 'price_per_hour', 'is_available', 'created_at', 'image', 'image_url', 'booking_count', 'rating_avg', 'description', 'phone', 'latitude', 'longitude', 'address', 'open_time', 'close_time']
 
     def get_image(self, obj):
         return obj.image.url if obj.image else None

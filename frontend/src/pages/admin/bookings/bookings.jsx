@@ -4,7 +4,9 @@ import { getBookings, createBooking, updateBooking, deleteBooking } from "../../
 import { getFields } from "../../../api/fieldsApi";
 import { getUsers } from "../../../api/usersApi";
 import { BASE_URL } from "../../../config";
+import AdminScheduleOverview from "../../../components/AdminScheduleOverview/AdminScheduleOverview";
 import './bookings.css';
+import { useToast, ToastContainer } from "../../../components/Toast/Toast";
 /* ── Data ── */
 const navLinks = [
   { icon: 'dashboard', label: 'Dashboard', path: '/admin/dashboard' },
@@ -23,6 +25,8 @@ const statusMap = {
   Completed: "Hoàn thành",
   Checked_in: "Đã check-in"
 };
+
+const isShoeService = (service) => /giày|giay|shoe/i.test(`${service.name || service.service_name || ''} ${service.category || ''}`);
 
 const statsCards = [
   {
@@ -219,7 +223,7 @@ const BookingServiceRowItems = ({ bookingId }) => {
             <img src={s.service_image} alt={s.service_name} style={{ width: '20px', height: '20px', objectFit: 'cover', borderRadius: '2px' }} />
           )}
           <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#059669', whiteSpace: 'nowrap' }}>
-            {s.service_name} x{s.quantity}
+            {s.service_name}{s.shoe_size ? ` - size ${s.shoe_size}` : ''} x{s.quantity}
           </span>
         </div>
       ))}
@@ -345,10 +349,10 @@ function StatsOverview() {
   );
 }
 
-function AddBookingModal({ onClose, onSuccess }) {
+function AddBookingModal({ onClose, onSuccess, defaultFieldId, showToast }) {
   const [fields, setFields] = useState([]);
   const [users, setUsers] = useState([]);
-  const [fieldId, setFieldId] = useState("");
+  const [fieldId, setFieldId] = useState(defaultFieldId || "");
   const [customerId, setCustomerId] = useState("");
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
@@ -369,7 +373,7 @@ function AddBookingModal({ onClose, onSuccess }) {
 
   const handleSubmit = async () => {
     if (!fieldId || !customerId || !date || !startTime || !endTime || !price) {
-      alert("Vui lòng nhập đầy đủ thông tin");
+      showToast("Vui lòng nhập đầy đủ thông tin", "warning");
       return;
     }
     try {
@@ -384,15 +388,16 @@ function AddBookingModal({ onClose, onSuccess }) {
         services: selectedServices.map(s => ({
           service_id: s.service_id,
           quantity: s.quantity,
-          total_price: s.quantity * s.price
+          total_price: s.quantity * s.price,
+          shoe_size: s.shoe_size || null
         }))
       });
-      alert("Thêm đơn đặt thành công");
+      showToast("Thêm đơn đặt thành công", "success");
       onSuccess();
       onClose();
     } catch (error) {
       console.log(error);
-      alert("Lỗi khi thêm đơn đặt");
+      showToast("Lỗi khi thêm đơn đặt", "error");
     } finally {
       setLoading(false);
     }
@@ -433,7 +438,7 @@ function AddBookingModal({ onClose, onSuccess }) {
                       <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
                         <input type="checkbox" checked={!!selected} onChange={(e) => {
                           if (e.target.checked) {
-                            setSelectedServices([...selectedServices, { service_id: s.id, quantity: 1, price: s.price }]);
+                            setSelectedServices([...selectedServices, { service_id: s.id, quantity: 1, price: s.price, shoe_size: '' }]);
                           } else {
                             setSelectedServices(selectedServices.filter(x => x.service_id !== s.id));
                           }
@@ -442,10 +447,16 @@ function AddBookingModal({ onClose, onSuccess }) {
                         {s.name} ({Number(s.price).toLocaleString('vi-VN')}đ)
                       </label>
                       {selected && (
+                        <>
                         <input type="number" min="1" value={selected.quantity} onChange={(e) => {
                           const q = parseInt(e.target.value) || 1;
                           setSelectedServices(selectedServices.map(x => x.service_id === s.id ? { ...x, quantity: q } : x));
                         }} style={{ width: '50px', padding: '2px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '12px' }} />
+                        {isShoeService(s) && <select value={selected.shoe_size || ''} onChange={(e) => setSelectedServices(selectedServices.map(x => x.service_id === s.id ? { ...x, shoe_size: e.target.value } : x))} style={{ width: '72px', padding: '2px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '12px' }}>
+                          <option value="">Size</option>
+                          {[38, 39, 40, 41, 42, 43, 44].map(size => <option value={size} key={size}>{size}</option>)}
+                        </select>}
+                        </>
                       )}
                     </div>
                   )
@@ -479,11 +490,10 @@ function AddBookingModal({ onClose, onSuccess }) {
   );
 }
 
-function EditBookingModal({ booking, onClose, onSuccess }) {
+function EditBookingModal({ booking, onClose, onSuccess, showToast }) {
   const [date, setDate] = useState(booking.date || "");
   const timeParts = (booking.time || "").split(" - ");
   const [startTime, setStartTime] = useState(timeParts[0] || "");
-  const [endTime, setStartTime1] = useState(timeParts[1] || "");
   // fix syntax variable naming conflict
   const [endTime2, setEndTime2] = useState(timeParts[1] || "");
   const [price, setPrice] = useState(booking.price || "");
@@ -504,7 +514,8 @@ function EditBookingModal({ booking, onClose, onSuccess }) {
         setSelectedServices(data.map(s => ({
           service_id: s.service_id,
           quantity: s.quantity,
-          price: s.total_price / s.quantity // reconstruct individual price
+          price: s.total_price / s.quantity, // reconstruct individual price
+          shoe_size: s.shoe_size || ''
         })));
       })
       .catch(console.error);
@@ -523,17 +534,18 @@ function EditBookingModal({ booking, onClose, onSuccess }) {
         services: selectedServices.map(s => ({
           service_id: s.service_id,
           quantity: s.quantity,
-          total_price: s.quantity * s.price
+          total_price: s.quantity * s.price,
+          shoe_size: s.shoe_size || null
         }))
       });
 
-      alert("Cập nhật đơn thành công");
+      showToast("Cập nhật đơn thành công", "success");
       onSuccess();
       onClose();
 
     } catch (error) {
       console.log("=== FULL ERROR ===", error);
-      alert("Lỗi khi cập nhật");
+      showToast("Lỗi khi cập nhật", "error");
     } finally {
       setLoading(false);
     }
@@ -570,7 +582,7 @@ function EditBookingModal({ booking, onClose, onSuccess }) {
                       <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
                         <input type="checkbox" checked={!!selected} onChange={(e) => {
                           if (e.target.checked) {
-                            setSelectedServices([...selectedServices, { service_id: s.id, quantity: 1, price: s.price }]);
+                            setSelectedServices([...selectedServices, { service_id: s.id, quantity: 1, price: s.price, shoe_size: '' }]);
                           } else {
                             setSelectedServices(selectedServices.filter(x => x.service_id !== s.id));
                           }
@@ -579,10 +591,16 @@ function EditBookingModal({ booking, onClose, onSuccess }) {
                         {s.name} ({Number(s.price).toLocaleString('vi-VN')}đ)
                       </label>
                       {selected && (
+                        <>
                         <input type="number" min="1" value={selected.quantity} onChange={(e) => {
                           const q = parseInt(e.target.value) || 1;
                           setSelectedServices(selectedServices.map(x => x.service_id === s.id ? { ...x, quantity: q } : x));
                         }} style={{ width: '50px', padding: '2px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '12px' }} />
+                        {isShoeService(s) && <select value={selected.shoe_size || ''} onChange={(e) => setSelectedServices(selectedServices.map(x => x.service_id === s.id ? { ...x, shoe_size: e.target.value } : x))} style={{ width: '72px', padding: '2px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '12px' }}>
+                          <option value="">Size</option>
+                          {[38, 39, 40, 41, 42, 43, 44].map(size => <option value={size} key={size}>{size}</option>)}
+                        </select>}
+                        </>
                       )}
                     </div>
                   )
@@ -621,6 +639,8 @@ export default function Bookings() {
   const [bookings, setBookings] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingBooking, setEditingBooking] = useState(null);
+  const [newBookingField, setNewBookingField] = useState(null);
+  const { toasts, removeToast, toast } = useToast();
 
   useEffect(() => {
     fetchBookings();
@@ -643,12 +663,17 @@ export default function Bookings() {
     if (window.confirm("Bạn có chắc chắn muốn xóa đơn đặt này không?")) {
       try {
         await deleteBooking(id);
-        alert("Xóa thành công");
+        toast.success("Xóa thành công");
         fetchBookings();
       } catch (err) {
-        alert("Lỗi khi xóa");
+        toast.error("Lỗi khi xóa");
       }
     }
+  };
+
+  const openAddBooking = (field = null) => {
+    setNewBookingField(field);
+    setShowAddModal(true);
   };
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -665,9 +690,10 @@ export default function Bookings() {
 
   return (
     <>
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
       <Sidebar />
 
-      <TopHeader onAdd={() => setShowAddModal(true)} />
+      <TopHeader onAdd={() => openAddBooking()} />
 
       <main className="main-content">
         <div className="content-inner">
@@ -686,6 +712,8 @@ export default function Bookings() {
           {/* Filter Bar */}
           <FilterBar todayCount={todayCount} />
 
+          <AdminScheduleOverview bookings={bookings} onAddBooking={openAddBooking} onEditBooking={setEditingBooking} onDeleteBooking={handleDelete} />
+
           {/* Table */}
           <BookingsTable bookings={bookings} onEdit={setEditingBooking} onDelete={handleDelete} />
 
@@ -694,8 +722,8 @@ export default function Bookings() {
         </div>
       </main>
 
-      {showAddModal && <AddBookingModal onClose={() => setShowAddModal(false)} onSuccess={fetchBookings} />}
-      {editingBooking && <EditBookingModal booking={editingBooking} onClose={() => setEditingBooking(null)} onSuccess={fetchBookings} />}
+      {showAddModal && <AddBookingModal defaultFieldId={newBookingField?.id} onClose={() => { setShowAddModal(false); setNewBookingField(null); }} onSuccess={fetchBookings} showToast={(msg, type) => toast[type || 'info'](msg)} />}
+      {editingBooking && <EditBookingModal booking={editingBooking} onClose={() => setEditingBooking(null)} onSuccess={fetchBookings} showToast={(msg, type) => toast[type || 'info'](msg)} />}
     </>
   );
 }

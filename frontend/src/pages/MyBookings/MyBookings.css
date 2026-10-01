@@ -277,6 +277,7 @@
   font-weight: 700;
   color: var(--text-main);
   font-size: 0.9375rem;
+  white-space: nowrap;
 }
 
 .field-address {

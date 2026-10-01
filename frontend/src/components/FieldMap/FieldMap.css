@@ -1,0 +1,171 @@
+.fm-wrapper {
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  background: #fff;
+}
+
+.fm-map {
+  width: 100%;
+  height: 280px;
+}
+
+/* Leaflet override: z-index fix */
+.fm-wrapper .leaflet-container {
+  font-family: inherit;
+  z-index: 0;
+}
+
+.fm-wrapper .leaflet-top,
+.fm-wrapper .leaflet-bottom {
+  z-index: 500;
+}
+
+/* Footer bar */
+.fm-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+  gap: 8px;
+}
+
+.fm-footer-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #374151;
+  font-size: 0.82rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.fm-dot {
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  border-radius: 50%;
+  background: #00b14f;
+}
+
+.fm-directions-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  background: linear-gradient(135deg, #00b14f, #009a3e);
+  color: #fff;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 2px 8px rgba(0, 177, 79, 0.3);
+}
+
+.fm-directions-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 177, 79, 0.4);
+}
+
+.fm-arrow {
+  font-size: 0.9rem;
+}
+
+/* Placeholder states */
+.fm-placeholder {
+  height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 16px;
+  border: 1.5px dashed #d1d5db;
+}
+
+.fm-placeholder p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.fm-placeholder .fm-sub {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.fm-pin-icon {
+  font-size: 2rem;
+}
+
+/* Loading spinner */
+.fm-loading {
+  background: #f9fafb;
+}
+
+.fm-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #00b14f;
+  border-radius: 50%;
+  animation: fm-spin 0.8s linear infinite;
+}
+
+.fm-spinner-sm {
+  width: 14px;
+  height: 14px;
+  min-width: 14px;
+  border-width: 2px;
+}
+
+@keyframes fm-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Geocoding badge (overlay) */
+.fm-geocoding-badge {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #d1fae5;
+  color: #065f46;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+  animation: fm-fadein 0.2s ease;
+}
+
+@keyframes fm-fadein {
+  from { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* Popup style */
+.fm-popup .leaflet-popup-content {
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+/* fm-wrapper cần relative để geocoding badge overlay đúng */
+.fm-wrapper {
+  position: relative;
+}

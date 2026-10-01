@@ -27,6 +27,7 @@ const navLinks = [
   { icon: 'payments', label: 'Revenue', path: '/admin/revenue' },
   { icon: 'calendar_month', label: 'Time Slots', path: '/admin/timeslots' },
   { icon: 'inventory_2', label: 'Services', path: '/admin/services' },
+  { icon: 'settings', label: 'Settings', path: '/admin/settings' },
 ];
 
 /* ── Sub-components ── */
@@ -441,19 +442,19 @@ export default function Dashboard() {
 
   }, []);
 
-  if (loading) {
-    return <h2 style={{ padding: 20 }}>Đang tải dữ liệu...</h2>;
-  }
-
   return (
     <>
       <Sidebar />
 
       <main className="main-content">
-
         <TopHeader />
 
-        <div className="content-area">
+        {loading ? (
+          <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>
+            <h2>Đang tải dữ liệu...</h2>
+          </div>
+        ) : (
+          <div className="content-area">
 
           <div className="page-heading">
             <h2>Tổng quan hệ thống</h2>
@@ -480,6 +481,7 @@ export default function Dashboard() {
           <BookingsTable bookings={recentBookings} />
 
         </div>
+        )}
       </main>
 
       <button className="fab">

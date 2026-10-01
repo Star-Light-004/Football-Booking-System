@@ -4,10 +4,12 @@ import FieldCard from "../../components/FieldCard/FieldCard";
 import "./Fields.css";
 
 const Fields = () => {
-  const [fields, setFields] = useState([]); // OK
+  const [fields, setFields] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+
+  const ITEMS_PER_PAGE = 6;
 
   const tabs = [
     { key: "all", label: "Tất cả" },
@@ -20,18 +22,14 @@ const Fields = () => {
     const fetchFields = async () => {
       try {
         const res = await getFields();
-
         console.log("API response:", res.data);
-
-        // 🔥 FIX QUAN TRỌNG NHẤT
         const data = res.data?.fields;
 
         if (Array.isArray(data)) {
           setFields(data);
         } else {
-          setFields([]); // chống crash
+          setFields([]);
         }
-
       } catch (error) {
         console.log("Lỗi lấy sân:", error);
         setFields([]);
@@ -43,13 +41,34 @@ const Fields = () => {
     fetchFields();
   }, []);
 
+  // Lọc sân theo tab được chọn (Tất cả / 5 / 7 / 11)
+  const filteredFields = fields.filter((field) => {
+    if (activeTab === "all") return true;
+    const typeStr = String(field.field_type || "").toLowerCase();
+    return typeStr.includes(activeTab);
+  });
+
+  // Tính toán phân trang
+  const totalPages = Math.ceil(filteredFields.length / ITEMS_PER_PAGE) || 1;
+
+  // Cắt mảng hiển thị trang hiện tại
+  const paginatedFields = filteredFields.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  // Đổi tab
+  const handleTabChange = (key) => {
+    setActiveTab(key);
+    setCurrentPage(1);
+  };
+
   if (loading) {
     return <h2 style={{ padding: 20 }}>Đang tải danh sách sân...</h2>;
   }
 
   return (
     <main className="fields-page">
-
       {/* Header */}
       <div className="fields-heading">
         <h1>Danh sách sân bóng</h1>
@@ -62,17 +81,17 @@ const Fields = () => {
           <button
             key={tab.key}
             className={`fields-tab${activeTab === tab.key ? " active" : ""}`}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => handleTabChange(tab.key)}
           >
             {tab.label}
           </button>
         ))}
       </div>
 
-      {/* GRID - 🔥 FIX MAP AN TOÀN */}
+      {/* GRID */}
       <div className="fields-grid">
-        {Array.isArray(fields) && fields.length > 0 ? (
-          fields.map((field) => (
+        {paginatedFields.length > 0 ? (
+          paginatedFields.map((field) => (
             <FieldCard
               key={field.id}
               id={field.id}
@@ -86,32 +105,40 @@ const Fields = () => {
             />
           ))
         ) : (
-          <p style={{ padding: 20 }}>Không có sân nào</p>
+          <p style={{ padding: 20, gridColumn: "1 / -1" }}>Không có sân nào phù hợp với bộ lọc</p>
         )}
       </div>
 
-      {/* Pagination (giữ nguyên) */}
-      <div className="fields-pagination">
-        <button className="page-btn nav-btn">‹</button>
-        {[1, 2, 3].map((p) => (
+      {/* Pagination */}
+      {totalPages > 0 && (
+        <div className="fields-pagination">
           <button
-            key={p}
-            className={`page-btn${currentPage === p ? " active" : ""}`}
-            onClick={() => setCurrentPage(p)}
+            className="page-btn nav-btn"
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
           >
-            {p}
+            ‹
           </button>
-        ))}
-        <span className="page-ellipsis">...</span>
-        <button
-          className={`page-btn${currentPage === 10 ? " active" : ""}`}
-          onClick={() => setCurrentPage(10)}
-        >
-          10
-        </button>
-        <button className="page-btn nav-btn">›</button>
-      </div>
 
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+            <button
+              key={p}
+              className={`page-btn${currentPage === p ? " active" : ""}`}
+              onClick={() => setCurrentPage(p)}
+            >
+              {p}
+            </button>
+          ))}
+
+          <button
+            className="page-btn nav-btn"
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+          >
+            ›
+          </button>
+        </div>
+      )}
     </main>
   );
 };

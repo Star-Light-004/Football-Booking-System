@@ -61,6 +61,7 @@ def create_booking(request):
                     service_id=s['service_id'],
                     quantity=s['quantity'],
                     total_price=s.get('total_price', 0),
+                    shoe_size=s.get('shoe_size'),
                     status='active'
                 )
 
@@ -200,6 +201,7 @@ def update_booking(request, booking_id):
                     service_id=s['service_id'],
                     quantity=s['quantity'],
                     total_price=s.get('total_price', 0),
+                    shoe_size=s.get('shoe_size'),
                     status='active'
                 )
 

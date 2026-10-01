@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import "./timeslots.css";
 import timeslotsApi from "../../../api/timeslotsApi";
 import { getFields } from "../../../api/fieldsApi";
+import { useToast, ToastContainer } from "../../../components/Toast/Toast";
 
 const navLinks = [
   { icon: 'dashboard', label: 'Dashboard', path: '/admin/dashboard' },
@@ -12,6 +13,7 @@ const navLinks = [
   { icon: 'payments', label: 'Revenue', path: '/admin/revenue' },
   { icon: 'calendar_month', label: 'Time Slots', path: '/admin/timeslots' },
   { icon: 'inventory_2', label: 'Services', path: '/admin/services' },
+  { icon: 'settings', label: 'Settings', path: '/admin/settings' },
 ];
 
 /* ── Bảng giá hiển thị (bỏ 10:00-14:00) ── */
@@ -81,7 +83,7 @@ function TopHeader() {
 }
 
 /* ── Generate Modal ── */
-function GenerateModal({ onClose, onSuccess }) {
+function GenerateModal({ onClose, onSuccess, showToast }) {
   const [days, setDays] = useState(30);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -92,7 +94,7 @@ function GenerateModal({ onClose, onSuccess }) {
       const res = await timeslotsApi.generateSlots(days);
       setResult(res.data);
     } catch (err) {
-      alert("Lỗi: " + (err.response?.data?.error || err.message));
+      showToast("Lỗi: " + (err.response?.data?.error || err.message), "error");
     } finally {
       setLoading(false);
     }
@@ -202,7 +204,7 @@ function GenerateModal({ onClose, onSuccess }) {
 }
 
 /* ── Edit Modal ── */
-function EditModal({ slot, fields, onClose, onSuccess }) {
+function EditModal({ slot, fields, onClose, onSuccess, showToast }) {
   const [formData, setFormData] = useState({
     field_id: slot.field_id,
     slot_date: slot.slot_date,
@@ -218,10 +220,11 @@ function EditModal({ slot, fields, onClose, onSuccess }) {
     setLoading(true);
     try {
       await timeslotsApi.update(slot.id, formData);
+      showToast("Lưu thành công", "success");
       onSuccess();
       onClose();
     } catch (err) {
-      alert("Lỗi khi lưu: " + (err.response?.data?.error || err.message));
+      showToast("Lỗi khi lưu: " + (err.response?.data?.error || err.message), "error");
     } finally {
       setLoading(false);
     }
@@ -321,6 +324,7 @@ const Timeslots = () => {
   const [loading, setLoading] = useState(false);
   const [showGenModal, setShowGenModal] = useState(false);
   const [editingSlot, setEditingSlot] = useState(null);
+  const { toasts, removeToast, toast } = useToast();
 
   // Filters
   const [filterField, setFilterField] = useState('');
@@ -348,9 +352,10 @@ const Timeslots = () => {
     if (window.confirm("Bạn có chắc chắn muốn xóa khung giờ này?")) {
       try {
         await timeslotsApi.delete(id);
+        toast.success("Xóa khung giờ thành công!");
         fetchData();
       } catch {
-        alert("Lỗi khi xóa");
+        toast.error("Lỗi khi xóa");
       }
     }
   };
@@ -359,9 +364,10 @@ const Timeslots = () => {
     const newStatus = slot.status === 'available' ? 'blocked' : 'available';
     try {
       await timeslotsApi.update(slot.id, { ...slot, status: newStatus });
+      toast.success(`Đã cập nhật trạng thái sang ${newStatus === 'blocked' ? 'Đã khóa' : 'Trống'}`);
       fetchData();
     } catch {
-      alert("Lỗi khi cập nhật trạng thái");
+      toast.error("Lỗi khi cập nhật trạng thái");
     }
   };
 
@@ -369,10 +375,10 @@ const Timeslots = () => {
     if (!window.confirm("⚠️ Bạn có chắc muốn XÓA TOÀN BỘ slot không?\nHành động này không thể hoàn tác!")) return;
     try {
       const res = await timeslotsApi.deleteAll();
-      alert(res.data.message);
+      toast.success(res.data.message || "Đã xóa toàn bộ slot");
       fetchData();
     } catch {
-      alert('Lỗi khi xóa toàn bộ slot');
+      toast.error('Lỗi khi xóa toàn bộ slot');
     }
   };
 
@@ -396,6 +402,7 @@ const Timeslots = () => {
 
   return (
     <>
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
       <Sidebar />
       <TopHeader />
       <main className="main-content">
@@ -576,6 +583,7 @@ const Timeslots = () => {
         <GenerateModal
           onClose={() => setShowGenModal(false)}
           onSuccess={fetchData}
+          showToast={(msg, type) => toast[type || 'info'](msg)}
         />
       )}
       {editingSlot && (
@@ -584,6 +592,7 @@ const Timeslots = () => {
           fields={fields}
           onClose={() => setEditingSlot(null)}
           onSuccess={fetchData}
+          showToast={(msg, type) => toast[type || 'info'](msg)}
         />
       )}
     </>

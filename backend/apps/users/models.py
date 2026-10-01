@@ -16,6 +16,12 @@ class Admin(models.Model):
 
 
 class Customers(models.Model):
+
+    class Role(models.TextChoices):
+        CUSTOMER = 'customer', 'Khách hàng'
+        STAFF    = 'staff',    'Nhân viên'
+        ADMIN    = 'admin',    'Quản trị viên'
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
         'Admin',
@@ -31,6 +37,31 @@ class Customers(models.Model):
     address = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(blank=True, null=True)
 
+    # ── Phân quyền vai trò ──────────────────────────────────────────────────
+    role = models.CharField(
+        max_length=20,
+        choices=Role.choices,
+        default=Role.CUSTOMER,
+        verbose_name='Vai trò',
+    )
+
+    # ── Trạng thái tài khoản ─────────────────────────────────────────────────
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name='Đang hoạt động',
+        help_text='Bỏ chọn để khóa tài khoản người dùng.',
+    )
+
     class Meta:
         managed = True
         db_table = 'customers'
+        verbose_name = 'Khách hàng'
+        verbose_name_plural = 'Khách hàng'
+
+    def __str__(self):
+        return f"{self.full_name} ({self.get_role_display()})"
+
+    @property
+    def status(self):
+        """Trả về trạng thái dạng chuỗi để tương thích với serializer cũ."""
+        return 'active' if self.is_active else 'locked'

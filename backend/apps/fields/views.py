@@ -91,6 +91,8 @@ def create_football_field(request):
                 phone=request.POST.get("phone"),
                 booking_count=request.POST.get("booking_count", 0),
                 rating_avg=request.POST.get("rating_avg", 0),
+                latitude=request.POST.get("latitude") if request.POST.get("latitude") else None,
+                longitude=request.POST.get("longitude") if request.POST.get("longitude") else None,
                 is_available=True
             )
 
@@ -127,6 +129,11 @@ def update_football_field(request, id):
             field.phone = body.get("phone", field.phone)
             field.booking_count = body.get("booking_count", field.booking_count)
             field.rating_avg = body.get("rating_avg", field.rating_avg)
+            # Cập nhật tọa độ định vị
+            if 'latitude' in body:
+                field.latitude = body.get('latitude')
+            if 'longitude' in body:
+                field.longitude = body.get('longitude')
 
             # cập nhật field_type nếu có
             field_type_name = body.get("field_type")

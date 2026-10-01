@@ -4,7 +4,7 @@ import axios from "axios";
 import { BASE_URL } from "../../config";
 import "./BookingForm.css";
 
-const BookingForm = ({ fieldId, fieldName, fieldAddress, onSlotSelect, externalServicesPrice = 0, selectedServices = {} }) => {
+const BookingForm = ({ fieldId, fieldName, fieldAddress, onSlotSelect, externalServicesPrice = 0, selectedServices = {}, selectedShoeSizes = {} }) => {
 
   const today = new Date();
   const initialYear = today.getFullYear();
@@ -287,6 +287,7 @@ const BookingForm = ({ fieldId, fieldName, fieldAddress, onSlotSelect, externalS
             selectedTimeSlot,
             price,
             selectedServices,
+            selectedShoeSizes,
             totalServicePrice: externalServicesPrice,
             totalPrice
           }}

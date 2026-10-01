@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { BASE_URL } from "../../config";
 import "./MyBookings.css";
+import { useToast, ToastContainer } from "../../components/Toast/Toast";
 
 const BookingServiceRowItems = ({ bookingId }) => {
   const [services, setServices] = useState([]);
@@ -29,7 +30,7 @@ const BookingServiceRowItems = ({ bookingId }) => {
             <img src={s.service_image} alt={s.service_name} style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '4px' }} />
           )}
           <span className="service-tag">
-            {s.service_name} x{s.quantity}
+            {s.service_name}{s.shoe_size ? ` - size ${s.shoe_size}` : ''} x{s.quantity}
           </span>
         </div>
       ))}
@@ -45,6 +46,7 @@ const MyBookings = () => {
   const [submitError, setSubmitError] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [user, setUser] = useState(null);
+  const { toasts, removeToast, toast } = useToast();
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem("user"));
@@ -120,15 +122,15 @@ const MyBookings = () => {
       });
 
       if (response.ok) {
-        alert("Đã hủy đặt sân thành công!");
+        toast.success("Đã hủy đặt sân thành công!");
         fetchMyBookings(user.id);
       } else {
         const data = await response.json();
-        alert(data.error || "Có lỗi xảy ra khi hủy đặt sân");
+        toast.error(data.error || "Có lỗi xảy ra khi hủy đặt sân");
       }
     } catch (error) {
       console.error("Lỗi khi hủy đặt sân:", error);
-      alert("Lỗi kết nối máy chủ");
+      toast.error("Lỗi kết nối máy chủ");
     }
   };
 
@@ -141,6 +143,7 @@ const MyBookings = () => {
 
   return (
     <div className="my-bookings-container">
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
       <aside className="my-bookings-sidebar">
         <div className="profile-card">
           <div className="profile-image-container">

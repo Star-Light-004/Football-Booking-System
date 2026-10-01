@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "./Lookup.css";
 import { BASE_URL } from "../../config";
+import { useToast, ToastContainer } from "../../components/Toast/Toast";
 
 const BookingResultItem = ({ booking, formatDateLong, maskPhone, onReviewClick }) => {
   const [services, setServices] = useState([]);
@@ -71,7 +72,7 @@ const BookingResultItem = ({ booking, formatDateLong, maskPhone, onReviewClick }
                       <img src={s.service_image} alt={s.service_name} style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '4px' }} />
                     )}
                     <span className="inline-flex items-center px-2 py-1 rounded bg-slate-100 text-slate-700 text-[10px] font-bold">
-                      {s.service_name} x{s.quantity}
+                      {s.service_name}{s.shoe_size ? ` - size ${s.shoe_size}` : ''} x{s.quantity}
                     </span>
                   </div>
                 ))}
@@ -138,6 +139,7 @@ const Lookup = () => {
   const [submitError, setSubmitError] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [user, setUser] = useState(null);
+  const { toasts, removeToast, toast } = useToast();
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem("user"));
@@ -187,7 +189,7 @@ const Lookup = () => {
 
   const handleLookup = async () => {
     if (!phoneNumber && !bookingId) {
-      alert("Vui lòng nhập ít nhất số điện thoại hoặc mã đặt sân");
+      toast.warning("Vui lòng nhập ít nhất số điện thoại hoặc mã đặt sân");
       return;
     }
 
@@ -233,6 +235,7 @@ const Lookup = () => {
 
   return (
     <div className="lookup-page-wrapper">
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
       {/* SEARCH CARD */}
       <div className="lookup-search-card">
         <h1 className="lookup-title">Tra cứu đặt sân</h1>

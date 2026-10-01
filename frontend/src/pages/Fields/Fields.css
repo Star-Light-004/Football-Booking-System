@@ -182,7 +182,14 @@
   color: #6b7280;
   font-size: 1.1rem;
 }
- 
+
+.page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: #e5e7eb;
+  color: #9ca3af;
+}
+
 .page-ellipsis {
   font-size: 0.9rem;
   color: #6b7280;

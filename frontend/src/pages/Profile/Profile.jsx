@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "./Profile.css";
 import { updateUser } from "../../api/usersApi";
+import { useToast, ToastContainer } from "../../components/Toast/Toast";
 
 const Profile = () => {
   const [user, setUser] = useState(null);
@@ -11,6 +12,7 @@ const Profile = () => {
     email: "",
   });
   const [loading, setLoading] = useState(false);
+  const { toasts, removeToast, toast } = useToast();
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -39,7 +41,7 @@ const Profile = () => {
     try {
       const response = await updateUser(user.id, formData);
       if (response.status === 200) {
-        alert("Cập nhật hồ sơ thành công!");
+        toast.success("Cập nhật hồ sơ thành công!");
         const updatedUser = { ...user, ...formData };
         setUser(updatedUser);
         localStorage.setItem("user", JSON.stringify(updatedUser));
@@ -47,7 +49,7 @@ const Profile = () => {
       }
     } catch (error) {
       console.error("Error updating profile:", error);
-      alert("Có lỗi xảy ra khi cập nhật hồ sơ!");
+      toast.error("Có lỗi xảy ra khi cập nhật hồ sơ!");
     } finally {
       setLoading(false);
     }
@@ -66,6 +68,7 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen py-16 px-4 bg-background-light dark:bg-background-dark">
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
       <div className="max-w-4xl mx-auto relative">
         <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-lg border border-slate-100 dark:border-slate-800 p-8">
           <div>

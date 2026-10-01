@@ -40,7 +40,7 @@ const Booking = () => {
         if (qty > 0) {
           const service = allServices.find(s => s.id === id);
           if (service) {
-            selected.push({ ...service, quantity: qty });
+            selected.push({ ...service, quantity: qty, shoeSize: bookingData.selectedShoeSizes?.[id] || '' });
           }
         }
       });
@@ -128,7 +128,8 @@ const Booking = () => {
           booking_id: booking_id,
           service_id: item.id,
           quantity: item.quantity,
-          total_price: item.price * item.quantity
+          total_price: item.price * item.quantity,
+          shoe_size: item.shoeSize || null
         });
       }
 
@@ -327,7 +328,7 @@ const Booking = () => {
                       <div className="bk-summary-label mt-4">DỊCH VỤ ĐÃ CHỌN</div>
                       {selectedServicesList.map(item => (
                         <div key={item.id} className="bk-price-row">
-                          <span>{item.name} (x{item.quantity})</span>
+                          <span>{item.name}{item.shoeSize ? ` - size ${item.shoeSize}` : ''} (x{item.quantity})</span>
                           <span>{(item.price * item.quantity).toLocaleString()}đ</span>
                         </div>
                       ))}

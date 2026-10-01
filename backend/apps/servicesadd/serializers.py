@@ -27,7 +27,7 @@ class BookingServicesSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BookingServices
-        fields = ['id', 'service_id', 'service_name', 'service_image', 'quantity', 'total_price', 'status']
+        fields = ['id', 'service_id', 'service_name', 'service_image', 'quantity', 'total_price', 'status', 'shoe_size']
 
     def get_service_image(self, obj):
         request = self.context.get('request')

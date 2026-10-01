@@ -2,10 +2,12 @@ import React, { useState } from "react"; // ✅ thêm useState
 import { Link, useNavigate } from "react-router-dom"; // ✅ thêm useNavigate
 import { login } from "../../api/authApi"; // ✅ thêm axios
 import "./Login.css";
+import { useToast, ToastContainer } from "../../components/Toast/Toast";
 
 const Login = () => {
 
   const navigate = useNavigate(); // ✅ thêm
+  const { toasts, removeToast, toast } = useToast();
 
   // ✅ state
   const [formData, setFormData] = useState({
@@ -33,20 +35,17 @@ const Login = () => {
       localStorage.setItem("user", JSON.stringify(res.data.user));
       window.dispatchEvent(new Event("userChanged"));
 
-      alert("Đăng nhập thành công!");
-      console.log(res.data);
-
-      // ✅ chuyển trang home
+      // ✅ chuyển trang home ngay, không hiện thông báo
       navigate("/");
 
     } catch (err) {
-      console.error(err.response?.data);
-      alert(err.response?.data?.error || "Sai tài khoản hoặc mật khẩu!");
+      toast.error(err.response?.data?.error || "Sai tài khoản hoặc mật khẩu!");
     }
   };
 
   return (
     <>
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
       <div className="login-page bg-background-light dark:bg-background-dark min-h-screen flex flex-col">
         <div className="relative min-h-screen w-full flex items-center justify-center p-4 sm:p-8">
           <div className="absolute inset-0 z-0">

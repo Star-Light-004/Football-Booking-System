@@ -4,8 +4,64 @@ import FieldCard from "../../components/FieldCard/FieldCard";
 import { getFields } from "../../api/fieldsApi";
 import "./Home.css";
 
+// ── Helper: lấy thông tin hiển thị theo role ──────────────────────────────
+const getRoleInfo = (role) => {
+  switch (role) {
+    case "admin":
+      return { label: "Quản trị viên", icon: "admin_panel_settings", color: "#ef4444", bg: "#fef2f2", border: "#fecaca" };
+    case "staff":
+      return { label: "Nhân viên", icon: "badge", color: "#f59e0b", bg: "#fffbeb", border: "#fde68a" };
+    case "customer":
+    default:
+      return { label: "Khách hàng", icon: "person", color: "#22c55e", bg: "#f0fdf4", border: "#bbf7d0" };
+  }
+};
+
+// ── Quick actions theo role ──────────────────────────────────────────────────
+const getQuickActions = (role) => {
+  const customerActions = [
+    { icon: "event_available", label: "Đặt sân ngay", desc: "Tìm và đặt sân bóng nhanh chóng", to: "/booking", color: "#22c55e" },
+    { icon: "history", label: "Lịch sử đặt sân", desc: "Xem lại các lịch đặt của bạn", to: "/my-bookings", color: "#3b82f6" },
+    { icon: "stadium", label: "Khám phá sân", desc: "Duyệt danh sách sân bóng", to: "/fields", color: "#8b5cf6" },
+    { icon: "person", label: "Hồ sơ cá nhân", desc: "Cập nhật thông tin của bạn", to: "/profile", color: "#f59e0b" },
+  ];
+  const staffActions = [
+    { icon: "event_available", label: "Quản lý đặt sân", desc: "Xem và xử lý các lịch đặt", to: "/admin/bookings", color: "#22c55e" },
+    { icon: "stadium", label: "Quản lý sân", desc: "Thêm, sửa thông tin sân bóng", to: "/admin/fields", color: "#3b82f6" },
+    { icon: "schedule", label: "Khung giờ", desc: "Quản lý time slot theo ngày", to: "/admin/timeslots", color: "#8b5cf6" },
+    { icon: "inventory_2", label: "Dịch vụ", desc: "Quản lý dịch vụ bổ trợ", to: "/admin/services", color: "#f59e0b" },
+  ];
+  const adminActions = [
+    { icon: "dashboard", label: "Dashboard", desc: "Tổng quan hệ thống", to: "/admin/dashboard", color: "#22c55e" },
+    { icon: "group", label: "Người dùng", desc: "Quản lý tài khoản người dùng", to: "/admin/users", color: "#3b82f6" },
+    { icon: "payments", label: "Doanh thu", desc: "Thống kê và báo cáo tài chính", to: "/admin/revenue", color: "#ef4444" },
+    { icon: "settings", label: "Cài đặt", desc: "Cấu hình hệ thống", to: "/admin/settings", color: "#8b5cf6" },
+  ];
+  switch (role) {
+    case "admin":   return adminActions;
+    case "staff":   return staffActions;
+    default:        return customerActions;
+  }
+};
+
 const Home = () => {
   const [featured, setFeatured] = useState([]);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    // Lấy user từ localStorage
+    const loadUser = () => {
+      const stored = localStorage.getItem("user");
+      setUser(stored ? JSON.parse(stored) : null);
+    };
+    loadUser();
+    window.addEventListener("userChanged", loadUser);
+    window.addEventListener("storage", loadUser);
+    return () => {
+      window.removeEventListener("userChanged", loadUser);
+      window.removeEventListener("storage", loadUser);
+    };
+  }, []);
 
   useEffect(() => {
     const fetchFields = async () => {
@@ -55,6 +111,83 @@ const Home = () => {
             </div>
           </div>
         </section>
+
+        {/* ── Welcome + Role Section (chỉ hiển thị khi đã đăng nhập) ── */}
+        {user && (() => {
+          const roleInfo = getRoleInfo(user.role);
+          const quickActions = getQuickActions(user.role);
+          return (
+            <section className="py-10 px-4 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-800 border-b border-slate-100 dark:border-slate-700">
+              <div className="max-w-7xl mx-auto">
+                {/* Lời chào + role */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
+                  <div className="flex items-center gap-4">
+                    <div
+                      className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-md"
+                      style={{ background: roleInfo.bg, border: `2px solid ${roleInfo.border}` }}
+                    >
+                      <span
+                        className="material-symbols-outlined text-3xl"
+                        style={{ color: roleInfo.color }}
+                      >
+                        {roleInfo.icon}
+                      </span>
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100">
+                        Xin chào, <span style={{ color: roleInfo.color }}>{user.full_name || user.fullname || user.phone || "bạn"}</span>!
+                      </h2>
+                      {/* Badge role */}
+                      <span
+                        className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full mt-1.5"
+                        style={{
+                          color: roleInfo.color,
+                          background: roleInfo.bg,
+                          border: `1px solid ${roleInfo.border}`,
+                        }}
+                      >
+                        <span className="material-symbols-outlined text-sm" style={{ fontSize: '14px' }}>
+                          {roleInfo.icon}
+                        </span>
+                        {roleInfo.label}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="sm:ml-auto text-sm text-slate-400 dark:text-slate-500 hidden sm:block">
+                    {new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                  </div>
+                </div>
+
+                {/* Quick Action Cards theo role */}
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {quickActions.map(({ icon, label, desc, to, color }) => (
+                    <Link
+                      key={to}
+                      to={to}
+                      className="group bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl p-5 flex flex-col gap-3 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+                    >
+                      <div
+                        className="w-11 h-11 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110"
+                        style={{ background: `${color}18`, border: `1.5px solid ${color}30` }}
+                      >
+                        <span
+                          className="material-symbols-outlined text-2xl"
+                          style={{ color }}
+                        >
+                          {icon}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-800 dark:text-slate-100 text-sm">{label}</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 leading-relaxed">{desc}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </section>
+          );
+        })()}
         {/* Search bar */}
         <section className="relative -mt-16 z-20 px-4">
           <div className="max-w-5xl mx-auto bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 md:p-8 border border-slate-100 dark:border-slate-700">

@@ -119,6 +119,7 @@ def create_booking_service(request):
             service_id=data.get('service_id'),
             quantity=data.get('quantity', 1),
             total_price=data.get('total_price'),
+            shoe_size=data.get('shoe_size'),
             status='active'
         )
         return Response({

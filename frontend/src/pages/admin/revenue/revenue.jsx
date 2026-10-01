@@ -11,6 +11,7 @@ const navLinks = [
   { icon: 'payments', label: 'Revenue', path: '/admin/revenue' },
   { icon: 'calendar_month', label: 'Time Slots', path: '/admin/timeslots' },
   { icon: 'inventory_2', label: 'Services', path: '/admin/services' },
+  { icon: 'settings', label: 'Settings', path: '/admin/settings' },
 ];
 
 const barData = [

@@ -3,6 +3,19 @@ import { Link, useLocation } from "react-router-dom";
 import "./Navbar.css";
 import notificationsApi from "../../api/notificationsApi";
 
+// ── Helper: lấy thông tin hiển thị theo role ──────────────────────────────
+const getRoleInfo = (role) => {
+  switch (role) {
+    case "admin":
+      return { label: "Quản trị viên", color: "#ef4444", bg: "#fef2f2", border: "#fecaca" };
+    case "staff":
+      return { label: "Nhân viên", color: "#f59e0b", bg: "#fffbeb", border: "#fde68a" };
+    case "customer":
+    default:
+      return { label: "Khách hàng", color: "#22c55e", bg: "#f0fdf4", border: "#bbf7d0" };
+  }
+};
+
 const Navbar = () => {
   const location = useLocation();
   // ✅ state user
@@ -124,24 +137,34 @@ const Navbar = () => {
           {/* Menu */}
           <nav className="navbar-menu">
             {[
-              { to: "/", label: "Trang chủ", icon: "home" },
-              { to: "/fields", label: "Sân bóng", icon: "stadium" },
-              { to: "/booking", label: "Đặt sân", icon: "event_available" },
-              { to: "/lookup", label: "Tra cứu", icon: "search" },
-              { to: "/my-bookings", label: "Lịch sử", icon: "history" },
-            ].map(({ to, label, icon }) => {
-              const isActive = location.pathname === to || (to !== "/" && location.pathname.startsWith(to));
-              return (
-                <Link
-                  key={to}
-                  to={to}
-                  className={`navbar-menu-link${isActive ? " active" : ""}`}
-                >
-                  <span className="material-symbols-outlined navbar-menu-icon">{icon}</span>
-                  {label}
-                </Link>
-              );
-            })}
+              { to: "/", label: "Trang chủ", icon: "home", roles: null },
+              { to: "/fields", label: "Sân bóng", icon: "stadium", roles: null },
+              // Chỉ customer và staff mới thấy "Đặt sân"
+              { to: "/booking", label: "Đặt sân", icon: "event_available", roles: ["customer", "staff", "admin"] },
+              { to: "/lookup", label: "Tra cứu", icon: "search", roles: null },
+              // Chỉ user đã đăng nhập mới thấy "Lịch sử"
+              { to: "/my-bookings", label: "Lịch sử", icon: "history", roles: ["customer", "staff", "admin"] },
+              // Admin và staff thấy link quản trị
+              { to: "/admin/dashboard", label: "Quản trị", icon: "admin_panel_settings", roles: ["admin", "staff"] },
+            ]
+              .filter(({ roles }) => {
+                if (!roles) return true; // public
+                if (!user) return false; // cần login
+                return roles.includes(user.role);
+              })
+              .map(({ to, label, icon }) => {
+                const isActive = location.pathname === to || (to !== "/" && location.pathname.startsWith(to));
+                return (
+                  <Link
+                    key={to}
+                    to={to}
+                    className={`navbar-menu-link${isActive ? " active" : ""}`}
+                  >
+                    <span className="material-symbols-outlined navbar-menu-icon">{icon}</span>
+                    {label}
+                  </Link>
+                );
+              })}
           </nav>
 
           {/* Auth */}
@@ -239,9 +262,27 @@ const Navbar = () => {
                     </div>
                   </div>
 
-                  <span className="text-sm font-semibold text-primary hidden md:block">
-                    Xin chào, {user?.full_name || user?.fullname || user?.phone || "bạn"}
-                  </span>
+                  <div className="hidden md:flex flex-col items-start">
+                    <span className="text-sm font-semibold text-primary leading-tight">
+                      Xin chào, {user?.full_name || user?.fullname || user?.phone || "bạn"}
+                    </span>
+                    {/* Role badge */}
+                    {user?.role && (() => {
+                      const roleInfo = getRoleInfo(user.role);
+                      return (
+                        <span
+                          className="text-[10px] font-bold px-2 py-0.5 rounded-full mt-0.5 leading-none"
+                          style={{
+                            color: roleInfo.color,
+                            background: roleInfo.bg,
+                            border: `1px solid ${roleInfo.border}`,
+                          }}
+                        >
+                          {roleInfo.label}
+                        </span>
+                      );
+                    })()}
+                  </div>
                   
                   {/* User Profile Dropdown */}
                   <div className="relative group">
@@ -250,7 +291,28 @@ const Navbar = () => {
                     </button>
                     
                     {/* Dropdown Menu */}
-                    <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 opacity-0 invisible group-hover:opacity-100 group-hover:visible translate-y-2 group-hover:translate-y-0 transition-all duration-300 z-[100] overflow-hidden">
+                    <div className="absolute right-0 mt-2 w-60 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 opacity-0 invisible group-hover:opacity-100 group-hover:visible translate-y-2 group-hover:translate-y-0 transition-all duration-300 z-[100] overflow-hidden">
+                      {/* User info header trong dropdown */}
+                      <div className="px-4 py-3 bg-slate-50/70 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                        <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">
+                          {user?.full_name || user?.fullname || user?.phone}
+                        </p>
+                        {user?.role && (() => {
+                          const roleInfo = getRoleInfo(user.role);
+                          return (
+                            <span
+                              className="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full mt-1"
+                              style={{
+                                color: roleInfo.color,
+                                background: roleInfo.bg,
+                                border: `1px solid ${roleInfo.border}`,
+                              }}
+                            >
+                              {roleInfo.label}
+                            </span>
+                          );
+                        })()}
+                      </div>
                       <div className="p-2">
                         <Link 
                           to="/profile" 
@@ -259,6 +321,17 @@ const Navbar = () => {
                           <span className="material-symbols-outlined text-xl">person</span>
                           Thông tin của tôi
                         </Link>
+
+                        {/* Chỉ admin và staff mới thấy link quản trị trong dropdown */}
+                        {(user?.role === "admin" || user?.role === "staff") && (
+                          <Link 
+                            to="/admin/dashboard" 
+                            className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary rounded-xl transition-all"
+                          >
+                            <span className="material-symbols-outlined text-xl">admin_panel_settings</span>
+                            Trang quản trị
+                          </Link>
+                        )}
                         
                         <div className="h-px bg-slate-100 dark:bg-slate-800 my-1 mx-2"></div>
                         

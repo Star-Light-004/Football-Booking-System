@@ -8,12 +8,9 @@ Hệ thống đặt sân bóng đá nhân tạo trực tuyến, cho phép ngư�
 
 - [Tổng quan công nghệ](#-tổng-quan-công-nghệ)
 - [Cấu trúc dự án](#-cấu-trúc-dự-án)
-- [Mô hình dữ liệu](#-mô-hình-dữ-liệu)
 - [Chức năng người dùng](#-chức-năng-người-dùng)
 - [Chức năng Admin](#-chức-năng-admin)
-- [API Endpoints](#-api-endpoints)
-- [Hướng dẫn cài đặt](#-hướng-dẫn-cài-đặt)
-- [Biến môi trường](#-biến-môi-trường)
+- [Lưu ý](#-lưu-ý)
 
 ---
 
@@ -26,6 +23,7 @@ Hệ thống đặt sân bóng đá nhân tạo trực tuyến, cho phép ngư�
 | **Database** | PostgreSQL                                   |
 | **Auth**     | Session-based (custom, password hashing)     |
 | **Media**    | Django Media Files (ảnh sân, dịch vụ)        |
+| **Bản đồ**   | Leaflet.js, OpenStreetMap (Geocoding)        |
 | **CORS**     | django-cors-headers                          |
 | **Timezone** | Asia/Ho_Chi_Minh                             |
 
@@ -109,6 +107,7 @@ football-booking-system/
 
 ### 📋 Chi tiết sân (`/fields/:id`)
 - Xem đầy đủ thông tin sân: mô tả, giờ hoạt động, số điện thoại, ảnh.
+- **Bản đồ định vị thông minh (Leaflet)**: tự động hiển thị vị trí sân và nút chỉ đường qua Google Maps.
 - Xem **danh sách đánh giá & nhận xét** từ người dùng đã đặt sân.
 - Nút đặt sân trực tiếp từ trang chi tiết.
 
@@ -158,8 +157,8 @@ Khu vực admin có giao diện riêng biệt (**Pitch & Pulse Admin Console**) 
 
 ### 🏟️ Quản lý sân (`/admin/fields`)
 - Xem danh sách toàn bộ sân bóng.
-- **Thêm sân mới**: tên, loại sân, vị trí, địa chỉ, giá, giờ, ảnh, tọa độ.
-- **Sửa thông tin sân**: cập nhật bất kỳ trường nào.
+- **Thêm/Sửa sân**: tên, loại sân, vị trí, địa chỉ, giá, giờ, ảnh, tọa độ.
+- **Định vị bản đồ tự động**: Gõ địa chỉ sân, hệ thống sẽ tự động bắt tọa độ (Latitude, Longitude) thông qua Nominatim API kèm theo Live Map Preview.
 - **Xóa sân** khỏi hệ thống.
 - Bật/tắt trạng thái hoạt động của sân.
 

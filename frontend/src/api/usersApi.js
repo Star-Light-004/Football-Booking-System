@@ -16,6 +16,10 @@ export const updateUser = async (id, data) => {
   return await axios.put(`${BASE_URL}/users/${id}/update/`, data);
 };
 
+export const toggleUserStatus = async (id) => {
+  return await axios.patch(`${BASE_URL}/users/${id}/toggle-status/`);
+};
+
 export const deleteUser = async (id) => {
   return await axios.delete(`${BASE_URL}/users/${id}/delete/`);
 };

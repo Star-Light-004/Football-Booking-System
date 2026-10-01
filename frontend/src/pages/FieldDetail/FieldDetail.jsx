@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { getFieldDetail } from "../../api/fieldsApi";
 import BookingForm from "../../components/BookingForm/BookingForm";
 import ServiceSection from '../../components/ServiceSection/ServiceSection';
+import FieldMap from '../../components/FieldMap/FieldMap';
 import { BASE_URL } from "../../config";
 import "./FieldDetail.css";
 
@@ -35,11 +36,13 @@ const FieldDetail = () => {
 
   // Services State
   const [selectedServices, setSelectedServices] = useState({});
+  const [selectedShoeSizes, setSelectedShoeSizes] = useState({});
   const [totalServicePrice, setTotalServicePrice] = useState(0);
 
-  const handleServicesChange = (quantities, total) => {
+  const handleServicesChange = (quantities, total, shoeSizes) => {
     setSelectedServices(quantities);
     setTotalServicePrice(total);
+    setSelectedShoeSizes(shoeSizes || {});
   };
 
   /* Nhận update từ BookingForm */
@@ -323,17 +326,18 @@ const FieldDetail = () => {
               onSlotSelect={handleSlotSelect}
               externalServicesPrice={totalServicePrice}
               selectedServices={selectedServices}
+              selectedShoeSizes={selectedShoeSizes}
             />
 
             {/* Map card */}
             <div className="fd-map-card">
-              <div className="fd-map-placeholder">
-                <span className="fd-map-pin">📍</span>
-              </div>
-              <div className="fd-map-footer">
-                <span>Xem trên bản đồ</span>
-                <a href="#" className="fd-map-link">Chỉ đường ↗</a>
-              </div>
+              <FieldMap
+                lat={field.latitude}
+                lng={field.longitude}
+                address={field.address}
+                location={field.location}
+                fieldName={field.field_name}
+              />
             </div>
           </div>
         </aside>

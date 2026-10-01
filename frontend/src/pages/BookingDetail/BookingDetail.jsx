@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { getBookingServices } from "../../api/servicesApi";
 import "./BookingDetail.css";
+import { useToast, ToastContainer } from "../../components/Toast/Toast";
+import { BASE_URL } from "../../config";
 
 const BookingDetail = () => {
   const { id } = useParams();
@@ -9,6 +11,7 @@ const BookingDetail = () => {
   const [booking, setBooking] = useState(null);
   const [services, setServices] = useState([]);
   const [loadingServices, setLoadingServices] = useState(false);
+  const { toasts, removeToast, toast } = useToast();
 
   const location = useLocation();
 
@@ -48,15 +51,15 @@ const BookingDetail = () => {
       });
 
       if (response.ok) {
-        alert("Đã hủy đặt sân thành công!");
+        toast.success("Đã hủy đặt sân thành công!");
         setBooking({ ...booking, status: "Cancelled" });
       } else {
         const data = await response.json();
-        alert(data.error || "Có lỗi xảy ra khi hủy đặt sân");
+        toast.error(data.error || "Có lỗi xảy ra khi hủy đặt sân");
       }
     } catch (error) {
       console.error("Lỗi khi hủy đặt sân:", error);
-      alert("Lỗi kết nối máy chủ");
+      toast.error("Lỗi kết nối máy chủ");
     }
   };
 
@@ -64,6 +67,7 @@ const BookingDetail = () => {
 
   return (
     <main className="flex-1 w-full max-w-[960px] mx-auto px-4 py-8 md:py-12">
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-primary/5 p-6 md:p-8">
         <div className="mb-6">
           <Link to="/my-bookings" className="text-primary hover:underline">
@@ -133,7 +137,7 @@ const BookingDetail = () => {
                 {services.map(item => (
                   <div key={item.id} className="flex justify-between items-center">
                     <div>
-                      <p className="font-semibold text-slate-800 dark:text-slate-200">{item.service_name}</p>
+                      <p className="font-semibold text-slate-800 dark:text-slate-200">{item.service_name}{item.shoe_size ? ` - size ${item.shoe_size}` : ''}</p>
                       <p className="text-xs text-slate-500">Số lượng: {item.quantity}</p>
                     </div>
                     <span className="font-bold text-primary">{item.total_price.toLocaleString()}đ</span>

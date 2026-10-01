@@ -280,12 +280,12 @@ body {
 /* ─── Main Content ─── */
 .main-content {
   margin-left: 16rem;
-  padding: 2rem;
+  padding: 1.5rem;
   min-height: 100vh;
 }
 
 .content-inner {
-  max-width: 80rem;
+  max-width: 100%;
   margin: 0 auto;
 }
 
@@ -812,6 +812,23 @@ tbody td {
   opacity: 0.5;
   cursor: default;
 }
+
+.btn-view-calendar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-left: 0.75rem;
+  padding: 0.7rem 1rem;
+  background: #059669;
+  color: #fff;
+  border: none;
+  border-radius: 0.6rem;
+  cursor: pointer;
+  font: 600 0.8rem var(--font-main);
+  text-decoration: none;
+}
+.btn-view-calendar:hover { background: #047857; }
+.btn-view-calendar .material-symbols-outlined { font-size: 1.1rem; }
 
 /* ─── Stats Overview Cards ─── */
 .stats-grid {

@@ -4,6 +4,7 @@ import { getServices, createBookingService } from "../../../api/servicesApi"; //
 import axios from "axios";
 import { BASE_URL } from "../../../config";
 import './services.css';
+import { useToast, ToastContainer } from '../../../components/Toast/Toast';
 
 /* ── Data ── */
 const navLinks = [
@@ -14,6 +15,7 @@ const navLinks = [
   { icon: 'payments', label: 'Revenue', path: '/admin/revenue' },
   { icon: 'calendar_month', label: 'Time Slots', path: '/admin/timeslots' },
   { icon: 'inventory_2', label: 'Services', path: '/admin/services' },
+  { icon: 'settings', label: 'Settings', path: '/admin/settings' },
 ];
 
 /* ── Sub-components ── */
@@ -160,6 +162,7 @@ export default function AdminServices() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingService, setEditingService] = useState(null);
+  const { toasts, removeToast, toast } = useToast();
 
   const stats = {
     total: services.length,
@@ -193,85 +196,85 @@ export default function AdminServices() {
     if (window.confirm("Bạn có chắc chắn muốn xóa dịch vụ này không?")) {
       try {
         await axios.delete(`${BASE_URL}/services/list/${id}/`);
-        alert("Xóa dịch vụ thành công");
-        fetchServices();
+        toast.success("Xóa dịch vụ thành công!");
+        fetchInitialData();
       } catch (error) {
-        alert("Lỗi khi xóa dịch vụ");
+        toast.error("Lỗi khi xóa dịch vụ");
       }
     }
   };
 
-  if (loading) return (
-    <div className="admin-services-page">
-      <Sidebar />
-      <div className="main-content flex items-center justify-center">
-        <h2 className="animate-pulse text-slate-400">Đang tải danh sách dịch vụ...</h2>
-      </div>
-    </div>
-  );
-
   return (
     <div className="admin-services-page">
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
       <Sidebar />
       <div className="admin-services-container">
         <TopHeader onAdd={() => { setEditingService(null); setShowModal(true); }} />
 
         <main className="main-content">
-          <div className="page-header-alt">
-            <div className="header-text">
-              <h2 className="text-3xl font-bold text-slate-800">Hệ thống dịch vụ</h2>
-              <p className="text-slate-500">Quản lý kho hàng, giá cả và trạng thái của các dịch vụ đi kèm.</p>
+          {loading ? (
+            <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>
+              <h2>Đang tải danh sách dịch vụ...</h2>
             </div>
-            <button className="btn-primary-gradient" onClick={() => { setEditingService(null); setShowModal(true); }}>
-              <span className="material-symbols-outlined">add</span>
-              Thêm dịch vụ mới
-            </button>
-          </div>
+          ) : (
+            <>
+              <div className="page-header-alt">
+                <div className="header-text">
+                  <h2 className="text-3xl font-bold text-slate-800">Hệ thống dịch vụ</h2>
+                  <p className="text-slate-500">Quản lý kho hàng, giá cả và trạng thái của các dịch vụ đi kèm.</p>
+                </div>
+                <button className="btn-primary-gradient" onClick={() => { setEditingService(null); setShowModal(true); }}>
+                  <span className="material-symbols-outlined">add</span>
+                  Thêm dịch vụ mới
+                </button>
+              </div>
 
-          <div className="stats-row">
-            <div className="stat-card-mini">
-              <div className="stat-icon-bg blue">
-                <span className="material-symbols-outlined">inventory_2</span>
+              <div className="stats-row">
+                <div className="stat-card-mini">
+                  <div className="stat-icon-bg blue">
+                    <span className="material-symbols-outlined">inventory_2</span>
+                  </div>
+                  <div className="stat-info">
+                    <span className="stat-label">Tổng dịch vụ</span>
+                    <span className="stat-value">{stats.total}</span>
+                  </div>
+                </div>
+                <div className="stat-card-mini">
+                  <div className="stat-icon-bg green">
+                    <span className="material-symbols-outlined">package_2</span>
+                  </div>
+                  <div className="stat-info">
+                    <span className="stat-label">Tổng tồn kho</span>
+                    <span className="stat-value">{stats.inStock}</span>
+                  </div>
+                </div>
+                <div className="stat-card-mini">
+                  <div className="stat-icon-bg orange">
+                    <span className="material-symbols-outlined">warning</span>
+                  </div>
+                  <div className="stat-info">
+                    <span className="stat-label">Sắp hết hàng</span>
+                    <span className="stat-value">{stats.lowStock}</span>
+                  </div>
+                </div>
+                <div className="stat-card-mini">
+                  <div className="stat-icon-bg purple">
+                    <span className="material-symbols-outlined">check_circle</span>
+                  </div>
+                  <div className="stat-info">
+                    <span className="stat-label">Đang kinh doanh</span>
+                    <span className="stat-value">{stats.active}</span>
+                  </div>
+                </div>
               </div>
-              <div className="stat-info">
-                <span className="stat-label">Tổng dịch vụ</span>
-                <span className="stat-value">{stats.total}</span>
-              </div>
-            </div>
-            <div className="stat-card-mini">
-              <div className="stat-icon-bg green">
-                <span className="material-symbols-outlined">package_2</span>
-              </div>
-              <div className="stat-info">
-                <span className="stat-label">Tổng tồn kho</span>
-                <span className="stat-value">{stats.inStock}</span>
-              </div>
-            </div>
-            <div className="stat-card-mini">
-              <div className="stat-icon-bg orange">
-                <span className="material-symbols-outlined">warning</span>
-              </div>
-              <div className="stat-info">
-                <span className="stat-label">Sắp hết hàng</span>
-                <span className="stat-value">{stats.lowStock}</span>
-              </div>
-            </div>
-            <div className="stat-card-mini">
-              <div className="stat-icon-bg purple">
-                <span className="material-symbols-outlined">check_circle</span>
-              </div>
-              <div className="stat-info">
-                <span className="stat-label">Đang kinh doanh</span>
-                <span className="stat-value">{stats.active}</span>
-              </div>
-            </div>
-          </div>
 
-          <ServicesTable
-            services={services}
-            onEdit={(s) => { setEditingService(s); setShowModal(true); }}
-            onDelete={handleDelete}
-          />
+              <ServicesTable
+                services={services}
+                onEdit={(s) => { setEditingService(s); setShowModal(true); }}
+                onDelete={handleDelete}
+              />
+            </>
+          )}
         </main>
       </div>
 
@@ -281,13 +284,14 @@ export default function AdminServices() {
           availableFields={fields}
           onClose={() => setShowModal(false)}
           onSuccess={fetchInitialData}
+          showToast={(msg, type) => toast[type || 'info'](msg)}
         />
       )}
     </div>
   );
 }
 
-function ServiceModal({ service, availableFields, onClose, onSuccess }) {
+function ServiceModal({ service, availableFields, onClose, onSuccess, showToast }) {
   const [name, setName] = useState(service?.name || "");
   const [price, setPrice] = useState(service?.price || "");
   const [category, setCategory] = useState(service?.category || "Nước uống");
@@ -309,7 +313,7 @@ function ServiceModal({ service, availableFields, onClose, onSuccess }) {
 
   const handleSubmit = async () => {
     if (!name || !price) {
-      alert("Vui lòng nhập tên và giá");
+      showToast("Vui lòng nhập tên và giá", "warning");
       return;
     }
 
@@ -337,15 +341,15 @@ function ServiceModal({ service, availableFields, onClose, onSuccess }) {
 
       if (service) {
         await axios.put(`${BASE_URL}/services/list/${service.id}/`, formData, config);
-        alert("Cập nhật thành công");
+        showToast("Cập nhật thành công", "success");
       } else {
         await axios.post(`${BASE_URL}/services/list/`, formData, config);
-        alert("Thêm thành công");
+        showToast("Thêm thành công", "success");
       }
       onSuccess();
       onClose();
     } catch (error) {
-      alert("Có lỗi xảy ra");
+      showToast("Có lỗi xảy ra", "error");
     } finally {
       setLoading(false);
     }
