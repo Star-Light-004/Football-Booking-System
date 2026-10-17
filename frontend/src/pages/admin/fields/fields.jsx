@@ -1,63 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink } from "react-router-dom";
-import { getFields, createField, updateField, deleteField } from "../../../api/fieldsApi";
-import { SERVER_URL } from '../../../config';
+import { getFields, getFieldDetail, createField, updateField, deleteField } from "../../../api/fieldsApi";
+import { BASE_URL, SERVER_URL } from '../../../config';
 import FieldMap from '../../../components/FieldMap/FieldMap';
 import './fields.css';
 import { useToast, ToastContainer } from '../../../components/Toast/Toast';
-/* ── Data ── */
-const navLinks = [
-  { icon: 'dashboard', label: 'Dashboard', path: '/admin/dashboard' },
-  { icon: 'stadium', label: 'Fields', path: '/admin/fields' },
-  { icon: 'event_available', label: 'Bookings', path: '/admin/bookings' },
-  { icon: 'group', label: 'Users', path: '/admin/users' },
-  { icon: 'payments', label: 'Revenue', path: '/admin/revenue' },
-  { icon: 'calendar_month', label: 'Time Slots', path: '/admin/timeslots' },
-  { icon: 'inventory_2', label: 'Services', path: '/admin/services' },
-  { icon: 'settings', label: 'Settings', path: '/admin/settings' },
-];
- 
+import AdminSidebar from '../../../components/AdminSidebar/AdminSidebar';
 
- 
 /* ── Sub-components ── */
-function Sidebar() {
-  return (
-    <aside className="sidebar">
-      <div className="sidebar-logo">
-        <h1>Pitch & Pulse</h1>
-        <p>Admin Console</p>
-      </div>
-
-      <nav className="sidebar-nav">
-        {navLinks.map(({ icon, label, path }) => (
-          <NavLink
-            key={label}
-            to={path}
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
-          >
-            <span className="material-symbols-outlined">{icon}</span>
-            <span>{label}</span>
-          </NavLink>
-        ))}
-      </nav>
-
-      <div className="sidebar-profile">
-        <div className="sidebar-profile-inner">
-          <img
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCdrldOeo6h3tM4QUVTdRQOYTA9M_VjtM_il1LKwVnnvhcmyq8d56rpUZQIWwZu1JacVmvA2zrYEaKa5HHxXST08yBkGMk1d8rH7qF3UDFZYy7Qd_V1qe3d-XNTWHFt5PAyDMxqk6bEF7sZ4nSvdutiOjcYSSc2ZMloqVfT_yXbhRf00269pZLMfxm6lrEUG3HdsqeEYVnBT_TSJX3dZmsHnenBWSC3iWMj_tgKDsEDq4BK_lFeMNYi8VVfMkeMVawVdxfBGofmzV0"
-            alt="Admin"
-          />
-          <div>
-            <p className="profile-name">Admin Panel</p>
-            <p className="profile-role">Super User</p>
-          </div>
-        </div>
-      </div>
-    </aside>
-  );
-}
 function TopHeader() {
   return (
     <header className="top-header">
@@ -74,7 +24,7 @@ function TopHeader() {
           <span className="material-symbols-outlined">help_outline</span>
         </button>
         <div className="header-divider" />
-        <button className="btn-new-booking">New Booking</button>
+        <button className="btn-new-booking" type="button"><span className="material-symbols-outlined">add</span>Đặt sân mới</button>
       </div>
     </header>
   );
@@ -128,139 +78,124 @@ function FilterControls({ fields, activeType, onTypeChange, onFiltered }) {
   );
 }
  
-function FieldsTable({ fields, onEdit, onDelete }) {
+function FieldsTable({ fields, onView, onEdit, onDelete }) {
   return (
-    <div className="table-card">
-      <div className="table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>Tên sân</th>
-              <th>Loại sân</th>
-              <th>Giá thuê/giờ</th>
-              <th>Lượt đặt</th>
-              <th>Đánh giá</th>
-              <th>SĐT</th>
-              <th>Trạng thái</th>
-              <th className="right">Thao tác</th>
-            </tr>
-          </thead>
-         <tbody>
+    <div className="fields-grid-container">
+      <div className="fields-grid">
+        {fields.map((f) => (
+          <div key={f.id} className="field-card">
+            <div className="field-card-image">
+              {f.image ? (
+                <img
+                  src={`${SERVER_URL}${f.image}`}
+                  alt={f.field_name}
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.parentNode.innerHTML =
+                      '<span class="material-symbols-outlined" style="font-size:3rem;color:#a1a1aa;margin:auto;display:flex;align-items:center;justify-content:center;height:100%">stadium</span>';
+                  }}
+                />
+              ) : (
+                <span className="material-symbols-outlined"
+                  style={{ fontSize: '3rem', color: '#a1a1aa', margin: 'auto',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                  stadium
+                </span>
+              )}
+              <div className="field-card-badge">
+                <span className={`type-badge ${f.field_type?.includes('5') ? 'san5' : f.field_type?.includes('7') ? 'san7' : 'san11'}`}>
+                  {f.field_type}
+                </span>
+              </div>
+            </div>
 
-  {fields.map((f) => (
+            <div className="field-card-content">
+              <h3 className="field-card-name">{f.field_name}</h3>
+              <p className="field-card-location">
+                <span className="material-symbols-outlined">location_on</span>
+                {f.location}
+              </p>
 
-    <tr key={f.id}>
+              <div className="field-card-info">
+                <div className="info-item">
+                  <span className="material-symbols-outlined">payments</span>
+                  <div>
+                    <small>Giá/giờ</small>
+                    <strong>{f.price_per_hour?.toLocaleString()}đ</strong>
+                  </div>
+                </div>
+                <div className="info-item">
+                  <span className="material-symbols-outlined">event_available</span>
+                  <div>
+                    <small>Lượt đặt</small>
+                    <strong>{f.booking_count || 0}</strong>
+                  </div>
+                </div>
+                <div className="info-item">
+                  <span className="material-symbols-outlined">star</span>
+                  <div>
+                    <small>Đánh giá</small>
+                    <strong>{f.rating_avg || 0}/5</strong>
+                  </div>
+                </div>
+                <div className="info-item">
+                  <span className="material-symbols-outlined">phone</span>
+                  <div>
+                    <small>SĐT</small>
+                    <strong>{f.phone || '-'}</strong>
+                  </div>
+                </div>
+              </div>
 
-      <td>
-        <div className="field-cell">
+              <div className="field-card-status">
+                <small>Trạng thái</small>
+                {f.is_available ? (
+                  <span className="status-badge ready">
+                    <span className="dot" />
+                    Sẵn sàng
+                  </span>
+                ) : (
+                  <span className="status-badge maintenance">
+                    <span className="dot" />
+                    Đang bảo trì
+                  </span>
+                )}
+              </div>
 
-          <div className="field-thumb">
-            {f.image ? (
-              <img
-                src={`${SERVER_URL}${f.image}`}
-                alt="field"
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                  e.target.parentNode.innerHTML =
-                    '<span class="material-symbols-outlined" style="font-size:1.5rem;color:#a1a1aa;margin:auto;display:flex;align-items:center;justify-content:center;height:100%">stadium</span>';
-                }}
-              />
-            ) : (
-              <span className="material-symbols-outlined"
-                style={{ fontSize: '1.5rem', color: '#a1a1aa', margin: 'auto',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                stadium
-              </span>
-            )}
+              <div className="field-card-actions">
+                <button
+                  className="card-action-btn view"
+                  onClick={() => onView(f)}
+                  title="Xem chi tiết"
+                >
+                  <span className="material-symbols-outlined">visibility</span>
+                  Xem
+                </button>
+                <button
+                  className="card-action-btn edit"
+                  onClick={() => onEdit(f)}
+                  title="Chỉnh sửa"
+                >
+                  <span className="material-symbols-outlined">edit</span>
+                  Sửa
+                </button>
+                <button
+                  className="card-action-btn delete"
+                  onClick={() => onDelete(f.id)}
+                  title="Xóa"
+                >
+                  <span className="material-symbols-outlined">delete</span>
+                  Xóa
+                </button>
+              </div>
+            </div>
           </div>
-
-          <div>
-            <p className="field-name">
-              {f.field_name}
-            </p>
-
-            <p className="field-location">
-              {f.location}
-            </p>
-          </div>
-
-        </div>
-      </td>
-
-      <td>
-        <span className="type-badge san7">
-          {f.field_type}
-        </span>
-      </td>
-      <td>
-        <span className="price">
-          {f.price_per_hour?.toLocaleString()}đ
-        </span>
-      </td>
-
-      <td>
-        <span className="badge-count" style={{ background: '#f0fdf4', color: '#166534', padding: '2px 8px', borderRadius: '12px', fontSize: '0.85em' }}>
-          {f.booking_count || 0}
-        </span>
-      </td>
-
-      <td>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.9em', color: '#ca8a04' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '16px', fontVariationSettings: "'FILL' 1" }}>star</span>
-          {f.rating_avg || 0}/5
-          <span className="material-symbols-outlined" style={{ fontSize: '16px', fontVariationSettings: "'FILL' 1" }}>star</span>
-        </div>
-      </td>
-
-      <td>
-        <span style={{ fontSize: '0.9em', color: '#64748b' }}>{f.phone || "-"}</span>
-      </td>
-
-      <td>
-        {f.is_available ? (
-          <span className="status-badge ready">
-            <span className="dot" />
-            Sẵn sàng
-          </span>
-        ) : (
-          <span className="status-badge maintenance">
-            <span className="dot" />
-            Đang bảo trì
-          </span>
-        )}
-      </td>
-
-      <td className="action-cell">
-
-        <div className="action-group">
-
-          <button className="action-btn edit" onClick={() => onEdit(f)}>
-            <span className="material-symbols-outlined">
-              edit
-            </span>
-          </button>
-
-          <button className="action-btn delete" onClick={() => onDelete(f.id)}>
-            <span className="material-symbols-outlined">
-              delete
-            </span>
-          </button>
-
-        </div>
-
-      </td>
-
-    </tr>
-
-  ))}
-
-</tbody>
-        </table>
+        ))}
       </div>
- 
+
       {/* Pagination */}
       <div className="table-footer">
-       <p>Hiển thị {fields.length} trong tổng số {fields.length} sân</p>
+        <p>Hiển thị {fields.length} trong tổng số {fields.length} sân</p>
         <div className="pagination">
           <button className="page-btn icon">
             <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>chevron_left</span>
@@ -276,6 +211,81 @@ function FieldsTable({ fields, onEdit, onDelete }) {
   );
 }
  
+function RatingStars({ rating }) {
+  return <span className="detail-rating-stars">{[0, 1, 2, 3, 4].map((index) => (
+    <span key={index} className="material-symbols-outlined" style={{ fontVariationSettings: index < Number(rating) ? "'FILL' 1" : "'FILL' 0" }}>star</span>
+  ))}</span>;
+}
+
+function FieldDetailModal({ initialField, onClose }) {
+  const [field, setField] = useState(initialField);
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const loadDetail = async () => {
+      try {
+        const [fieldResponse, reviewsResponse] = await Promise.all([
+          getFieldDetail(initialField.id), fetch(`${BASE_URL}/reviews/${initialField.id}/`),
+        ]);
+        if (!reviewsResponse.ok) throw new Error("Không thể tải đánh giá");
+        setField(fieldResponse.data);
+        setReviews(await reviewsResponse.json());
+      } catch (loadError) {
+        console.error("Lỗi lấy chi tiết sân:", loadError);
+        setError("Không thể tải chi tiết sân. Vui lòng thử lại.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadDetail();
+  }, [initialField.id]);
+
+  const averageRating = reviews.length
+    ? (reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / reviews.length).toFixed(1)
+    : "0.0";
+  const imageUrl = field?.image_url || (field?.image ? `${SERVER_URL}${field.image}` : "");
+
+  return (
+    <div className="modal-overlay field-detail-overlay" onMouseDown={onClose}>
+      <div className="modal field-detail-modal" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="modal-header">
+          <div><p className="field-detail-kicker">CHI TIẾT SÂN BÓNG</p><h3>{field?.field_name || initialField.field_name}</h3></div>
+          <button className="modal-close" onClick={onClose} aria-label="Đóng chi tiết sân"><span className="material-symbols-outlined">close</span></button>
+        </div>
+        <div className="modal-body field-detail-body">
+          {loading && <div className="field-detail-loading">Đang tải chi tiết sân...</div>}
+          {!loading && error && <div className="field-detail-error">{error}</div>}
+          {!loading && !error && field && <>
+            <div className="field-detail-summary">
+              <div className="field-detail-image">{imageUrl ? <img src={imageUrl} alt={field.field_name} /> : <span className="material-symbols-outlined">stadium</span>}</div>
+              <div className="field-detail-info">
+                <div className="field-detail-rating"><p>Đánh giá trung bình</p><strong>{averageRating}<small>/5</small></strong><RatingStars rating={averageRating} /><span>{reviews.length} đánh giá</span></div>
+                <div className="field-detail-meta">
+                  <p><span className="material-symbols-outlined">groups</span><b>Loại sân:</b> {field.field_type || "Chưa cập nhật"}</p>
+                  <p><span className="material-symbols-outlined">payments</span><b>Giá thuê:</b> {Number(field.price_per_hour || 0).toLocaleString("vi-VN")}đ/giờ</p>
+                  <p><span className="material-symbols-outlined">event_available</span><b>Lượt đặt:</b> {field.booking_count || 0}</p>
+                  <p><span className="material-symbols-outlined">phone</span><b>Liên hệ:</b> {field.phone || "Chưa cập nhật"}</p>
+                  <p><span className="material-symbols-outlined">location_on</span><b>Địa chỉ:</b> {field.location}</p>
+                </div>
+              </div>
+            </div>
+            <section className="field-detail-section"><h4>Mô tả sân</h4><p>{field.description || "Sân chưa có mô tả chi tiết."}</p></section>
+            <section className="field-detail-section field-detail-reviews">
+              <h4>Tất cả đánh giá <span>({reviews.length})</span></h4>
+              {reviews.length === 0 ? <p className="field-detail-empty">Chưa có đánh giá nào cho sân này.</p> : reviews.map((review) => <article className="field-review-item" key={review.id}>
+                <div className="field-review-avatar">{(review.username || "U").charAt(0).toUpperCase()}</div>
+                <div><div className="field-review-heading"><strong>{review.username || "Người dùng"}</strong><time>{new Date(review.created_at).toLocaleDateString("vi-VN")}</time></div><RatingStars rating={review.rating} /><p>{review.comment || "Người dùng không để lại nhận xét."}</p></div>
+              </article>)}
+            </section>
+          </>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AddFieldModal({ onClose, onSuccess, showToast }) {
 const fileInputRef = useRef(null); 
 const [image, setImage] = useState(null);
@@ -690,6 +700,7 @@ export default function Fields() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingField, setEditingField] = useState(null);
+  const [viewingField, setViewingField] = useState(null);
   const [activeType, setActiveType] = useState('Tất cả');
   const { toasts, removeToast, toast } = useToast();
  const fetchFields = async () => {
@@ -729,11 +740,11 @@ export default function Fields() {
   return (
     <>
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-      <Sidebar />
+      <AdminSidebar />
 
       <TopHeader />
 
-      <main className="main-content">
+      <main className="main-content fields-admin-main">
         {loading ? (
           <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>
             <h2>Đang tải danh sách sân...</h2>
@@ -742,22 +753,42 @@ export default function Fields() {
           <>
             <div className="page-header">
               <div>
+                <span className="fields-eyebrow">CƠ SỞ HẠ TẦNG <span>›</span> ĐIỀU HÀNH</span>
                 <h2>Quản lý sân bóng</h2>
-                <p>
-                  Theo dõi, điều chỉnh và cập nhật danh sách các sân vận động.
-                </p>
+                <p>Theo dõi, điều chỉnh và cập nhật trạng thái hoạt động theo thời gian thực của toàn bộ cụm sân thể thao.</p>
               </div>
 
               <button
                 className="btn-add-field"
                 onClick={() => setShowModal(true)}
               >
-                <span className="material-symbols-outlined">
-                  add_circle
-                </span>
+                <span className="material-symbols-outlined">add</span>
                 Thêm sân mới
               </button>
             </div>
+
+            <section className="fields-overview-grid" aria-label="Tổng quan sân bóng">
+              <article className="fields-overview-card">
+                <div><span>QUY MÔ HOẠT ĐỘNG</span><span className="material-symbols-outlined overview-icon green">stadium</span></div>
+                <strong>{fields.length}<small> sân</small></strong>
+                <p><span className="material-symbols-outlined">verified</span>Danh sách sân toàn hệ thống</p>
+              </article>
+              <article className="fields-overview-card">
+                <div><span>SÂN SẴN SÀNG VẬN HÀNH</span><span className="material-symbols-outlined overview-icon mint">check_circle</span></div>
+                <strong>{fields.filter((field) => field.is_available).length}<small> sân</small></strong>
+                <p><span className="material-symbols-outlined">event_available</span>Đang cho phép đặt sân</p>
+              </article>
+              <article className="fields-overview-card">
+                <div><span>BẢO TRÌ MẶT SÂN</span><span className="material-symbols-outlined overview-icon rose">engineering</span></div>
+                <strong>{fields.filter((field) => !field.is_available).length}<small> sân</small></strong>
+                <p><span className="material-symbols-outlined">build</span>Chưa khả dụng</p>
+              </article>
+              <article className="fields-overview-card">
+                <div><span>GIÁ THUÊ TRUNG BÌNH</span><span className="material-symbols-outlined overview-icon blue">payments</span></div>
+                <strong>{fields.length ? Math.round(fields.reduce((sum, field) => sum + Number(field.price_per_hour || 0), 0) / fields.length).toLocaleString("vi-VN") : 0}<small>đ / giờ</small></strong>
+                <p><span className="material-symbols-outlined">insights</span>Trên danh sách sân hiện tại</p>
+              </article>
+            </section>
 
             <FilterControls
               fields={fields}
@@ -766,7 +797,7 @@ export default function Fields() {
               onFiltered={setFilteredFields}
             />
 
-            <FieldsTable fields={filteredFields} onEdit={setEditingField} onDelete={handleDelete} />
+            <FieldsTable fields={filteredFields} onView={setViewingField} onEdit={setEditingField} onDelete={handleDelete} />
           </>
         )}
       </main>
@@ -786,6 +817,7 @@ export default function Fields() {
     showToast={(msg, type) => toast[type || 'info'](msg)}
   />
 )}
+      {viewingField && <FieldDetailModal initialField={viewingField} onClose={() => setViewingField(null)} />}
     </>
   );
 }

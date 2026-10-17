@@ -21,7 +21,7 @@ Hệ thống đặt sân bóng đá nhân tạo trực tuyến, cho phép ngư�
 | **Frontend** | React 18, React Router DOM v6, Axios         |
 | **Backend**  | Django 4.2, Django REST Framework            |
 | **Database** | PostgreSQL                                   |
-| **Auth**     | Session-based (custom, password hashing)     |
+| **Auth**     | Custom session-based (UUID users, password hashing) |
 | **Media**    | Django Media Files (ảnh sân, dịch vụ)        |
 | **Bản đồ**   | Leaflet.js, OpenStreetMap (Geocoding)        |
 | **CORS**     | django-cors-headers                          |
@@ -35,18 +35,19 @@ Hệ thống đặt sân bóng đá nhân tạo trực tuyến, cho phép ngư�
 football-booking-system/
 ├── backend/                        # Django Backend
 │   ├── apps/
-│   │   ├── bookings/               # Quản lý đặt sân
-│   │   ├── fields/                 # Quản lý sân bóng
-│   │   ├── users/                  # Quản lý người dùng & xác thực
-│   │   ├── reviews/                # Đánh giá sân bóng
-│   │   ├── timeslots/              # Khung giờ sân
-│   │   ├── servicesadd/            # Dịch vụ thêm (nước, bóng,...)
-│   │   ├── notifications/          # Thông báo hệ thống
-│   │   └── payments/               # Thanh toán (đang phát triển)
+│   │   ├── bookings/               # Quản lý đặt sân (Bookings, BookingLogs)
+│   │   ├── fields/                 # Quản lý sân bóng (FieldTypes, FootballFields, FieldSchedules)
+│   │   ├── users/                  # Quản lý người dùng & xác thực (Admin, Customers)
+│   │   ├── reviews/                # Đánh giá sân bóng (Reviews)
+│   │   ├── timeslots/              # Khung giờ sân (TimeSlots)
+│   │   ├── servicesadd/            # Dịch vụ thêm (ServicesAdd, BookingServices)
+│   │   ├── notifications/          # Thông báo hệ thống (scaffold)
+│   │   └── payments/               # Thanh toán (scaffold)
 │   ├── config/
 │   │   ├── settings.py
 │   │   └── urls.py
 │   ├── media/                      # File ảnh upload
+│   ├── utils/                      # Utility functions
 │   ├── .env                        # Biến môi trường
 │   └── manage.py
 │
@@ -76,10 +77,12 @@ football-booking-system/
         │       ├── dashboard/      # Tổng quan hệ thống
         │       ├── fields/         # Quản lý sân (Admin)
         │       ├── bookings/       # Quản lý đặt sân (Admin)
+        │       ├── BookingCalendar/ # Lịch đặt dạng calendar
         │       ├── users/          # Quản lý người dùng (Admin)
         │       ├── revenue/        # Thống kê doanh thu
         │       ├── timeslots/      # Quản lý khung giờ
-        │       └── services/       # Quản lý dịch vụ
+        │       ├── services/       # Quản lý dịch vụ
+        │       └── settings/      # Cài đặt hệ thống
         ├── routes/
         │   └── AppRoutes.js        # Định nghĩa toàn bộ routes
         ├── context/                # React Context (Auth,...)
@@ -149,6 +152,11 @@ football-booking-system/
 
 Khu vực admin có giao diện riêng biệt (**Pitch & Pulse Admin Console**) — không hiển thị Navbar/Footer của user.
 
+**Phân quyền truy cập**:
+- **Admin**: Truy cập tất cả chức năng admin
+- **Staff**: Truy cập Dashboard, Fields, Bookings, Timeslots, Services
+- **Customer**: Không truy cập khu vực admin
+
 ### 📊 Dashboard (`/admin/dashboard`)
 - **Thống kê tổng quan**: tổng số sân, sân đang hoạt động, tổng lượt đặt.
 - **Biểu đồ line chart** lượt đặt sân theo 7 ngày gần nhất (SVG custom).
@@ -164,28 +172,39 @@ Khu vực admin có giao diện riêng biệt (**Pitch & Pulse Admin Console**) 
 
 ### 📅 Quản lý đặt sân (`/admin/bookings`)
 - Xem toàn bộ lịch đặt của tất cả người dùng.
-- **Cập nhật trạng thái**: `Confirmed`, `Cancelled`, `Completed`.
+- **Cập nhật trạng thái**: `Confirmed`, `Cancelled`, `Completed`, `Pending`, `Checked_in`.
 - Sửa ngày, giờ, tổng tiền, dịch vụ kèm theo.
 - **Xóa lịch đặt**.
 
-### 👥 Quản lý người dùng (`/admin/users`)
+### 📆 Lịch đặt dạng Calendar (`/admin/bookings/calendar`)
+- Xem lịch đặt theo dạng calendar.
+- Dễ dàng quan sát các khung giờ đã đặt.
+
+### 👥 Quản lý người dùng (`/admin/users`) - Chỉ Admin
 - Xem danh sách toàn bộ khách hàng.
-- **Sửa thông tin** người dùng (tên, email, điện thoại).
+- **Sửa thông tin** người dùng (tên, email, điện thoại, role).
+- **Khóa/mở khóa tài khoản** (toggle is_active).
 - **Xóa tài khoản** người dùng.
 
 ### ⏰ Quản lý khung giờ (`/admin/timeslots`)
 - Xem danh sách khung giờ theo từng sân và ngày.
 - **Tạo thủ công** khung giờ (sân, ngày, giờ bắt đầu/kết thúc, giá).
 - **Tự động tạo khung giờ hàng loạt** (`generate-slots`) cho tất cả sân trong N ngày tới (tối đa 90 ngày) theo bảng giá:
-  | Khung giờ   | Giá (VNĐ/giờ) |
+  | Giờ bắt đầu | Giá (VNĐ/giờ) |
   |-------------|---------------|
-  | 06:00–08:00 | 80,000        |
-  | 08:00–10:00 | 100,000       |
-  | 14:00–16:00 | 150,000       |
-  | 16:00–17:00 | 180,000       |
-  | 17:00–18:00 | 200,000       |
-  | 18:00–20:00 | 250,000–270,000 (cao điểm) |
-  | 20:00–22:00 | 250,000       |
+  | 06:00 | 80,000 |
+  | 07:00 | 80,000 |
+  | 08:00 | 100,000 |
+  | 09:00 | 100,000 |
+  | 14:00 | 150,000 |
+  | 15:00 | 150,000 |
+  | 16:00 | 180,000 |
+  | 17:00 | 200,000 |
+  | 18:00 | 250,000 |
+  | 19:00 | 270,000 (cao điểm) |
+  | 20:00 | 270,000 (cao điểm) |
+  | 21:00 | 250,000 |
+- **Lưu ý**: Khung giờ 10:00-14:00 không được tạo (ít người thuê)
 - **Xóa toàn bộ** khung giờ (reset hệ thống) hoặc xóa theo từng sân.
 - Sửa, xóa từng khung giờ riêng lẻ.
 
@@ -195,14 +214,21 @@ Khu vực admin có giao diện riêng biệt (**Pitch & Pulse Admin Console**) 
 - Gắn dịch vụ với sân cụ thể (M2M).
 - Quản lý ảnh, giá, danh mục, tồn kho.
 
-### 💰 Thống kê doanh thu (`/admin/revenue`)
+### 💰 Thống kê doanh thu (`/admin/revenue`) - Chỉ Admin
 - Xem tổng doanh thu theo thời gian.
+
+### ⚙️ Cài đặt hệ thống (`/admin/settings`) - Chỉ Admin
+- Cấu hình hệ thống.
+- Quản lý các thiết lập chung.
 
 ---
 ## 📌 Lưu ý
 
-- Khu vực `/admin/*` không có xác thực cứng (chưa implement admin guard) — cần bổ sung trong môi trường production.
-- Module `payments` đã được scaffold nhưng chưa triển khai logic.
+- Khu vực `/admin/*` đã có xác thực qua ProtectedRoute component với role-based access control (Admin/Staff).
+- Module `payments` và `notifications` đã được scaffold nhưng chưa triển khai logic đầy đủ.
 - Khung giờ buổi trưa **10:00–14:00** bị bỏ qua trong hệ thống tự động tạo slot (ít người thuê).
-- `rating_avg` của sân được **tự động tính lại** mỗi khi có đánh giá mới.
+- `rating_avg` của sân được **tự động tính lại** mỗi khi có đánh giá mới (sử dụng raw SQL).
 - Mỗi lần đặt sân thành công sẽ tự động **tăng `booking_count`** và **cập nhật trạng thái timeslot** thành `booked`.
+- Khi sửa/xóa booking, timeslot sẽ được tự động mở lại status thành `available`.
+- Dịch vụ kèm theo được quản lý qua model `BookingServices` (không phải M2M trực tiếp giữa Booking và Service).
+- Model Reviews sử dụng AutoIncrement ID (integer) thay vì UUID.

@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import PageHero from "../../components/PageHero/PageHero";
+import { BASE_URL } from "../../config";
 import "./Profile.css";
 import { updateUser } from "../../api/usersApi";
+import { getMyVouchers } from "../../api/vouchersApi";
 import { useToast, ToastContainer } from "../../components/Toast/Toast";
 
 const Profile = () => {
   const [user, setUser] = useState(null);
+  const [recentBookings, setRecentBookings] = useState([]);
+  const [userVouchers, setUserVouchers] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     full_name: "",
@@ -24,6 +30,17 @@ const Profile = () => {
         phone: parsedUser.phone || "",
         email: parsedUser.email || "",
       });
+
+      if (parsedUser.id) {
+        fetch(`${BASE_URL}/bookings/user/${parsedUser.id}/`)
+          .then((response) => (response.ok ? response.json() : []))
+          .then((data) => setRecentBookings(Array.isArray(data) ? data.slice(0, 2) : []))
+          .catch((error) => console.error("Lỗi tải lịch sử hoạt động:", error));
+
+        getMyVouchers(parsedUser.id, "all")
+          .then((res) => setUserVouchers(res.data?.vouchers || []))
+          .catch((err) => console.error("Lỗi tải ví voucher:", err));
+      }
     }
   }, []);
 
@@ -56,195 +73,249 @@ const Profile = () => {
   };
 
   if (!user) return (
-    <div className="min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark">
-      <div className="text-center p-8 bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-800">
-        <span className="material-symbols-outlined text-6xl text-primary mb-4 block">lock</span>
-        <h2 className="text-2xl font-bold mb-2">Vui lòng đăng nhập</h2>
-        <p className="text-slate-500 mb-6">Bạn cần đăng nhập để xem thông tin cá nhân.</p>
-        <a href="/login" className="bg-primary text-white px-8 py-3 rounded-xl font-bold inline-block">Đăng nhập ngay</a>
+    <div className="profile-login-required">
+      <div>
+        <span className="material-symbols-outlined">lock</span>
+        <h2>Vui lòng đăng nhập</h2>
+        <p>Bạn cần đăng nhập để xem thông tin cá nhân.</p>
+        <Link to="/login">Đăng nhập ngay</Link>
       </div>
     </div>
   );
 
+  const displayName = user.full_name || user.fullname || "Người dùng";
+
+  // Bản đồ hiển thị nhãn cho tất cả các vai trò
+  const ROLE_LABELS = {
+    admin:         'Quản trị viên',
+    field_owner:   'Chủ sân',
+    field_manager: 'Người quản lý sân',
+    receptionist:  'Lễ tân',
+    cashier:       'Nhân viên thu ngân',
+    cleaner:       'Nhân viên dọn dẹp',
+    service_staff: 'Nhân viên dịch vụ',
+    maintenance:   'Nhân viên bảo trì sân',
+    staff:         'Nhân viên',
+    customer:      'Thành viên',
+  };
+  const roleLabel = user.is_admin ? 'Quản trị viên' : (ROLE_LABELS[user.role] || 'Thành viên');
+  const isAdminRole = user.role === 'admin' || user.is_admin;
+
   return (
-    <div className="min-h-screen py-16 px-4 bg-background-light dark:bg-background-dark">
+    <div className="profile-page">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-      <div className="max-w-4xl mx-auto relative">
-        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-lg border border-slate-100 dark:border-slate-800 p-8">
-          <div>
-            {/* Avatar Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-8 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex flex-col md:flex-row items-center md:items-center gap-6">
-                <div className="w-24 h-24 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-primary border-4 border-slate-100 dark:border-slate-700 shadow-sm relative z-10">
-                  <span className="material-symbols-outlined text-5xl">account_circle</span>
-                </div>
+      <PageHero
+        breadcrumb={[{ label: "Trang chủ", to: "/" }, { label: "Tài khoản", to: "/profile" }, { label: "Thông tin của tôi" }]}
+        eyebrow="TÀI KHOẢN CÁ NHÂN"
+        title="Thông tin tài khoản & hồ sơ"
+        description="Quản lý thông tin định danh, số điện thoại liên lạc và lịch sử giao dịch của bạn tại Football Booking."
+      />
 
-                <div className="text-center md:text-left mb-2">
-                  <h1 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight">
-                    {user.full_name || user.fullname || "Người dùng"}
-                  </h1>
-                  <div className="flex items-center justify-center md:justify-start gap-2 mt-2">
-                    <span className="px-3 py-1 bg-primary/10 text-primary text-xs font-bold uppercase rounded-full tracking-wider">
-                      {user.is_admin ? "Admin" : "Thành viên"}
-                    </span>
-                    <span className="text-slate-400 dark:text-slate-500 text-sm flex items-center gap-1">
-                      <span className="material-symbols-outlined text-base">verified</span>
-                      Tài khoản đã xác minh
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setIsEditing(true)}
-                className="bg-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-primary/90 transition-all shadow-md active:translate-y-0 w-full md:w-auto"
-              >
-                Chỉnh sửa hồ sơ
-              </button>
-            </div>
-
-            <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Info Cards */}
-              <div className="p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-primary/30 transition-colors flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center text-primary shadow-sm border border-slate-100 dark:border-slate-700">
-                  <span className="material-symbols-outlined">person</span>
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Họ và tên</p>
-                  <p className="text-base font-bold text-slate-700 dark:text-slate-200">
-                    {user.full_name || user.fullname || "Chưa cập nhật"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-primary/30 transition-colors flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center text-primary shadow-sm border border-slate-100 dark:border-slate-700">
-                  <span className="material-symbols-outlined">call</span>
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Số điện thoại</p>
-                  <p className="text-base font-bold text-slate-700 dark:text-slate-200">
-                    {user.phone || "Chưa cập nhật"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-primary/30 transition-colors flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center text-primary shadow-sm border border-slate-100 dark:border-slate-700">
-                  <span className="material-symbols-outlined">mail</span>
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Địa chỉ Email</p>
-                  <p className="text-base font-bold text-slate-700 dark:text-slate-200">
-                    {user.email || "Chưa cập nhật"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-primary/30 transition-colors flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center text-primary shadow-sm border border-slate-100 dark:border-slate-700">
-                  <span className="material-symbols-outlined">badge</span>
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">ID Người dùng</p>
-                  <p className="text-base font-bold text-slate-700 dark:text-slate-200">
-                    #{user.id || "N/A"}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Action Links */}
-            <div className="mt-8 p-6 bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/10 flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="text-center md:text-left">
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white">Lịch sử hoạt động</h3>
-                <p className="text-slate-500 dark:text-slate-400 text-sm">Xem lại các sân bóng bạn đã đặt và quản lý các giao dịch.</p>
-              </div>
-              <a href="/my-bookings" className="flex items-center gap-2 text-primary font-bold hover:gap-3 transition-all bg-white dark:bg-slate-800 px-6 py-3 rounded-xl shadow-sm border border-primary/20">
-                Xem lịch sử đặt sân
-                <span className="material-symbols-outlined">arrow_forward</span>
-              </a>
+      <div className="profile-content">
+        <section className="profile-identity-panel">
+          <div className="profile-avatar"><span className="material-symbols-outlined">person</span><span className="profile-avatar-status" /></div>
+          <div className="profile-identity-copy">
+            <h2>{displayName}<span className="profile-verified"><span className="material-symbols-outlined">verified</span>Tài khoản đã xác minh</span></h2>
+            <div className="profile-identity-tags">
+              <span className={`profile-role-tag ${isAdminRole ? "profile-role-tag--admin" : ""}`}>{roleLabel}</span>
+              {user.phone && <span><span className="material-symbols-outlined">phone_iphone</span>{user.phone}</span>}
             </div>
           </div>
+          <button type="button" onClick={() => setIsEditing(true)} className="profile-edit-button">
+            <span className="material-symbols-outlined">edit</span>Chỉnh sửa hồ sơ
+          </button>
+        </section>
+
+        <div className="profile-main-grid">
+          <section className="profile-info-panel">
+            <div className="profile-panel-heading">
+              <div><span className="material-symbols-outlined">badge</span><div><h2>Thông tin tài khoản</h2><p>Dữ liệu định danh được bảo mật tiêu chuẩn</p></div></div>
+              <span className="profile-active-status"><span /> ĐANG HOẠT ĐỘNG</span>
+            </div>
+            <div className="profile-info-grid">
+              <div className="profile-info-item"><span className="material-symbols-outlined">person</span><div><small>HỌ VÀ TÊN</small><strong>{user.full_name || user.fullname || "Chưa cập nhật"}</strong></div></div>
+              <div className="profile-info-item"><span className="material-symbols-outlined">call</span><div><small>SỐ ĐIỆN THOẠI</small><strong>{user.phone || "Chưa cập nhật"}</strong>{user.phone && <em>Thông tin liên hệ đặt sân</em>}</div></div>
+              <div className="profile-info-item"><span className="material-symbols-outlined">alternate_email</span><div><small>ĐỊA CHỈ EMAIL</small><strong>{user.email || "Chưa cập nhật"}</strong>{user.email && <em>Email nhận thông báo</em>}</div></div>
+              <div className="profile-info-item"><span className="material-symbols-outlined">tag</span><div><small>MÃ TÀI KHOẢN</small><strong className="profile-user-id">#{user.id || "N/A"}</strong><em>Mã định danh hệ thống</em></div></div>
+            </div>
+          </section>
+
+          <aside className="profile-activity-panel">
+            <div className="profile-panel-heading">
+              <div><span className="material-symbols-outlined">history</span><div><h2>Lịch sử hoạt động</h2><p>Xem lại các sân bóng bạn đã đặt</p></div></div>
+              <span className="profile-activity-count">{recentBookings.length} lượt</span>
+            </div>
+            {recentBookings.length > 0 ? (
+              <div className="profile-recent-list">
+                {recentBookings.map((booking) => (
+                  <Link key={booking.id} to={`/my-bookings/${booking.id}`} state={{ booking }} className="profile-recent-item">
+                    <span className="material-symbols-outlined">sports_soccer</span>
+                    <div><strong>{booking.fieldName}</strong><span>{booking.timeSlot} · {new Date(booking.bookingDate).toLocaleDateString("vi-VN")}</span></div>
+                    <span className="profile-recent-price">{Number(booking.price || 0).toLocaleString("vi-VN")}đ</span>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="profile-no-activity"><span className="material-symbols-outlined">event_busy</span><p>Chưa có lịch sử đặt sân.</p></div>
+            )}
+            <Link to="/my-bookings" className="profile-history-link">Xem tất cả lịch sử đặt sân <span className="material-symbols-outlined">arrow_forward</span></Link>
+          </aside>
         </div>
+
+        {/* ═══ KHO VOUCHER CỦA TÔI ═══ */}
+        <section className="profile-voucher-section" style={{ marginTop: 24, background: "#fff", padding: "24px", borderRadius: 16, border: "1px solid #e5e7eb" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "1.8rem", color: "#16a34a" }}>confirmation_number</span>
+              <div>
+                <h2 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 800, color: "#111827" }}>Kho Voucher & Ưu đãi</h2>
+                <p style={{ margin: "2px 0 0", fontSize: "0.82rem", color: "#6b7280" }}>Mã giảm giá nhận được khi hoàn thành các lượt đặt sân</p>
+              </div>
+            </div>
+            <span style={{ fontSize: "0.8rem", fontWeight: 700, background: "#f0fdf4", color: "#166534", padding: "5px 12px", borderRadius: 20, border: "1px solid #bbf7d0" }}>
+              {userVouchers.filter((v) => v.is_valid_to_use).length} voucher khả dụng
+            </span>
+          </div>
+
+          {userVouchers.length > 0 ? (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+              {userVouchers.map((v) => {
+                const isValid = v.is_valid_to_use;
+                const isUsed = v.is_used;
+                return (
+                  <div
+                    key={v.id}
+                    style={{
+                      border: isValid ? "1.5px dashed #86efac" : "1.5px solid #e5e7eb",
+                      borderRadius: 12,
+                      padding: "16px",
+                      background: isValid ? "#fafffa" : "#f9fafb",
+                      opacity: isValid ? 1 : 0.65,
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      transition: "transform 0.2s, box-shadow 0.2s",
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                        <span style={{ fontWeight: 800, fontSize: "1.1rem", color: isValid ? "#15803d" : "#6b7280", letterSpacing: "0.5px" }}>
+                          {v.code}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: "0.72rem",
+                            fontWeight: 700,
+                            padding: "3px 8px",
+                            borderRadius: 6,
+                            background: isUsed ? "#e5e7eb" : isValid ? "#dcfce7" : "#fee2e2",
+                            color: isUsed ? "#4b5563" : isValid ? "#166534" : "#b91c1c",
+                          }}
+                        >
+                          {isUsed ? "Đã sử dụng" : isValid ? "Khả dụng" : "Đã hết hạn"}
+                        </span>
+                      </div>
+                      <div style={{ fontWeight: 700, fontSize: "0.88rem", color: "#1f2937", marginBottom: 4 }}>
+                        {v.title}
+                      </div>
+                      <div style={{ fontSize: "0.8rem", color: "#4b5563" }}>
+                        {v.discount_type === "percent"
+                          ? `Giảm ${v.discount_value}% (Tối đa ${Number(v.max_discount || 0).toLocaleString("vi-VN")}đ)`
+                          : `Giảm ${Number(v.discount_value).toLocaleString("vi-VN")}đ`}
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: 14, paddingTop: 10, borderTop: "1px solid #f3f4f6", fontSize: "0.75rem", color: "#9ca3af", display: "flex", justifyContent: "space-between" }}>
+                      <span>Đơn từ {Number(v.min_booking_price || 0).toLocaleString("vi-VN")}đ</span>
+                      <span>HSD: {new Date(v.valid_until).toLocaleDateString("vi-VN")}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ padding: "30px 20px", textAlign: "center", background: "#f9fafb", borderRadius: 12, border: "1px dashed #d1d5db" }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "2.2rem", color: "#9ca3af" }}>savings</span>
+              <p style={{ margin: "8px 0 4px", fontWeight: 700, color: "#374151" }}>Chưa có voucher nào trong ví</p>
+              <small style={{ color: "#6b7280" }}>
+                Hoàn thành một lượt đặt sân bóng để nhận ngay voucher giảm giá cho các trận đấu tiếp theo!
+              </small>
+            </div>
+          )}
+        </section>
 
         {/* Edit Profile Modal */}
         {isEditing && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-            <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up border border-slate-100 dark:border-slate-800">
-              <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                <h3 className="text-xl font-bold text-slate-800 dark:text-white">Chỉnh sửa hồ sơ</h3>
+          <div className="profile-modal-overlay">
+            <div className="profile-edit-modal">
+              <div className="profile-modal-header">
+                <h3>Chỉnh sửa hồ sơ</h3>
                 <button
                   onClick={() => setIsEditing(false)}
-                  className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-red-500 transition-colors"
+                  type="button"
+                  className="profile-modal-close"
                 >
-                  <span className="material-symbols-outlined text-sm">close</span>
+                  <span className="material-symbols-outlined">close</span>
                 </button>
               </div>
-              <form onSubmit={handleUpdateProfile} className="p-6 space-y-4">
+              <form onSubmit={handleUpdateProfile} className="profile-edit-form">
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Họ và tên
-                  </label>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">person</span>
+                  <label htmlFor="profile-full-name">Họ và tên</label>
+                  <div className="profile-input-wrap">
+                    <span className="material-symbols-outlined">person</span>
                     <input
+                      id="profile-full-name"
                       type="text"
                       name="full_name"
                       value={formData.full_name}
                       onChange={handleInputChange}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                       placeholder="Nhập họ và tên..."
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Số điện thoại
-                  </label>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">call</span>
+                  <label htmlFor="profile-phone">Số điện thoại</label>
+                  <div className="profile-input-wrap">
+                    <span className="material-symbols-outlined">call</span>
                     <input
+                      id="profile-phone"
                       type="text"
                       name="phone"
                       value={formData.phone}
                       onChange={handleInputChange}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                       placeholder="Nhập số điện thoại..."
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Địa chỉ Email
-                  </label>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">mail</span>
+                  <label htmlFor="profile-email">Địa chỉ Email</label>
+                  <div className="profile-input-wrap">
+                    <span className="material-symbols-outlined">mail</span>
                     <input
+                      id="profile-email"
                       type="email"
                       name="email"
                       value={formData.email}
                       onChange={handleInputChange}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                       placeholder="Nhập địa chỉ email..."
                     />
                   </div>
                 </div>
 
-                <div className="pt-4 flex gap-3">
+                <div className="profile-modal-actions">
                   <button
                     type="button"
                     onClick={() => setIsEditing(false)}
-                    className="flex-1 px-4 py-3 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors"
+                    className="profile-modal-cancel"
                   >
                     Hủy
                   </button>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="flex-1 px-4 py-3 rounded-xl font-bold text-white bg-primary hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+                    className="profile-modal-save"
                   >
                     {loading ? (
                       <span className="material-symbols-outlined animate-spin">refresh</span>

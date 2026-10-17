@@ -362,3 +362,698 @@
   }
 }
 
+/* Digital pass lookup layout */
+.lookup-page-wrapper {
+  min-height: calc(100vh - 120px);
+  padding: 0 20px 64px;
+  background: #f6faf8;
+  font-family: inherit;
+}
+
+.lookup-search-card {
+  max-width: 760px;
+  margin: 20px auto 30px;
+  padding: 24px 26px;
+  border: 1px solid #e8efec;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.035);
+  text-align: center;
+}
+
+.lookup-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding: 4px 9px;
+  border: 1px solid #a7f3d0;
+  border-radius: 999px;
+  color: #047857;
+  background: #ecfdf5;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.lookup-live-badge > span,
+.lookup-results-heading > div > span > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #059669;
+}
+
+.lookup-title {
+  margin-bottom: 3px;
+  color: #111827;
+  font-size: 1.55rem;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+.lookup-subtitle {
+  max-width: 550px;
+  margin: 0 auto 18px;
+  color: #64748b;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.lookup-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  text-align: left;
+}
+
+.input-group {
+  gap: 6px;
+}
+
+.input-label {
+  gap: 6px;
+  font-size: 0.72rem;
+}
+
+.input-label .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.lookup-optional-label {
+  margin-left: auto;
+  color: #94a3b8;
+  font-size: 0.64rem;
+  font-weight: 500;
+}
+
+.input-field {
+  height: 40px;
+  padding: 0 11px;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 0.75rem;
+}
+
+.input-field:focus {
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+}
+
+.btn-lookup-now {
+  height: 40px;
+  margin-top: 0;
+  border-radius: 7px;
+  background: #059669;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.btn-lookup-now:hover {
+  background: #047857;
+  filter: none;
+  transform: none;
+  box-shadow: 0 3px 8px rgba(5, 150, 105, 0.2);
+}
+
+.btn-lookup-now:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+
+.lookup-results-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: min(900px, 100%);
+  margin: 0 auto 10px;
+}
+
+.lookup-results-heading > div {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lookup-results-heading h2 {
+  color: #1e293b;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.lookup-results-heading > div > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: #047857;
+  background: #d1fae5;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.lookup-results-heading > small {
+  color: #94a3b8;
+  font-size: 0.67rem;
+}
+
+.lookup-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(900px, 100%);
+}
+
+.lookup-result-card {
+  overflow: hidden;
+  border: 1px solid #e3ebe7;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.045);
+}
+
+.lookup-result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 54px;
+  padding: 9px 14px;
+  color: #fff;
+  background: #07866c;
+}
+
+.lookup-result-header__title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.lookup-result-header__title > .material-symbols-outlined {
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 17px;
+}
+
+.lookup-result-header__title div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.lookup-result-header__title strong {
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.lookup-result-header__title small {
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 0.69rem;
+}
+
+.lookup-result-status {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: #047857;
+  background: #fff;
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.lookup-result-status--cancelled {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.lookup-result-status--pending {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.lookup-result-status--completed,
+.lookup-result-status--checked-in {
+  color: #047857;
+  background: #d1fae5;
+}
+
+.lookup-result-content {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+
+.lookup-qr-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 14px;
+  border-right: 1px solid #edf1ef;
+  background: #fbfcfd;
+  text-align: center;
+}
+
+.lookup-reference {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 10px;
+  color: #64748b;
+  font-size: 0.71rem;
+}
+
+.lookup-reference strong {
+  color: #1e293b;
+  font-size: 0.75rem;
+}
+
+.lookup-qr-frame {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 9px;
+  border: 1px dashed #34d399;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.lookup-qr-frame img {
+  display: block;
+  width: 144px;
+  height: 144px;
+  object-fit: contain;
+}
+
+.lookup-qr-frame > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 6px;
+  border-radius: 999px;
+  color: #047857;
+  background: #ecfdf5;
+  font-size: 0.64rem;
+  font-weight: 700;
+}
+
+.lookup-qr-frame > span .material-symbols-outlined {
+  font-size: 13px;
+}
+
+.lookup-qr-hint {
+  max-width: 180px;
+  margin: 9px 0 0;
+  color: #64748b;
+  font-size: 0.69rem;
+  line-height: 1.45;
+}
+
+.lookup-qr-download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  min-height: 32px;
+  margin-top: auto;
+  padding: 6px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  color: #334155;
+  background: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.lookup-qr-download:hover {
+  border-color: #a7f3d0;
+  color: #047857;
+  background: #ecfdf5;
+}
+
+.lookup-qr-download .material-symbols-outlined {
+  font-size: 14px;
+}
+
+.lookup-booking-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 15px 16px 13px;
+}
+
+.lookup-field-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid #edf1ef;
+}
+
+.lookup-field-heading > img,
+.lookup-field-placeholder {
+  display: grid;
+  place-items: center;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  border-radius: 7px;
+  color: #047857;
+  background: #ecfdf5;
+  object-fit: cover;
+  font-size: 21px;
+}
+
+.lookup-field-heading > div {
+  min-width: 0;
+}
+
+.lookup-field-type {
+  color: #059669;
+  font-size: 0.58rem;
+  font-weight: 800;
+}
+
+.lookup-field-heading h2 {
+  color: #1e293b;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.lookup-field-heading p {
+  display: flex;
+  align-items: flex-start;
+  gap: 3px;
+  color: #64748b;
+  font-size: 0.64rem;
+  line-height: 1.4;
+}
+
+.lookup-field-heading p .material-symbols-outlined {
+  flex: 0 0 auto;
+  font-size: 13px;
+}
+
+.lookup-appointment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+  margin: 11px 0;
+  padding: 10px;
+  border: 1px solid #edf1ef;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.lookup-appointment-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lookup-appointment-grid > div > span {
+  color: #64748b;
+  font-size: 0.66rem;
+}
+
+.lookup-appointment-grid strong {
+  color: #1e293b;
+  font-size: 0.73rem;
+  overflow-wrap: anywhere;
+}
+
+.lookup-appointment-grid .lookup-time-value {
+  color: #059669;
+}
+
+.lookup-service-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 0 9px;
+  border-bottom: 1px solid #edf1ef;
+}
+
+.lookup-section-label {
+  color: #64748b;
+  font-size: 0.64rem;
+  font-weight: 800;
+}
+
+.lookup-service-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.lookup-service-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 3px 6px;
+  border: 1px solid #d1fae5;
+  border-radius: 5px;
+  color: #047857;
+  background: #ecfdf5;
+  font-size: 0.67rem;
+  font-weight: 700;
+}
+
+.lookup-service-chip img {
+  width: 17px;
+  height: 17px;
+  border-radius: 3px;
+  object-fit: cover;
+}
+
+.lookup-service-empty {
+  color: #94a3b8;
+  font-size: 0.7rem;
+  font-style: italic;
+}
+
+.lookup-price-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0 7px;
+}
+
+.lookup-price-row span {
+  color: #64748b;
+  font-size: 0.73rem;
+}
+
+.lookup-price-row strong {
+  color: #047857;
+  font-size: 1.05rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.lookup-booking-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: auto;
+  padding-top: 7px;
+  border-top: 1px solid #edf1ef;
+}
+
+.lookup-booking-actions .btn-download-receipt {
+  min-height: 32px;
+  margin: 0;
+  padding: 6px 9px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.72rem;
+}
+
+.lookup-booking-actions .btn-review-lookup {
+  border-color: #059669;
+  color: #fff;
+  background: #059669;
+}
+
+.lookup-booking-actions .btn-review-lookup:hover {
+  border-color: #047857;
+  background: #047857;
+}
+
+.lookup-reviewed {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #059669;
+  font-size: 0.73rem;
+  font-weight: 700;
+}
+
+.lookup-reviewed .material-symbols-outlined {
+  font-size: 15px;
+}
+
+.lookup-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(900px, 100%);
+  margin: 0 auto;
+  padding: 34px 18px;
+  border: 1px solid #e8efec;
+  border-radius: 10px;
+  color: #64748b;
+  background: #fff;
+  text-align: center;
+}
+
+.lookup-empty-state > .material-symbols-outlined {
+  margin-bottom: 7px;
+  color: #94a3b8;
+  font-size: 30px;
+}
+
+.lookup-empty-state h3 {
+  color: #1e293b;
+  font-size: 0.95rem;
+}
+
+.lookup-empty-state p {
+  margin-top: 4px;
+  font-size: 0.75rem;
+}
+
+.lookup-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(900px, 100%);
+  margin: 24px auto 0;
+  padding: 13px 15px;
+  border: 1px solid #a7f3d0;
+  border-radius: 9px;
+  background: #ecfdf5;
+  text-align: left;
+}
+
+.lookup-footer-icon {
+  color: #059669;
+  font-size: 19px;
+}
+
+.lookup-footer-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.lookup-footer-copy strong {
+  color: #1e293b;
+  font-size: 0.73rem;
+}
+
+.lookup-footer-copy p {
+  color: #64748b;
+  font-size: 0.68rem;
+}
+
+.lookup-support-link {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border: 1px solid #a7f3d0;
+  border-radius: 6px;
+  color: #047857;
+  background: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.lookup-support-link:hover {
+  background: #f0fdf4;
+}
+
+.lookup-page-wrapper,
+.lookup-page-wrapper button,
+.lookup-page-wrapper input {
+  font-family: inherit;
+}
+
+@media (max-width: 760px) {
+  .lookup-result-content {
+    grid-template-columns: 175px minmax(0, 1fr);
+  }
+
+  .lookup-qr-frame img {
+    width: 125px;
+    height: 125px;
+  }
+
+  .lookup-booking-details {
+    padding: 13px;
+  }
+}
+
+@media (max-width: 620px) {
+  .lookup-page-wrapper {
+    padding: 20px 13px 42px;
+  }
+
+  .lookup-search-card {
+    padding: 20px 15px;
+    border-radius: 12px;
+  }
+
+  .lookup-title {
+    font-size: 1.3rem;
+  }
+
+  .lookup-subtitle {
+    margin-bottom: 15px;
+  }
+
+  .lookup-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .btn-lookup-now {
+    grid-column: auto;
+  }
+
+  .lookup-result-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .lookup-result-content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lookup-qr-column {
+    border-right: 0;
+    border-bottom: 1px solid #edf1ef;
+  }
+
+  .lookup-qr-download {
+    max-width: 250px;
+    margin-top: 8px;
+  }
+
+  .lookup-footer {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .lookup-support-link {
+    margin-left: 29px;
+  }
+}
+

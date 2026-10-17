@@ -1,97 +1,126 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Link, useLocation } from "react-router-dom";
 import "./timeslots.css";
 import timeslotsApi from "../../../api/timeslotsApi";
 import { getFields } from "../../../api/fieldsApi";
 import { useToast, ToastContainer } from "../../../components/Toast/Toast";
+import AdminSidebar from "../../../components/AdminSidebar/AdminSidebar";
 
-const navLinks = [
-  { icon: 'dashboard', label: 'Dashboard', path: '/admin/dashboard' },
-  { icon: 'stadium', label: 'Fields', path: '/admin/fields' },
-  { icon: 'event_available', label: 'Bookings', path: '/admin/bookings' },
-  { icon: 'group', label: 'Users', path: '/admin/users' },
-  { icon: 'payments', label: 'Revenue', path: '/admin/revenue' },
-  { icon: 'calendar_month', label: 'Time Slots', path: '/admin/timeslots' },
-  { icon: 'inventory_2', label: 'Services', path: '/admin/services' },
-  { icon: 'settings', label: 'Settings', path: '/admin/settings' },
-];
-
-/* ── Bảng giá hiển thị (bỏ 10:00-14:00) ── */
-const PRICE_LABELS = [
-  { range: '06:00 – 10:00', price: '80,000 – 100,000đ', tag: 'Sáng sớm', tagClass: 'morning' },
-  { range: '14:00 – 17:00', price: '150,000 – 180,000đ', tag: 'Buổi chiều', tagClass: 'afternoon' },
-  { range: '17:00 – 22:00', price: '200,000 – 270,000đ', tag: 'Cao điểm', tagClass: 'peak' },
-];
-
-/* ── Sidebar ── */
-function Sidebar() {
-  const location = useLocation();
-  return (
-    <aside className="sidebar">
-      <div className="sidebar-logo">
-        <h1>Pitch &amp; Pulse</h1>
-        <p>Admin Console</p>
-      </div>
-      <nav className="sidebar-nav">
-        {navLinks.map(({ icon, label, path }) => (
-          <Link
-            key={label}
-            to={path}
-            className={`nav-link ${location.pathname === path ? "active" : ""}`}
-          >
-            <span className="material-symbols-outlined">{icon}</span>
-            <span>{label}</span>
-          </Link>
-        ))}
-      </nav>
-      <div className="sidebar-profile">
-        <div className="sidebar-profile-inner">
-          <img
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBbtTOzZUEspcIZtP_NrcVT_RpRIsxBXVtIHw8I_z9TgtDhtU851BPV7SC_PG4zamnMZ0emALIOpJfCvL4MfAfXJLhkDRRdQcH6A_UDRc5BrAhVSENkXZ9XrrsdW2tWheVauhO0S_7K-mN-e1Pi0zlx4fQSvAsYLRqw3gc2HLoB28R5Uyr5amlw666kMQbXZKr4W9xFKHYwHyKACWk7PPyUZp11_PnL1gqkvBWKJ76lcQn3HNAOO689oZ25n_R9O-JmkV3Rp_g1qao"
-            alt="Admin"
-          />
-          <div>
-            <p className="profile-name">Admin Name</p>
-            <p className="profile-role">Super Admin</p>
-          </div>
-        </div>
-      </div>
-    </aside>
-  );
-}
+/* ── Sidebar ── dùng AdminSidebar component chung */
 
 /* ── TopHeader ── */
-function TopHeader() {
+function TopHeader({ onGenerate, searchTerm, onSearchChange }) {
   return (
     <header className="top-header">
       <div className="search-box">
         <span className="material-symbols-outlined search-icon">search</span>
-        <input type="text" placeholder="Tìm kiếm khung giờ..." />
+        <input
+          type="text"
+          placeholder="Tìm kiếm khung giờ, tên sân, ngày..."
+          value={searchTerm}
+          onChange={(e) => onSearchChange(e.target.value)}
+        />
       </div>
       <div className="header-actions">
-        <div className="icon-group">
-          <button className="icon-btn">
-            <span className="material-symbols-outlined">notifications</span>
-          </button>
-          <button className="icon-btn">
-            <span className="material-symbols-outlined">help_outline</span>
-          </button>
-        </div>
+        <button className="icon-btn" title="Thông báo">
+          <span className="material-symbols-outlined">notifications</span>
+        </button>
+        <button className="icon-btn" title="Trợ giúp">
+          <span className="material-symbols-outlined">help_outline</span>
+        </button>
+        <div className="header-divider" />
+        <button className="btn-new-booking" onClick={onGenerate}>
+          <span className="material-symbols-outlined">auto_awesome</span>
+          Tạo slot tự động
+        </button>
       </div>
     </header>
   );
 }
 
+/* ── Cấu hình mẫu các khung giờ trong ngày ── */
+const DEFAULT_SLOT_TEMPLATES = [
+  { hour: 6,  start_time: '06:00', end_time: '07:00', label: '06:00 – 07:00', price: 80000,  enabled: true,  session: 'morning',   sessionLabel: 'Sáng' },
+  { hour: 7,  start_time: '07:00', end_time: '08:00', label: '07:00 – 08:00', price: 80000,  enabled: true,  session: 'morning',   sessionLabel: 'Sáng' },
+  { hour: 8,  start_time: '08:00', end_time: '09:00', label: '08:00 – 09:00', price: 100000, enabled: true,  session: 'morning',   sessionLabel: 'Sáng' },
+  { hour: 9,  start_time: '09:00', end_time: '10:00', label: '09:00 – 10:00', price: 100000, enabled: true,  session: 'morning',   sessionLabel: 'Sáng' },
+  { hour: 10, start_time: '10:00', end_time: '11:00', label: '10:00 – 11:00', price: 120000, enabled: false, session: 'midday',    sessionLabel: 'Trưa' },
+  { hour: 11, start_time: '11:00', end_time: '12:00', label: '11:00 – 12:00', price: 120000, enabled: false, session: 'midday',    sessionLabel: 'Trưa' },
+  { hour: 12, start_time: '12:00', end_time: '13:00', label: '12:00 – 13:00', price: 120000, enabled: false, session: 'midday',    sessionLabel: 'Trưa' },
+  { hour: 13, start_time: '13:00', end_time: '14:00', label: '13:00 – 14:00', price: 120000, enabled: false, session: 'midday',    sessionLabel: 'Trưa' },
+  { hour: 14, start_time: '14:00', end_time: '15:00', label: '14:00 – 15:00', price: 150000, enabled: true,  session: 'afternoon', sessionLabel: 'Chiều' },
+  { hour: 15, start_time: '15:00', end_time: '16:00', label: '15:00 – 16:00', price: 150000, enabled: true,  session: 'afternoon', sessionLabel: 'Chiều' },
+  { hour: 16, start_time: '16:00', end_time: '17:00', label: '16:00 – 17:00', price: 180000, enabled: true,  session: 'afternoon', sessionLabel: 'Chiều' },
+  { hour: 17, start_time: '17:00', end_time: '18:00', label: '17:00 – 18:00', price: 200000, enabled: true,  session: 'peak',      sessionLabel: 'Cao điểm' },
+  { hour: 18, start_time: '18:00', end_time: '19:00', label: '18:00 – 19:00', price: 250000, enabled: true,  session: 'peak',      sessionLabel: 'Cao điểm' },
+  { hour: 19, start_time: '19:00', end_time: '20:00', label: '19:00 – 20:00', price: 270000, enabled: true,  session: 'peak',      sessionLabel: 'Cao điểm' },
+  { hour: 20, start_time: '20:00', end_time: '21:00', label: '20:00 – 21:00', price: 270000, enabled: true,  session: 'peak',      sessionLabel: 'Cao điểm' },
+  { hour: 21, start_time: '21:00', end_time: '22:00', label: '21:00 – 22:00', price: 250000, enabled: true,  session: 'peak',      sessionLabel: 'Cao điểm' },
+];
+
 /* ── Generate Modal ── */
-function GenerateModal({ onClose, onSuccess, showToast }) {
+function GenerateModal({ fields = [], onClose, onSuccess, showToast }) {
+  const [selectedField, setSelectedField] = useState("all");
   const [days, setDays] = useState(30);
+  const [slotConfigs, setSlotConfigs] = useState(DEFAULT_SLOT_TEMPLATES);
+  const [quickPrice, setQuickPrice] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
 
+  // Tính khoảng ngày bắt đầu & kết thúc
+  const today = new Date();
+  const endDate = new Date();
+  endDate.setDate(today.getDate() + Math.max(0, days - 1));
+
+  const formatDateStr = (d) => {
+    return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+  };
+
+  const handleToggleSlot = (index) => {
+    setSlotConfigs(prev => prev.map((s, idx) => idx === index ? { ...s, enabled: !s.enabled } : s));
+  };
+
+  const handlePriceChange = (index, val) => {
+    const num = Math.max(0, parseInt(val, 10) || 0);
+    setSlotConfigs(prev => prev.map((s, idx) => idx === index ? { ...s, price: num } : s));
+  };
+
+  const handleSelectAllSlots = (enableAll = true) => {
+    setSlotConfigs(prev => prev.map(s => ({ ...s, enabled: enableAll })));
+  };
+
+  const handleSelectStandardSlots = () => {
+    setSlotConfigs(DEFAULT_SLOT_TEMPLATES);
+  };
+
+  const handleApplyBulkPrice = () => {
+    const p = parseInt(quickPrice, 10);
+    if (!p || p <= 0) return;
+    setSlotConfigs(prev => prev.map(s => s.enabled ? { ...s, price: p } : s));
+    showToast(`Đã áp dụng giá ${p.toLocaleString()}đ cho tất cả khung giờ đang bật`, "success");
+    setQuickPrice("");
+  };
+
   const handleGenerate = async () => {
+    const enabledSlots = slotConfigs.filter(s => s.enabled);
+    if (enabledSlots.length === 0) {
+      showToast("Vui lòng bật ít nhất 1 khung giờ để tạo!", "error");
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await timeslotsApi.generateSlots(days);
+      const payload = {
+        days,
+        field_id: selectedField === "all" ? null : selectedField,
+        slot_configs: enabledSlots.map(s => ({
+          start_time: s.start_time,
+          end_time: s.end_time,
+          price: s.price,
+          enabled: true,
+        })),
+      };
+
+      const res = await timeslotsApi.generateSlots(payload);
       setResult(res.data);
     } catch (err) {
       showToast("Lỗi: " + (err.response?.data?.error || err.message), "error");
@@ -105,13 +134,21 @@ function GenerateModal({ onClose, onSuccess, showToast }) {
     onClose();
   };
 
+  const enabledCount = slotConfigs.filter(s => s.enabled).length;
+  const targetFieldName = selectedField === "all"
+    ? `Tất cả các sân (${fields.length} sân)`
+    : fields.find(f => f.id === selectedField)?.field_name || "Sân đã chọn";
+
   return (
     <div className="ts-modal-overlay">
       <div className="ts-modal gen-modal">
         <div className="ts-modal-header">
           <div className="gen-modal-title">
             <span className="material-symbols-outlined gen-icon">auto_awesome</span>
-            <h2>Tạo slot giờ tự động</h2>
+            <div>
+              <h2>Tạo slot giờ tự động</h2>
+              <p className="gen-subtitle">Tùy chỉnh sân áp dụng, số ngày và giá từng khung giờ</p>
+            </div>
           </div>
           <button onClick={onClose} className="btn-close-modal">
             <span className="material-symbols-outlined">close</span>
@@ -119,58 +156,171 @@ function GenerateModal({ onClose, onSuccess, showToast }) {
         </div>
 
         <div className="gen-modal-body">
-          {/* Bảng giá preview */}
-          <div className="price-preview">
-            <p className="price-preview-title">Bảng giá sẽ được áp dụng</p>
-            <div className="price-rows">
-              {PRICE_LABELS.map(p => (
-                <div key={p.range} className="price-row">
-                  <span className={`price-tag ${p.tagClass}`}>{p.tag}</span>
-                  <span className="price-range-time">{p.range}</span>
-                  <span className="price-range-val">{p.price}</span>
-                </div>
-              ))}
+          {/* ── 1. Chọn sân áp dụng ── */}
+          <div className="gen-section">
+            <label className="ts-label">
+              <span className="material-symbols-outlined label-icon">stadium</span>
+              Áp dụng cho sân bóng nào?
+            </label>
+            <div className="gen-field-select-box">
+              <select
+                className="ts-select gen-select-field"
+                value={selectedField}
+                onChange={(e) => setSelectedField(e.target.value)}
+              >
+                <option value="all">🏟️ Tất cả các sân đang hoạt động ({fields.length} sân)</option>
+                {fields.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    ⚽ {f.field_name || f.name} {f.location ? `— ${f.location}` : ""}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
-          {/* Số ngày */}
-          <div className="gen-days-wrap">
-            <label className="ts-label">Tạo cho bao nhiêu ngày tới?</label>
+          {/* ── 2. Số ngày tới & Phạm vi ngày ── */}
+          <div className="gen-section">
+            <label className="ts-label">
+              <span className="material-symbols-outlined label-icon">calendar_month</span>
+              Tạo cho bao nhiêu ngày tới?
+            </label>
             <div className="days-input-row">
-              {[7, 14, 30, 60].map(d => (
+              {[7, 14, 30, 60, 90].map((d) => (
                 <button
                   key={d}
-                  className={`days-chip ${days === d ? 'active' : ''}`}
+                  type="button"
+                  className={`days-chip ${days === d ? "active" : ""}`}
                   onClick={() => setDays(d)}
                 >
                   {d} ngày
                 </button>
               ))}
-              <input
-                type="number"
-                className="ts-input days-custom"
-                value={days}
-                min={1}
-                max={90}
-                onChange={e => setDays(Number(e.target.value))}
-              />
+              <div className="days-custom-box">
+                <input
+                  type="number"
+                  className="ts-input days-custom"
+                  value={days}
+                  min={1}
+                  max={90}
+                  onChange={(e) => setDays(Math.max(1, Math.min(90, Number(e.target.value) || 1)))}
+                />
+                <span className="days-unit">ngày</span>
+              </div>
             </div>
-            <p className="gen-hint">
-              <span className="material-symbols-outlined" style={{ fontSize: 14 }}>info</span>
-              Slot đã tồn tại sẽ được bỏ qua. Tối đa 90 ngày.
-            </p>
+            <div className="gen-date-range-badge">
+              <span className="material-symbols-outlined">event_upcoming</span>
+              <span>
+                Khoảng thời gian: Từ <strong>{formatDateStr(today)}</strong> đến <strong>{formatDateStr(endDate)}</strong> ({days} ngày)
+              </span>
+            </div>
           </div>
 
-          {/* Kết quả */}
+          {/* ── 3. Điều chỉnh khung giờ & Bảng giá ── */}
+          <div className="gen-section">
+            <div className="gen-slots-header">
+              <div>
+                <label className="ts-label">
+                  <span className="material-symbols-outlined label-icon">payments</span>
+                  Bảng giá &amp; Khung giờ áp dụng
+                </label>
+                <p className="gen-slots-hint">
+                  Đang bật <strong>{enabledCount}</strong> / {slotConfigs.length} khung giờ. Bấm checkbox để bật/tắt hoặc nhập lại giá theo ý muốn.
+                </p>
+              </div>
+              <div className="gen-slots-quick-actions">
+                <button type="button" className="btn-text-action" onClick={() => handleSelectAllSlots(true)}>Bật hết</button>
+                <span className="sep">•</span>
+                <button type="button" className="btn-text-action" onClick={() => handleSelectAllSlots(false)}>Tắt hết</button>
+                <span className="sep">•</span>
+                <button type="button" className="btn-text-action" onClick={handleSelectStandardSlots}>Mặc định (bỏ trưa)</button>
+              </div>
+            </div>
+
+            {/* Thanh gán giá nhanh */}
+            <div className="bulk-price-bar">
+              <span className="bulk-price-label">
+                <span className="material-symbols-outlined">tune</span>
+                Đặt giá nhanh cho các giờ đang bật:
+              </span>
+              <div className="bulk-price-inputs">
+                <input
+                  type="number"
+                  step="10000"
+                  min="0"
+                  placeholder="Ví dụ: 150000"
+                  value={quickPrice}
+                  onChange={(e) => setQuickPrice(e.target.value)}
+                  className="ts-input bulk-price-input"
+                />
+                <button
+                  type="button"
+                  className="btn-apply-bulk-price"
+                  onClick={handleApplyBulkPrice}
+                  disabled={!quickPrice || Number(quickPrice) <= 0}
+                >
+                  Áp dụng giá
+                </button>
+              </div>
+            </div>
+
+            {/* Lưới danh sách các khung giờ */}
+            <div className="gen-slots-grid">
+              {slotConfigs.map((slot, index) => (
+                <div
+                  key={slot.start_time}
+                  className={`gen-slot-card ${slot.enabled ? "is-enabled" : "is-disabled"} ${slot.session}`}
+                >
+                  <div className="gen-slot-meta">
+                    <label className="gen-slot-label">
+                      <input
+                        type="checkbox"
+                        checked={slot.enabled}
+                        onChange={() => handleToggleSlot(index)}
+                        className="gen-slot-checkbox"
+                      />
+                      <span className="gen-slot-time-text">{slot.label}</span>
+                    </label>
+                    <span className={`price-tag ${slot.session}`}>{slot.sessionLabel}</span>
+                  </div>
+                  <div className="gen-slot-price-field">
+                    <span className="price-prefix">Giá:</span>
+                    <input
+                      type="number"
+                      step="5000"
+                      min="0"
+                      disabled={!slot.enabled}
+                      value={slot.price}
+                      onChange={(e) => handlePriceChange(index, e.target.value)}
+                      className="ts-input gen-slot-price-input"
+                    />
+                    <span className="currency-unit">đ</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Tóm tắt trước khi tạo ── */}
+          <div className="gen-summary-card">
+            <span className="material-symbols-outlined summary-icon">info</span>
+            <div className="summary-text">
+              Sẽ tạo tối đa <strong>{enabledCount * days * (selectedField === "all" ? (fields.length || 1) : 1)}</strong> slot 
+              ({enabledCount} khung giờ × {days} ngày × {targetFieldName}).
+              <br />
+              <span className="summary-subtext">Hệ thống tự động bỏ qua những slot giờ đã tồn tại trước đó để tránh trùng lặp.</span>
+            </div>
+          </div>
+
+          {/* ── Kết quả sau khi tạo ── */}
           {result && (
             <div className="gen-result">
               <div className="gen-result-item created">
                 <span className="material-symbols-outlined">check_circle</span>
-                <strong>{result.created.toLocaleString()}</strong> slot đã tạo mới
+                <strong>{result.created?.toLocaleString()}</strong> slot đã tạo mới thành công
               </div>
               <div className="gen-result-item skipped">
                 <span className="material-symbols-outlined">skip_next</span>
-                <strong>{result.skipped.toLocaleString()}</strong> slot đã tồn tại (bỏ qua)
+                <strong>{result.skipped?.toLocaleString()}</strong> slot đã tồn tại trước đó (bỏ qua)
               </div>
             </div>
           )}
@@ -178,20 +328,23 @@ function GenerateModal({ onClose, onSuccess, showToast }) {
 
         <div className="ts-modal-footer">
           {result ? (
-            <button className="btn-save" onClick={handleDone}>Xong</button>
+            <button className="btn-save" onClick={handleDone}>
+              <span className="material-symbols-outlined">done</span>
+              Hoàn tất
+            </button>
           ) : (
             <>
-              <button className="btn-cancel" onClick={onClose}>Hủy</button>
-              <button className="btn-save btn-generate" onClick={handleGenerate} disabled={loading}>
+              <button className="btn-cancel" onClick={onClose} disabled={loading}>Hủy</button>
+              <button className="btn-save btn-generate" onClick={handleGenerate} disabled={loading || enabledCount === 0}>
                 {loading ? (
                   <>
                     <span className="material-symbols-outlined spin">progress_activity</span>
-                    Đang tạo...
+                    Đang tạo hàng loạt...
                   </>
                 ) : (
                   <>
                     <span className="material-symbols-outlined">bolt</span>
-                    Tạo ngay
+                    Tạo ngay ({enabledCount} giờ / ngày)
                   </>
                 )}
               </button>
@@ -326,7 +479,7 @@ const Timeslots = () => {
   const [editingSlot, setEditingSlot] = useState(null);
   const { toasts, removeToast, toast } = useToast();
 
-  // Filters
+  const [searchTerm, setSearchTerm] = useState('');
   const [filterField, setFilterField] = useState('');
   const [filterDate, setFilterDate] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -387,6 +540,13 @@ const Timeslots = () => {
     if (filterField && s.field_id !== filterField) return false;
     if (filterDate && s.slot_date !== filterDate) return false;
     if (filterStatus && s.status !== filterStatus) return false;
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase();
+      const matchField = (s.field_name || '').toLowerCase().includes(q);
+      const matchTime = `${s.start_time} - ${s.end_time}`.toLowerCase().includes(q);
+      const matchDate = (s.slot_date || '').toLowerCase().includes(q);
+      if (!matchField && !matchTime && !matchDate) return false;
+    }
     return true;
   });
 
@@ -401,30 +561,38 @@ const Timeslots = () => {
   };
 
   return (
-    <>
+    <div className="timeslots-page-layout">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-      <Sidebar />
-      <TopHeader />
-      <main className="main-content">
-        <div className="content-inner">
+      <AdminSidebar />
+      <div className="timeslots-page-container">
+        <TopHeader
+          onGenerate={() => setShowGenModal(true)}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+        />
+        <main className="main-content timeslots-main-content">
+          <div className="content-inner">
 
-          {/* ── Page Header ── */}
-          <div className="ts-header">
-            <div>
-              <h1 className="ts-title">Quản lý Khung giờ</h1>
-              <p className="ts-subtitle">Xem, chỉnh sửa giá, vô hiệu hoá hoặc xoá các slot giờ</p>
+            {/* ── Page Header ── */}
+            <div className="page-header-alt">
+              <div className="header-text">
+                <span className="admin-page-eyebrow">
+                  PITCH &amp; PULSE OPERATIONS <span>›</span> LỊCH TRÌNH SÂN
+                </span>
+                <h2>Quản lý Khung giờ</h2>
+                <p>Xem, chỉnh sửa giá, vô hiệu hoá hoặc xoá các slot giờ thi đấu theo thời gian thực.</p>
+              </div>
+              <div className="ts-header-btns">
+                <button className="btn-delete-all" onClick={handleDeleteAll}>
+                  <span className="material-symbols-outlined">delete_sweep</span>
+                  Xóa tất cả
+                </button>
+                <button className="btn-primary-gradient" onClick={() => setShowGenModal(true)}>
+                  <span className="material-symbols-outlined">auto_awesome</span>
+                  Tạo slot tự động
+                </button>
+              </div>
             </div>
-            <div className="ts-header-btns">
-              <button className="btn-delete-all" onClick={handleDeleteAll}>
-                <span className="material-symbols-outlined">delete_sweep</span>
-                Xóa tất cả
-              </button>
-              <button className="btn-generate-slots" onClick={() => setShowGenModal(true)}>
-                <span className="material-symbols-outlined">auto_awesome</span>
-                Tạo slot tự động
-              </button>
-            </div>
-          </div>
 
           {/* ── Stats Cards ── */}
           <div className="ts-stats-grid">
@@ -578,9 +746,11 @@ const Timeslots = () => {
           </div>
         </div>
       </main>
+    </div>
 
       {showGenModal && (
         <GenerateModal
+          fields={fields}
           onClose={() => setShowGenModal(false)}
           onSuccess={fetchData}
           showToast={(msg, type) => toast[type || 'info'](msg)}
@@ -595,7 +765,7 @@ const Timeslots = () => {
           showToast={(msg, type) => toast[type || 'info'](msg)}
         />
       )}
-    </>
+    </div>
   );
 };
 

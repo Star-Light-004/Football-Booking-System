@@ -3,19 +3,30 @@ from .models import Bookings
 from apps.reviews.models import Reviews
 
 class BookingsSerializer(serializers.ModelSerializer):
+    field_id = serializers.UUIDField(source='field.id', read_only=True)
     name = serializers.CharField(source='customer.full_name', read_only=True)
     phone = serializers.CharField(source='customer.phone', read_only=True)
+    email = serializers.CharField(source='customer.email', read_only=True)
+    is_guest = serializers.SerializerMethodField()
     field = serializers.CharField(source='field.field_name', read_only=True)
     date = serializers.DateField(source='booking_date', read_only=True)
     time = serializers.SerializerMethodField()
     price = serializers.FloatField(source='total_price', read_only=True)
+    notes = serializers.CharField(read_only=True)
+    discount_amount = serializers.FloatField(read_only=True)
+    voucher_code = serializers.CharField(read_only=True)
 
     class Meta:
         model = Bookings
-        fields = ['id', 'name', 'phone', 'field', 'date', 'time', 'price', 'status']
+        fields = ['id', 'name', 'phone', 'email', 'is_guest', 'field', 'field_id', 'date', 'time', 'price', 'discount_amount', 'voucher_code', 'status', 'notes', 'created_at']
 
     def get_time(self, obj):
         return f"{obj.start_time} - {obj.end_time}"
+
+    def get_is_guest(self, obj):
+        if not obj.customer:
+            return True
+        return not bool(obj.customer.password_hash)
 
 class UserBookingsSerializer(serializers.ModelSerializer):
     fieldName = serializers.CharField(source='field.field_name', read_only=True)
@@ -25,12 +36,14 @@ class UserBookingsSerializer(serializers.ModelSerializer):
     customerName = serializers.CharField(source='customer.full_name', read_only=True)
     phone = serializers.CharField(source='customer.phone', read_only=True)
     price = serializers.FloatField(source='total_price', read_only=True)
+    discountAmount = serializers.FloatField(source='discount_amount', read_only=True)
+    voucherCode = serializers.CharField(source='voucher_code', read_only=True)
     image = serializers.SerializerMethodField()
     is_reviewed = serializers.SerializerMethodField()
 
     class Meta:
         model = Bookings
-        fields = ['id', 'fieldName', 'fieldAddress', 'bookingDate', 'timeSlot', 'customerName', 'phone', 'price', 'status', 'image', 'is_reviewed']
+        fields = ['id', 'fieldName', 'fieldAddress', 'bookingDate', 'timeSlot', 'customerName', 'phone', 'price', 'discountAmount', 'voucherCode', 'status', 'image', 'is_reviewed']
 
     def get_timeSlot(self, obj):
         return f"{obj.start_time} - {obj.end_time}"

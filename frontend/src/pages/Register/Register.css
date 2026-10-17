@@ -1,65 +1,33 @@
-/* Register page styles */
+@import url("../Login/Login.css");
 
-.register-page .input-group {
-  position: relative;
-}
-
-.register-page .input-icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #9ca3af;
-  font-size: 20px;
-}
-
-.register-page input[type="text"],
-.register-page input[type="email"],
-.register-page input[type="tel"],
-.register-page input[type="password"] {
+.register-page {
   width: 100%;
-  padding-left: 48px; /* đủ cho icon */
-  padding-right: 16px;
-  padding-top: 12px;
-  padding-bottom: 12px;
-  background-color: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  color: #1e293b;
-  transition: all 0.2s ease;
 }
 
-.register-page input[type="text"]:focus,
-.register-page input[type="email"]:focus,
-.register-page input[type="tel"]:focus,
-.register-page input[type="password"]:focus {
-  outline: none;
-  border-color: #29a847;
-  box-shadow: 0 0 0 3px rgba(41, 168, 71, 0.1);
-}
-
-.register-page .register-button {
+.register-page-content {
   width: 100%;
-  background-color: #29a847;
-  color: white;
-  font-weight: bold;
-  padding: 14px;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: background-color 0.2s ease;
 }
 
-.register-page .register-button:hover {
-  background-color: #218838;
+.register-page .auth-form-heading p {
+  max-width: 420px;
 }
 
-.register-page .register-button .material-icons {
-  font-size: 20px;
+.register-page .register-form .auth-input-wrap input {
+  height: 39px;
+}
+
+.register-page .register-form .auth-field > label {
+  margin-bottom: 4px;
+}
+
+.register-page .register-message-overlay {
+  font-family: inherit;
+}
+
+@media (max-width: 760px) {
+  .register-page .auth-promo--register {
+    min-height: 235px;
+  }
 }
 
 /* Fallback nếu icon không load */

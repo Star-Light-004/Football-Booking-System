@@ -11,7 +11,7 @@ HOURLY_PRICES = {
     7:  80_000,
     8:  100_000,
     9:  100_000,
-    14: 150_000,
+    10: 150_000,
     15: 150_000,
     16: 180_000,
     17: 200_000,
@@ -41,7 +41,7 @@ def timeslot_list(request):
                 price=data.get('price'),
                 status=data.get('status', 'available')
             )
-            return Response({"message": "Tạo thành công", "id": str(slot.id)})
+            return Response({"message": "Tao thanh cong", "id": str(slot.id)})
         except Exception as e:
             return Response([], status=200)
 
@@ -61,11 +61,11 @@ def timeslot_detail(request, pk):
         slot.price = data.get('price', slot.price)
         slot.status = data.get('status', slot.status)
         slot.save()
-        return Response({"message": "Cập nhật thành công"})
+        return Response({"message": "Cap nhat thanh cong"})
 
     if request.method == 'DELETE':
         slot.delete()
-        return Response({"message": "Xóa thành công"})
+        return Response({"message": "Xoa thanh cong"})
 
 
 @api_view(['GET'])
@@ -93,12 +93,68 @@ def get_timeslots_by_field(request):
 
 @api_view(['POST'])
 def generate_slots(request):
-    days = int(request.data.get('days', 30))
+    try:
+        days = int(request.data.get('days', 30))
+    except (ValueError, TypeError):
+        days = 30
     days = max(1, min(days, 90))
 
+    # 1. Lọc sân bóng áp dụng
+    field_id = request.data.get('field_id')
+    field_ids = request.data.get('field_ids')
+
     fields = FootballFields.objects.filter(is_available=True)
+    if field_id and str(field_id).strip().lower() not in ['all', '', 'null', 'none']:
+        fields = fields.filter(id=field_id)
+    elif field_ids and isinstance(field_ids, list) and len(field_ids) > 0:
+        fields = fields.filter(id__in=field_ids)
+
     if not fields.exists():
-        return Response({"error": "Không có sân nào đang hoạt động"}, status=400)
+        return Response({"error": "Không có sân bóng nào phù hợp hoặc đang hoạt động"}, status=http_status.HTTP_400_BAD_REQUEST)
+
+    # 2. Lấy cấu hình khung giờ & giá (slot_configs hoặc custom hourly_prices)
+    slot_configs = request.data.get('slot_configs')
+    hourly_prices = request.data.get('hourly_prices')
+
+    time_rules = []
+    if slot_configs and isinstance(slot_configs, list):
+        for item in slot_configs:
+            if not item.get('enabled', True):
+                continue
+            try:
+                if 'start_time' in item and 'end_time' in item:
+                    st_str = str(item['start_time']).strip()
+                    et_str = str(item['end_time']).strip()
+                    st_parts = [int(p) for p in st_str.split(':')[:2]]
+                    et_parts = [int(p) for p in et_str.split(':')[:2]]
+                    start = time(st_parts[0], st_parts[1])
+                    end = time(et_parts[0], et_parts[1])
+                elif 'hour' in item:
+                    h = int(item['hour'])
+                    start = time(h, 0)
+                    end = time((h + 1) % 24, 0)
+                else:
+                    continue
+                p = Decimal(str(item.get('price', 100000)))
+                time_rules.append((start, end, p))
+            except Exception:
+                continue
+
+    elif hourly_prices and isinstance(hourly_prices, dict):
+        for h_str, p_val in hourly_prices.items():
+            try:
+                h = int(h_str)
+                start = time(h, 0)
+                end = time((h + 1) % 24, 0)
+                p = Decimal(str(p_val))
+                time_rules.append((start, end, p))
+            except Exception:
+                continue
+
+    if not time_rules:
+        # Mặc định theo HOURLY_PRICES
+        for hour, price in HOURLY_PRICES.items():
+            time_rules.append((time(hour, 0), time(hour + 1, 0), Decimal(str(price))))
 
     today = date.today()
     slots_to_create = []
@@ -106,10 +162,7 @@ def generate_slots(request):
 
     for delta in range(days):
         slot_date = today + timedelta(days=delta)
-        for hour, price in HOURLY_PRICES.items():
-            start = time(hour, 0)
-            end = time(hour + 1, 0)
-
+        for start, end, price in time_rules:
             for field in fields:
                 exists = TimeSlots.objects.filter(
                     field=field,
@@ -126,7 +179,7 @@ def generate_slots(request):
                     slot_date=slot_date,
                     start_time=start,
                     end_time=end,
-                    price=Decimal(price),
+                    price=price,
                     status='available'
                 ))
 
@@ -134,9 +187,11 @@ def generate_slots(request):
         TimeSlots.objects.bulk_create(slots_to_create, ignore_conflicts=True)
 
     return Response({
-        "message": "Generate slots success",
+        "message": "Tạo khung giờ tự động thành công!",
         "created": len(slots_to_create),
-        "skipped": skipped_count
+        "skipped": skipped_count,
+        "days": days,
+        "fields_count": fields.count()
     }, status=http_status.HTTP_201_CREATED)
 
 

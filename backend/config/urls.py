@@ -11,6 +11,7 @@ urlpatterns = [
     path('api/timeslots/', include('apps.timeslots.urls')),
     path('api/services/', include('apps.servicesadd.urls')),
     path('api/notifications/', include('apps.notifications.urls')),
+    path('api/vouchers/', include('apps.vouchers.urls')),
 ]
 
 # 👇 FIX MEDIA

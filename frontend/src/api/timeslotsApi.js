@@ -18,8 +18,9 @@ const timeslotsApi = {
   delete: (id) => {
     return axios.delete(`${BASE_URL}/timeslots/${id}/`);
   },
-  generateSlots: (days = 30) => {
-    return axios.post(`${BASE_URL}/timeslots/generate-slots/`, { days });
+  generateSlots: (payload = 30) => {
+    const data = typeof payload === 'object' && payload !== null ? payload : { days: payload };
+    return axios.post(`${BASE_URL}/timeslots/generate-slots/`, data);
   },
   deleteAll: () => {
     return axios.delete(`${BASE_URL}/timeslots/delete-all/`);

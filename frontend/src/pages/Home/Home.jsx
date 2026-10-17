@@ -1,74 +1,27 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import FieldCard from "../../components/FieldCard/FieldCard";
 import { getFields } from "../../api/fieldsApi";
 import "./Home.css";
 
-// ── Helper: lấy thông tin hiển thị theo role ──────────────────────────────
-const getRoleInfo = (role) => {
-  switch (role) {
-    case "admin":
-      return { label: "Quản trị viên", icon: "admin_panel_settings", color: "#ef4444", bg: "#fef2f2", border: "#fecaca" };
-    case "staff":
-      return { label: "Nhân viên", icon: "badge", color: "#f59e0b", bg: "#fffbeb", border: "#fde68a" };
-    case "customer":
-    default:
-      return { label: "Khách hàng", icon: "person", color: "#22c55e", bg: "#f0fdf4", border: "#bbf7d0" };
-  }
-};
-
-// ── Quick actions theo role ──────────────────────────────────────────────────
-const getQuickActions = (role) => {
-  const customerActions = [
-    { icon: "event_available", label: "Đặt sân ngay", desc: "Tìm và đặt sân bóng nhanh chóng", to: "/booking", color: "#22c55e" },
-    { icon: "history", label: "Lịch sử đặt sân", desc: "Xem lại các lịch đặt của bạn", to: "/my-bookings", color: "#3b82f6" },
-    { icon: "stadium", label: "Khám phá sân", desc: "Duyệt danh sách sân bóng", to: "/fields", color: "#8b5cf6" },
-    { icon: "person", label: "Hồ sơ cá nhân", desc: "Cập nhật thông tin của bạn", to: "/profile", color: "#f59e0b" },
-  ];
-  const staffActions = [
-    { icon: "event_available", label: "Quản lý đặt sân", desc: "Xem và xử lý các lịch đặt", to: "/admin/bookings", color: "#22c55e" },
-    { icon: "stadium", label: "Quản lý sân", desc: "Thêm, sửa thông tin sân bóng", to: "/admin/fields", color: "#3b82f6" },
-    { icon: "schedule", label: "Khung giờ", desc: "Quản lý time slot theo ngày", to: "/admin/timeslots", color: "#8b5cf6" },
-    { icon: "inventory_2", label: "Dịch vụ", desc: "Quản lý dịch vụ bổ trợ", to: "/admin/services", color: "#f59e0b" },
-  ];
-  const adminActions = [
-    { icon: "dashboard", label: "Dashboard", desc: "Tổng quan hệ thống", to: "/admin/dashboard", color: "#22c55e" },
-    { icon: "group", label: "Người dùng", desc: "Quản lý tài khoản người dùng", to: "/admin/users", color: "#3b82f6" },
-    { icon: "payments", label: "Doanh thu", desc: "Thống kê và báo cáo tài chính", to: "/admin/revenue", color: "#ef4444" },
-    { icon: "settings", label: "Cài đặt", desc: "Cấu hình hệ thống", to: "/admin/settings", color: "#8b5cf6" },
-  ];
-  switch (role) {
-    case "admin":   return adminActions;
-    case "staff":   return staffActions;
-    default:        return customerActions;
-  }
-};
+const TABS = ["Tất cả", "Sân 5 người", "Sân 7 người", "Sân 11 người"];
 
 const Home = () => {
   const [featured, setFeatured] = useState([]);
-  const [user, setUser] = useState(null);
+  const [activeTab, setActiveTab] = useState("Tất cả");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchText, setSearchText] = useState("");
+  const [searchDistrict, setSearchDistrict] = useState("");
+  const [searchTime, setSearchTime] = useState("");
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    // Lấy user từ localStorage
-    const loadUser = () => {
-      const stored = localStorage.getItem("user");
-      setUser(stored ? JSON.parse(stored) : null);
-    };
-    loadUser();
-    window.addEventListener("userChanged", loadUser);
-    window.addEventListener("storage", loadUser);
-    return () => {
-      window.removeEventListener("userChanged", loadUser);
-      window.removeEventListener("storage", loadUser);
-    };
-  }, []);
+  const ITEMS_PER_PAGE = 6;
 
   useEffect(() => {
     const fetchFields = async () => {
       try {
         const res = await getFields();
-        // Lấy 6 sân đầu tiên
-        setFeatured(res.data.fields.slice(0, 6));
+        setFeatured(res.data.fields || []);
       } catch (error) {
         console.log("Lỗi lấy sân nổi bật:", error);
       }
@@ -76,315 +29,430 @@ const Home = () => {
     fetchFields();
   }, []);
 
+  // Filter by tab
+  const filteredByTab = featured.filter((f) => {
+    if (activeTab === "Tất cả") return true;
+    const t = String(f.field_type || "").toLowerCase();
+    if (activeTab === "Sân 5 người") return t.includes("5");
+    if (activeTab === "Sân 7 người") return t.includes("7");
+    if (activeTab === "Sân 11 người") return t.includes("11");
+    return true;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filteredByTab.length / ITEMS_PER_PAGE));
+  const paginated = filteredByTab.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setCurrentPage(1);
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const params = new URLSearchParams();
+    if (searchText) params.set("q", searchText);
+    if (searchDistrict) params.set("district", searchDistrict);
+    navigate(`/fields?${params.toString()}`);
+  };
+
   return (
     <>
       <main>
-        {/* Hero section */}
-        <section className="relative w-full h-[600px] flex items-center justify-center overflow-hidden">
-          <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{
-              backgroundImage:
-                "linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.7)), url('https://lh3.googleusercontent.com/aida-public/AB6AXuAK6WUVAd4U0q2e94rmo9daIUTGrCQIjSp4PNooM4_sDkdpcWxJZjr5jdUhEUsHRH_4z9UCS0E5HefRVUy9l49OHs7rAbJonmAkWiFAougJTicpzya0XOJDcva1xAaLfxmwkLgLsXyoGkI9MlU4pajIwrsbdKHNPCncKAlfOKCoPEPepNwgZGX0Ln0_hLm9ZZuCGkBmr07qMVa-MK4wjgGqdRb_29RHKE1fP0duNMdDk696w9mqAq5DFmNW1Q1hzPUvJ9QThHDeIWo')",
-            }}
-          />
-          <div className="relative z-10 max-w-4xl px-4 text-center">
-            <h2 className="text-4xl md:text-6xl font-extrabold text-white mb-6 leading-tight">
-              Đặt sân bóng nhanh chóng – <span className="text-primary">Trải nghiệm</span> bóng đá trọn vẹn
-            </h2>
-            <p className="text-lg md:text-xl text-slate-200 mb-10 max-w-2xl mx-auto">
-              Tìm sân gần bạn, xem khung giờ trống và đặt sân chỉ trong vài giây. Hệ thống đặt sân uy tín nhất hiện nay.
+        {/* ── HERO ── */}
+        <section className="home-hero">
+          <div className="home-hero__bg" />
+          <div className="home-hero__content">
+            <div className="home-hero__badge">
+              <span className="dot" />
+              Hệ thống đặt sân bóng đá #1 Việt Nam
+            </div>
+            <h1 className="home-hero__title">
+              Đặt sân bóng nhanh chóng —{" "}
+              <span className="highlight">Trải nghiệm</span> bóng đá{" "}
+              <span className="highlight">đỉnh cao</span>
+            </h1>
+            <p className="home-hero__subtitle">
+              Tìm sân gần bạn nhất, kiểm tra lịch trống theo thời gian thực và đặt sân chỉ
+              trong 30 giây. Gần 50k người dùng, Con số XXVN nâng trải nghiệm.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                to="/booking"
-                className="bg-primary text-white px-8 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 hover:scale-105 transition-transform"
-              >
-                <span className="material-symbols-outlined">event_available</span> Đặt sân ngay
+            <div className="home-hero__actions">
+              <Link to="/booking" className="btn-primary-hero">
+                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+                  event_available
+                </span>
+                Đặt sân ngay
               </Link>
-              <Link
-                to="/fields"
-                className="bg-white/10 backdrop-blur-md text-white border border-white/20 px-8 py-4 rounded-xl font-bold text-lg hover:bg-white/20 transition-all flex items-center justify-center"
-              >
+              <Link to="/fields" className="btn-outline-hero">
                 Xem danh sách sân
               </Link>
             </div>
+            <div className="home-hero__stats">
+              <div className="hero-stat">
+                <span className="hero-stat__num">500+</span>
+                <span className="hero-stat__label">Sân bóng</span>
+              </div>
+              <div className="hero-stat">
+                <span className="hero-stat__num">50.000+</span>
+                <span className="hero-stat__label">Lượt đặt/tháng</span>
+              </div>
+              <div className="hero-stat">
+                <span className="hero-stat__num">30s</span>
+                <span className="hero-stat__label">Thời gian đặt</span>
+              </div>
+              <div className="hero-stat">
+                <span className="hero-stat__num">4.9/5.0</span>
+                <span className="hero-stat__label">Đánh giá</span>
+              </div>
+            </div>
           </div>
         </section>
 
-        {/* ── Welcome + Role Section (chỉ hiển thị khi đã đăng nhập) ── */}
-        {user && (() => {
-          const roleInfo = getRoleInfo(user.role);
-          const quickActions = getQuickActions(user.role);
-          return (
-            <section className="py-10 px-4 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-800 border-b border-slate-100 dark:border-slate-700">
-              <div className="max-w-7xl mx-auto">
-                {/* Lời chào + role */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
-                  <div className="flex items-center gap-4">
-                    <div
-                      className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-md"
-                      style={{ background: roleInfo.bg, border: `2px solid ${roleInfo.border}` }}
-                    >
-                      <span
-                        className="material-symbols-outlined text-3xl"
-                        style={{ color: roleInfo.color }}
-                      >
-                        {roleInfo.icon}
-                      </span>
-                    </div>
-                    <div>
-                      <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100">
-                        Xin chào, <span style={{ color: roleInfo.color }}>{user.full_name || user.fullname || user.phone || "bạn"}</span>!
-                      </h2>
-                      {/* Badge role */}
-                      <span
-                        className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full mt-1.5"
-                        style={{
-                          color: roleInfo.color,
-                          background: roleInfo.bg,
-                          border: `1px solid ${roleInfo.border}`,
-                        }}
-                      >
-                        <span className="material-symbols-outlined text-sm" style={{ fontSize: '14px' }}>
-                          {roleInfo.icon}
-                        </span>
-                        {roleInfo.label}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="sm:ml-auto text-sm text-slate-400 dark:text-slate-500 hidden sm:block">
-                    {new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                  </div>
-                </div>
-
-                {/* Quick Action Cards theo role */}
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {quickActions.map(({ icon, label, desc, to, color }) => (
-                    <Link
-                      key={to}
-                      to={to}
-                      className="group bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl p-5 flex flex-col gap-3 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
-                    >
-                      <div
-                        className="w-11 h-11 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110"
-                        style={{ background: `${color}18`, border: `1.5px solid ${color}30` }}
-                      >
-                        <span
-                          className="material-symbols-outlined text-2xl"
-                          style={{ color }}
-                        >
-                          {icon}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-800 dark:text-slate-100 text-sm">{label}</p>
-                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 leading-relaxed">{desc}</p>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            </section>
-          );
-        })()}
-        {/* Search bar */}
-        <section className="relative -mt-16 z-20 px-4">
-          <div className="max-w-5xl mx-auto bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 md:p-8 border border-slate-100 dark:border-slate-700">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              {/* selectors omitted for brevity */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Khu vực</label>
-                <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">location_on</span>
-                  <select className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-primary">
-                    <option>Tất cả khu vực</option>
-                    <option>Quận 1, TP.HCM</option>
-                    <option>Quận 7, TP.HCM</option>
-                    <option>Cầu Giấy, Hà Nội</option>
-                  </select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Loại sân</label>
-                <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">groups</span>
-                  <select className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-primary">
-                    <option>Loại sân (5, 7, 11 người)</option>
-                    <option>Sân 5 người</option>
-                    <option>Sân 7 người</option>
-                    <option>Sân 11 người</option>
-                  </select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Ngày đặt</label>
-                <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">calendar_today</span>
-                  <input
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-primary"
-                    type="date"
-                  />
-                </div>
-              </div>
-              <div className="flex items-end">
-                <button className="w-full bg-primary text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
-                  <span className="material-symbols-outlined">search</span> Tìm sân
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-        {/* Features */}
-        <section className="py-24 px-4 max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h3 className="text-3xl font-bold mb-4">Tại sao nên chọn Football Booking?</h3>
-            <div className="h-1 w-20 bg-primary mx-auto rounded-full"></div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {/* four feature cards */}
-            <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-100 dark:border-slate-700 hover:border-primary transition-colors group">
-              <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-white transition-all">
-                <span className="material-symbols-outlined text-3xl">bolt</span>
-              </div>
-              <h4 className="text-xl font-bold mb-3">Đặt sân nhanh chóng</h4>
-              <p className="text-slate-500 dark:text-slate-400 leading-relaxed">Tiết kiệm thời gian với quy trình đặt sân tối giản chỉ trong 30 giây.</p>
-            </div>
-            <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-100 dark:border-slate-700 hover:border-primary transition-colors group">
-              <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-white transition-all">
-                <span className="material-symbols-outlined text-3xl">schedule</span>
-              </div>
-              <h4 className="text-xl font-bold mb-3">Cập nhật khung giờ</h4>
-              <p className="text-slate-500 dark:text-slate-400 leading-relaxed">Thông tin lịch trống được cập nhật liên tục theo thời gian thực từ các chủ sân.</p>
-            </div>
-            <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-100 dark:border-slate-700 hover:border-primary transition-colors group">
-              <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-white transition-all">
-                <span className="material-symbols-outlined text-3xl">assignment_turned_in</span>
-              </div>
-              <h4 className="text-xl font-bold mb-3">Quản lý lịch đặt</h4>
-              <p className="text-slate-500 dark:text-slate-400 leading-relaxed">Dễ dàng theo dõi, thay đổi hoặc hủy lịch đặt ngay trên ứng dụng di động.</p>
-            </div>
-            <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-100 dark:border-slate-700 hover:border-primary transition-colors group">
-              <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-white transition-all">
-                <span className="material-symbols-outlined text-3xl">account_balance_wallet</span>
-              </div>
-              <h4 className="text-xl font-bold mb-3">Thanh toán nhanh</h4>
-              <p className="text-slate-500 dark:text-slate-400 leading-relaxed">Hỗ trợ đa dạng phương thức thanh toán: Ví điện tử, Thẻ ngân hàng, QR Code.</p>
-            </div>
-          </div>
-        </section>
-        {/* Featured Fields */}
-        <section className="py-20 bg-primary/5 dark:bg-primary/10 px-4">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex justify-between items-end mb-12">
-              <div>
-                <h3 className="text-3xl font-bold mb-2">Sân bóng nổi bật</h3>
-                <p className="text-slate-500 dark:text-slate-400">Các sân bóng chất lượng cao, được yêu thích nhất khu vực</p>
-              </div>
-              <Link
-                to="/fields"
-                className="text-primary font-bold flex items-center gap-1 hover:underline"
-              >
-                Xem tất cả <span className="material-symbols-outlined text-lg">arrow_forward</span>
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {featured.map((field) => (
-                <FieldCard
-                  key={field.id}
-                  id={field.id}
-                  image={field.image_url}
-                  type={field.field_type}
-                  name={field.field_name}
-                  location={field.location}
-                  price={`${field.price_per_hour?.toLocaleString()}đ/giờ`}
-                  bookingCount={field.booking_count}
-                  rating={field.rating_avg}
+        {/* ── SEARCH BAR ── */}
+        <section className="home-search">
+          <form className="home-search__inner" onSubmit={handleSearch}>
+            {/* Tìm tên sân / địa chỉ */}
+            <div className="search-field" style={{ flex: 2 }}>
+              <label className="search-field__label">Tìm kiếm sân / địa chỉ</label>
+              <div style={{ position: "relative" }}>
+                <span
+                  className="material-symbols-outlined search-field__icon"
+                  style={{ bottom: "auto", top: "50%", transform: "translateY(-50%)" }}
+                >
+                  search
+                </span>
+                <input
+                  className="search-field__input"
+                  type="text"
+                  placeholder="Nhập tên sân, đường, quận..."
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
                 />
+              </div>
+            </div>
+
+            {/* Khu vực / Quận huyện */}
+            <div className="search-field">
+              <label className="search-field__label">Khu vực / Quận huyện</label>
+              <div style={{ position: "relative" }}>
+                <span
+                  className="material-symbols-outlined search-field__icon"
+                  style={{ bottom: "auto", top: "50%", transform: "translateY(-50%)" }}
+                >
+                  location_on
+                </span>
+                <select
+                  className="search-field__select"
+                  value={searchDistrict}
+                  onChange={(e) => setSearchDistrict(e.target.value)}
+                >
+                  <option value="">Tất cả quận huyện</option>
+                  <option value="Ngũ Hành Sơn">Ngũ Hành Sơn</option>
+                  <option value="Hải Châu">Hải Châu</option>
+                  <option value="Thanh Khê">Thanh Khê</option>
+                  <option value="Liên Chiểu">Liên Chiểu</option>
+                  <option value="Cẩm Lệ">Cẩm Lệ</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Thời gian đá */}
+            <div className="search-field">
+              <label className="search-field__label">Thời gian đá</label>
+              <div style={{ position: "relative" }}>
+                <span
+                  className="material-symbols-outlined search-field__icon"
+                  style={{ bottom: "auto", top: "50%", transform: "translateY(-50%)" }}
+                >
+                  schedule
+                </span>
+                <select
+                  className="search-field__select"
+                  value={searchTime}
+                  onChange={(e) => setSearchTime(e.target.value)}
+                >
+                  <option value="">Hôm nay (Khung giờ vàng)</option>
+                  <option value="sang">Buổi sáng (6:00–12:00)</option>
+                  <option value="chieu">Buổi chiều (12:00–17:00)</option>
+                  <option value="toi">Buổi tối (17:00–22:00)</option>
+                </select>
+              </div>
+            </div>
+
+            <button type="submit" className="btn-search">
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                search
+              </span>
+              Tìm Sân
+            </button>
+          </form>
+        </section>
+
+        {/* ── WHY ── */}
+        <section className="home-why">
+          <div className="home-why__inner">
+            <div className="section-header">
+              <span className="section-header__label">Tại sao chọn chúng tôi</span>
+              <h2 className="section-header__title">
+                Tại sao nên chọn Football Booking?
+              </h2>
+              <p className="section-header__sub">
+                Bạn chỉ cần tìm sân – chúng tôi lo phần còn lại với những ưu điểm nổi bật.
+              </p>
+            </div>
+            <div className="why-grid">
+              {[
+                {
+                  icon: "bolt",
+                  title: "Đặt sân nhanh chóng",
+                  desc: "Tiết kiệm thời gian với quy trình đặt sân tối giản chỉ trong 30 giây.",
+                },
+                {
+                  icon: "schedule",
+                  title: "Cập nhật khung giờ",
+                  desc: "Thông tin lịch trống được cập nhật liên tục theo thời gian thực từ các chủ sân.",
+                },
+                {
+                  icon: "assignment_turned_in",
+                  title: "Quản lý lịch đặt",
+                  desc: "Dễ dàng theo dõi, thay đổi hoặc hủy lịch đặt ngay trên ứng dụng di động.",
+                },
+                {
+                  icon: "account_balance_wallet",
+                  title: "Thanh toán nhanh",
+                  desc: "Hỗ trợ đa dạng phương thức thanh toán: Ví điện tử, Thẻ ngân hàng, QR Code.",
+                },
+              ].map((item) => (
+                <div key={item.title} className="why-card">
+                  <div className="why-card__icon">
+                    <span className="material-symbols-outlined">{item.icon}</span>
+                  </div>
+                  <h4 className="why-card__title">{item.title}</h4>
+                  <p className="why-card__desc">{item.desc}</p>
+                </div>
               ))}
             </div>
           </div>
         </section>
-        {/* Booking Process */}
-        <section className="py-24 px-4 bg-white dark:bg-slate-900">
-          <div className="max-w-7xl mx-auto text-center">
-            <h3 className="text-3xl font-bold mb-4">Quy trình đặt sân đơn giản</h3>
-            <p className="text-slate-500 dark:text-slate-400 mb-16">Bạn chỉ cần thực hiện 4 bước để có ngay sân bóng ưng ý</p>
-            
-            <div className="relative grid grid-cols-1 md:grid-cols-4 gap-8">
-              {/* Connector line (desktop only) */}
-              <div className="hidden md:block absolute top-8 left-1/2 -translate-x-1/2 w-3/4 h-[2px] bg-dashed-line z-0"></div>
-              
-              {/* Step 1 */}
-              <div className="relative z-10 flex flex-col items-center">
-                <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center text-white mb-6 shadow-lg shadow-primary/30">
-                  <span className="material-symbols-outlined text-3xl">search</span>
-                </div>
-                <h4 className="text-lg font-bold mb-2">1. Chọn sân</h4>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Tìm kiếm và lựa chọn sân bóng phù hợp với vị trí của bạn.</p>
-              </div>
 
-              {/* Step 2 */}
-              <div className="relative z-10 flex flex-col items-center">
-                <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center text-white mb-6 shadow-lg shadow-primary/30">
-                  <span className="material-symbols-outlined text-3xl">calendar_month</span>
-                </div>
-                <h4 className="text-lg font-bold mb-2">2. Chọn ngày/giờ</h4>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Kiểm tra khung giờ trống và chọn thời điểm ra sân lý tưởng.</p>
+        {/* ── FEATURED FIELDS ── */}
+        <section className="home-featured">
+          <div className="home-featured__inner">
+            <div className="section-topbar">
+              <div className="section-topbar__left">
+                <p className="section-label">Khám phá ngay</p>
+                <h2>Sân bóng nổi bật khu vực</h2>
               </div>
-
-              {/* Step 3 */}
-              <div className="relative z-10 flex flex-col items-center">
-                <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center text-white mb-6 shadow-lg shadow-primary/30">
-                  <span className="material-symbols-outlined text-3xl">description</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <div className="section-topbar__tabs">
+                  {TABS.map((tab) => (
+                    <button
+                      key={tab}
+                      className={`tab-pill${activeTab === tab ? " active" : ""}`}
+                      onClick={() => handleTabChange(tab)}
+                    >
+                      {tab}
+                    </button>
+                  ))}
                 </div>
-                <h4 className="text-lg font-bold mb-2">3. Nhập thông tin</h4>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Điền thông tin liên hệ và hình thức thanh toán mong muốn.</p>
+                <Link to="/fields" className="link-viewall">
+                  Xem tất cả{" "}
+                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                    arrow_forward
+                  </span>
+                </Link>
               </div>
+            </div>
 
-              {/* Step 4 */}
-              <div className="relative z-10 flex flex-col items-center">
-                <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center text-white mb-6 shadow-lg shadow-primary/30">
-                  <span className="material-symbols-outlined text-3xl">check_circle</span>
+            <div className="featured-grid">
+              {paginated.length > 0 ? (
+                paginated.map((field) => (
+                  <FieldCard
+                    key={field.id}
+                    id={field.id}
+                    image={field.image_url}
+                    type={field.field_type}
+                    name={field.field_name}
+                    location={field.location}
+                    price={field.price_per_hour}
+                    bookingCount={field.booking_count}
+                    rating={field.rating_avg}
+                  />
+                ))
+              ) : (
+                <p style={{ gridColumn: "1/-1", textAlign: "center", color: "#6b7280", padding: "40px 0" }}>
+                  Không có sân nào phù hợp
+                </p>
+              )}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="home-pagination">
+                <button
+                  className="home-page-dot"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                >
+                  ‹
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    className={`home-page-dot${currentPage === p ? " active" : ""}`}
+                    onClick={() => setCurrentPage(p)}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button
+                  className="home-page-dot"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                >
+                  ›
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ── BOOKING STEPS ── */}
+        <section className="home-steps">
+          <div className="home-steps__inner">
+            <div className="section-header">
+              <span className="section-header__label">Đơn giản & nhanh chóng</span>
+              <h2 className="section-header__title">Quy trình đặt sân đơn giản</h2>
+              <p className="section-header__sub">
+                Bạn chỉ cần thực hiện 4 bước để có ngay sân bóng ưng ý
+              </p>
+            </div>
+            <div className="steps-grid">
+              {[
+                { icon: "search", title: "1. Chọn sân", desc: "Tìm kiếm và lựa chọn sân bóng phù hợp với vị trí của bạn." },
+                { icon: "calendar_month", title: "2. Chọn ngày & giờ", desc: "Kiểm tra khung giờ trống và chọn thời điểm ra sân lý tưởng." },
+                { icon: "description", title: "3. Nhập thông tin", desc: "Điền thông tin liên hệ và hình thức thanh toán mong muốn." },
+                { icon: "check_circle", title: "4. Xác nhận", desc: "Nhận mã đặt sân qua tin nhắn/email và sẵn sàng thi đấu." },
+              ].map((step) => (
+                <div key={step.title} className="step-card">
+                  <div className="step-circle">
+                    <span className="material-symbols-outlined">{step.icon}</span>
+                  </div>
+                  <h4>{step.title}</h4>
+                  <p>{step.desc}</p>
                 </div>
-                <h4 className="text-lg font-bold mb-2">4. Xác nhận</h4>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Nhận mã đặt sân qua tin nhắn/email và sẵn sàng thi đấu.</p>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── CTA BANNER ── */}
+        <section className="home-cta">
+          <div className="home-cta__inner">
+            <div className="cta-card">
+              <div>
+                <span className="cta-card__badge">⚽ CỘNG ĐỒNG BÓNG ĐÁ PHỦI</span>
+                <h3>Đội bạn đang thiếu đối thủ giao hữu?</h3>
+                <p>
+                  Đăng tin tìm đối tác giao lưu, chia sẻ sân hoặc làm người ghép vị trí thi đấu;
+                  lên đạo chỉ với 1 cú click.
+                </p>
+              </div>
+              <div className="cta-card__actions">
+                <Link to="/fields" className="btn-cta-white">
+                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                    search
+                  </span>
+                  Tìm đội tứ đá ngay
+                </Link>
+                <Link to="/booking" className="btn-cta-outline">
+                  Đăng bài tìm người ghép
+                </Link>
               </div>
             </div>
           </div>
         </section>
 
-        {/* CTA Banner */}
-        <section className="py-16 px-4">
-          <div className="max-w-7xl mx-auto">
-            <div className="relative overflow-hidden bg-primary rounded-3xl p-8 md:p-16 flex flex-col md:flex-row items-center justify-between text-white">
-              {/* Background pattern (placeholder for soccer ball pattern) */}
-              <div className="absolute top-0 right-0 w-64 h-64 opacity-10 -mr-20 -mt-20">
-                <span className="material-symbols-outlined text-[200px]">sports_soccer</span>
-              </div>
-              <div className="absolute bottom-0 left-0 w-48 h-48 opacity-10 -ml-16 -mb-16">
-                <span className="material-symbols-outlined text-[150px]">sports_soccer</span>
-              </div>
-
-              <div className="relative z-10 mb-8 md:mb-0 max-w-2xl">
-                <h3 className="text-3xl md:text-4xl font-bold mb-4">Bạn đã sẵn sàng cho trận bóng hôm nay?</h3>
-                <p className="text-primary-foreground/80 text-lg opacity-90">
-                  Hơn 500+ sân bóng đang chờ bạn trên khắp cả nước. Đặt ngay để nhận ưu đãi lên đến 20% cho khung giờ vàng.
+        {/* ── SECOND CTA (Chủ sân) ── */}
+        <section style={{ background: "#f0fdf4", padding: "48px 40px" }}>
+          <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+            <div
+              style={{
+                background: "#fff",
+                border: "1.5px solid #bbf7d0",
+                borderRadius: 16,
+                padding: "40px 48px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 32,
+                flexWrap: "wrap",
+              }}
+            >
+              <div>
+                <p
+                  style={{
+                    fontSize: "0.72rem",
+                    fontWeight: 700,
+                    color: "#16a34a",
+                    textTransform: "uppercase",
+                    letterSpacing: "1.5px",
+                    marginBottom: 6,
+                  }}
+                >
+                  Dành cho chủ sân
+                </p>
+                <h3 style={{ fontSize: "1.4rem", fontWeight: 800, color: "#111827", marginBottom: 8 }}>
+                  Đội bạn đang thiếu đối thủ giao hữu?
+                </h3>
+                <p style={{ fontSize: "0.88rem", color: "#6b7280", maxWidth: 480, lineHeight: 1.65 }}>
+                  Đăng lên hệ thống quản lý sân của bạn & tăng lợi nhuận, tiếp cận hàng triệu người
+                  dùng. Đồng hành cùng Football Booking ngay hôm nay.
                 </p>
               </div>
-              <div className="relative z-10">
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 <Link
-                  to="/booking"
-                  className="bg-white text-primary px-8 py-4 rounded-xl font-bold text-lg flex items-center gap-3 hover:bg-slate-100 transition-colors shadow-xl"
+                  to="/register"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    background: "#16a34a",
+                    color: "#fff",
+                    fontWeight: 700,
+                    fontSize: "0.9rem",
+                    padding: "13px 24px",
+                    borderRadius: 10,
+                    whiteSpace: "nowrap",
+                  }}
                 >
-                  ĐẶT SÂN NGAY <span className="material-symbols-outlined">directions_run</span>
+                  Đăng ký ngay
+                </Link>
+                <Link
+                  to="/fields"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    background: "transparent",
+                    color: "#16a34a",
+                    fontWeight: 700,
+                    fontSize: "0.9rem",
+                    padding: "13px 24px",
+                    borderRadius: 10,
+                    border: "1.5px solid #16a34a",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Tìm hiểu thêm
                 </Link>
               </div>
             </div>
           </div>
         </section>
       </main>
-
     </>
   );
 };

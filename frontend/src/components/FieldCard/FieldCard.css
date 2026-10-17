@@ -1,84 +1,250 @@
-/* FieldCard component styles */
+/* ─────────────────────────────────────
+   FieldCard.css – Card sân bóng
+   ───────────────────────────────────── */
 
 .field-card {
-  background: white;
-  border-radius: 1rem;
+  background: #ffffff;
+  border-radius: 12px;
   overflow: hidden;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  transition: all 0.3s ease;
-  cursor: pointer;
+  border: 1.5px solid #e5e7eb;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  transition: all 0.25s ease;
+  display: flex;
+  flex-direction: column;
 }
 
 .field-card:hover {
-  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-  transform: translateY(-2px);
+  box-shadow: 0 10px 32px rgba(0,0,0,0.13);
+  transform: translateY(-3px);
+  border-color: #d1fae5;
 }
 
-.field-image-container {
+/* Image */
+.field-card__img-wrap {
   position: relative;
-  height: 14rem;
+  height: 200px;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
-.field-image {
+.field-card__img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   transition: transform 0.5s ease;
 }
 
-.field-card:hover .field-image {
-  transform: scale(1.1);
+.field-card:hover .field-card__img {
+  transform: scale(1.07);
 }
 
-.field-badge {
+/* Image overlay gradient */
+.field-card__img-wrap::after {
+  content: '';
   position: absolute;
-  top: 1rem;
-  left: 1rem;
-  background: #667eea;
-  color: white;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.35) 0%, transparent 55%);
+  pointer-events: none;
+}
+
+/* Top badges */
+.field-card__badges {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  z-index: 2;
+}
+
+.badge-type {
+  background: #16a34a;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 100px;
+  letter-spacing: 0.4px;
   text-transform: uppercase;
 }
 
-.field-content {
-  padding: 1.5rem;
+.badge-status {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 100px;
 }
 
-.field-title {
-  font-size: 1.25rem;
+.badge-status.available {
+  background: rgba(255,255,255,0.92);
+  color: #16a34a;
+}
+
+.badge-status.busy {
+  background: rgba(239,68,68,0.9);
+  color: #fff;
+}
+
+.badge-status.premium {
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  color: #fff;
+}
+
+/* Rating on image */
+.field-card__rating-img {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(0,0,0,0.55);
+  color: #fbbf24;
+  font-size: 0.75rem;
   font-weight: 700;
-  color: #1a202c;
-  margin-bottom: 0.5rem;
+  padding: 3px 8px;
+  border-radius: 100px;
+  backdrop-filter: blur(4px);
+}
+
+/* Body */
+.field-card__body {
+  padding: 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.field-card__name {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 6px;
+  line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.field-location {
+.field-card__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.field-card__location,
+.field-card__info-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  color: #718096;
-  font-size: 0.875rem;
-  margin-bottom: 1rem;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: #6b7280;
 }
 
-.field-location-icon {
-  font-size: 0.875rem;
+.field-card__location span.material-symbols-outlined,
+.field-card__info-row span.material-symbols-outlined {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  flex-shrink: 0;
 }
 
-.field-price {
-  font-size: 1rem;
+/* Tags */
+.field-card__tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.field-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.68rem;
   font-weight: 600;
-  color: #38a169;
+  padding: 3px 9px;
+  border-radius: 100px;
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
 }
 
-.field-price-range {
-  color: #4a5568;
+.field-tag.grey {
+  background: #f8fafc;
+  color: #6b7280;
+  border-color: #e5e7eb;
+}
+
+/* Footer */
+.field-card__footer {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.field-card__price-label {
+  font-size: 0.68rem;
+  color: #9ca3af;
+  margin-bottom: 2px;
+}
+
+.field-card__price {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #16a34a;
+}
+
+.field-card__price span {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: #9ca3af;
+}
+
+.field-card__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-detail {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1.5px solid #e5e7eb;
+  background: #fff;
+  color: #374151;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-detail:hover {
+  border-color: #16a34a;
+  color: #16a34a;
+}
+
+.btn-book {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: #16a34a;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-family: inherit;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-book:hover {
+  background: #15803d;
 }

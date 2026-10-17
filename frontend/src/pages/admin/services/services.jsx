@@ -1,62 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink } from "react-router-dom";
-import { getServices, createBookingService } from "../../../api/servicesApi"; // Note: I should add CRUD to servicesApi
+import { getServices, createBookingService } from "../../../api/servicesApi";
 import axios from "axios";
 import { BASE_URL } from "../../../config";
 import './services.css';
 import { useToast, ToastContainer } from '../../../components/Toast/Toast';
-
-/* ── Data ── */
-const navLinks = [
-  { icon: 'dashboard', label: 'Dashboard', path: '/admin/dashboard' },
-  { icon: 'stadium', label: 'Fields', path: '/admin/fields' },
-  { icon: 'event_available', label: 'Bookings', path: '/admin/bookings' },
-  { icon: 'group', label: 'Users', path: '/admin/users' },
-  { icon: 'payments', label: 'Revenue', path: '/admin/revenue' },
-  { icon: 'calendar_month', label: 'Time Slots', path: '/admin/timeslots' },
-  { icon: 'inventory_2', label: 'Services', path: '/admin/services' },
-  { icon: 'settings', label: 'Settings', path: '/admin/settings' },
-];
-
-/* ── Sub-components ── */
-function Sidebar() {
-  return (
-    <aside className="sidebar">
-      <div className="sidebar-logo">
-        <h1>Pitch & Pulse</h1>
-        <p>Admin Console</p>
-      </div>
-
-      <nav className="sidebar-nav">
-        {navLinks.map(({ icon, label, path }) => (
-          <NavLink
-            key={label}
-            to={path}
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
-          >
-            <span className="material-symbols-outlined">{icon}</span>
-            <span>{label}</span>
-          </NavLink>
-        ))}
-      </nav>
-
-      <div className="sidebar-profile">
-        <div className="sidebar-profile-inner">
-          <img
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCdrldOeo6h3tM4QUVTdRQOYTA9M_VjtM_il1LKwVnnvhcmyq8d56rpUZQIWwZu1JacVmvA2zrYEaKa5HHxXST08yBkGMk1d8rH7qF3UDFZYy7Qd_V1qe3d-XNTWHFt5PAyDMxqk6bEF7sZ4nSvdutiOjcYSSc2ZMloqVfT_yXbhRf00269pZLMfxm6lrEUG3HdsqeEYVnBT_TSJX3dZmsHnenBWSC3iWMj_tgKDsEDq4BK_lFeMNYi8VVfMkeMVawVdxfBGofmzV0"
-            alt="Admin"
-          />
-          <div>
-            <p className="profile-name">Admin Panel</p>
-            <p className="profile-role">Super User</p>
-          </div>
-        </div>
-      </div>
-    </aside>
-  );
-}
+import AdminSidebar from '../../../components/AdminSidebar/AdminSidebar';
 
 function TopHeader({ onAdd }) {
   return (
@@ -74,7 +23,7 @@ function TopHeader({ onAdd }) {
           <span className="material-symbols-outlined">help_outline</span>
         </button>
         <div className="header-divider" />
-        <button className="btn-new-booking" onClick={onAdd}>New Service</button>
+        <button className="btn-new-booking" onClick={onAdd}><span className="material-symbols-outlined">add</span>Thêm dịch vụ</button>
       </div>
     </header>
   );
@@ -96,7 +45,9 @@ function ServicesTable({ services, onEdit, onDelete }) {
             </tr>
           </thead>
           <tbody>
-            {services.map((s) => (
+            {services.length === 0 ? (
+              <tr><td colSpan="6" className="services-empty-row">Không tìm thấy dịch vụ phù hợp.</td></tr>
+            ) : services.map((s) => (
               <tr key={s.id}>
                 <td>
                   <div className="field-cell">
@@ -162,6 +113,9 @@ export default function AdminServices() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingService, setEditingService] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("Tất cả");
+  const [statusFilter, setStatusFilter] = useState("all");
   const { toasts, removeToast, toast } = useToast();
 
   const stats = {
@@ -170,6 +124,16 @@ export default function AdminServices() {
     lowStock: services.filter(s => (parseInt(s.stock) || 0) < 10).length,
     active: services.filter(s => s.is_active).length,
   };
+  const categories = ["Tất cả", ...new Set(services.map((service) => service.category).filter(Boolean))];
+  const filteredServices = services.filter((service) => {
+    const query = searchQuery.trim().toLocaleLowerCase("vi");
+    const matchesSearch = !query || `${service.name || ""} ${service.description || ""} ${service.category || ""}`.toLocaleLowerCase("vi").includes(query);
+    const matchesCategory = categoryFilter === "Tất cả" || service.category === categoryFilter;
+    const matchesStatus = statusFilter === "all" || (statusFilter === "active" ? service.is_active : !service.is_active);
+    return matchesSearch && matchesCategory && matchesStatus;
+  });
+  const highlightedServices = [...services].sort((a, b) => Number(b.price || 0) - Number(a.price || 0)).slice(0, 3);
+  const lowStockServices = services.filter((service) => Number(service.stock || 0) < 10).slice(0, 3);
 
   const fetchInitialData = async () => {
     try {
@@ -207,11 +171,11 @@ export default function AdminServices() {
   return (
     <div className="admin-services-page">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-      <Sidebar />
+      <AdminSidebar />
       <div className="admin-services-container">
         <TopHeader onAdd={() => { setEditingService(null); setShowModal(true); }} />
 
-        <main className="main-content">
+        <main className="main-content services-admin-main">
           {loading ? (
             <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>
               <h2>Đang tải danh sách dịch vụ...</h2>
@@ -220,8 +184,9 @@ export default function AdminServices() {
             <>
               <div className="page-header-alt">
                 <div className="header-text">
-                  <h2 className="text-3xl font-bold text-slate-800">Hệ thống dịch vụ</h2>
-                  <p className="text-slate-500">Quản lý kho hàng, giá cả và trạng thái của các dịch vụ đi kèm.</p>
+                  <span className="services-eyebrow">PITCH &amp; PULSE OPERATIONS <span>›</span> KHO VẬN &amp; TIỆN ÍCH</span>
+                  <h2>Hệ thống dịch vụ</h2>
+                  <p>Quản lý kho hàng, giá cả và trạng thái các dịch vụ đi kèm khi thuê sân. Cập nhật biến động tồn kho theo thời gian thực.</p>
                 </div>
                 <button className="btn-primary-gradient" onClick={() => { setEditingService(null); setShowModal(true); }}>
                   <span className="material-symbols-outlined">add</span>
@@ -268,11 +233,47 @@ export default function AdminServices() {
                 </div>
               </div>
 
-              <ServicesTable
-                services={services}
-                onEdit={(s) => { setEditingService(s); setShowModal(true); }}
-                onDelete={handleDelete}
-              />
+              <div className="services-workspace">
+                <section className="services-primary-column">
+                  <div className="services-toolbar">
+                    <div className="services-category-tabs" role="tablist" aria-label="Lọc theo loại dịch vụ">
+                      {categories.map((category) => (
+                        <button key={category} type="button" className={categoryFilter === category ? "active" : ""} onClick={() => setCategoryFilter(category)}>{category}<span>{category === "Tất cả" ? services.length : services.filter((service) => service.category === category).length}</span></button>
+                      ))}
+                    </div>
+                    <label className="services-search"><span className="material-symbols-outlined">search</span><input type="search" placeholder="Tìm tên dịch vụ..." value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} /></label>
+                    <label className="services-status-select"><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Lọc trạng thái dịch vụ"><option value="all">Tất cả trạng thái</option><option value="active">Đang kinh doanh</option><option value="inactive">Ngưng bán</option></select><span className="material-symbols-outlined">expand_more</span></label>
+                  </div>
+                  <ServicesTable
+                    services={filteredServices}
+                    onEdit={(s) => { setEditingService(s); setShowModal(true); }}
+                    onDelete={handleDelete}
+                  />
+                </section>
+
+                <aside className="services-insight-rail">
+                  <section className="services-insight-card">
+                    <div className="services-insight-heading"><div><span className="services-insight-eyebrow">PHÂN TÍCH GIÁ NIÊM YẾT</span><h3>Dịch vụ nổi bật</h3></div><span className="material-symbols-outlined">insights</span></div>
+                    {highlightedServices.length ? highlightedServices.map((service, index) => (
+                      <div className="service-highlight-row" key={service.id}>
+                        <div><strong>{index + 1}. {service.name}</strong><span>{Number(service.stock || 0).toLocaleString("vi-VN")} sản phẩm tồn kho</span></div>
+                        <b>{Number(service.price || 0).toLocaleString("vi-VN")}đ</b>
+                      </div>
+                    )) : <p className="service-rail-empty">Chưa có dịch vụ để hiển thị.</p>}
+                    <div className="service-rail-total"><span>Tổng tồn kho</span><strong>{stats.inStock.toLocaleString("vi-VN")}<small> sản phẩm</small></strong></div>
+                  </section>
+
+                  <section className="services-insight-card services-stock-alert">
+                    <div className="services-insight-heading"><div><span className="services-insight-eyebrow">THEO DÕI TỒN KHO</span><h3>Cần nhập thêm hàng</h3></div><span className="material-symbols-outlined">inventory</span></div>
+                    {lowStockServices.length ? lowStockServices.map((service) => (
+                      <div className="stock-alert-row" key={service.id}><div><strong>{service.name}</strong><small>{service.category || "Chưa phân loại"}</small></div><span>{Number(service.stock || 0)} còn</span></div>
+                    )) : <p className="service-rail-empty">Tồn kho hiện ổn định.</p>}
+                    <button type="button" className="stock-alert-button" onClick={() => { setCategoryFilter("Tất cả"); setStatusFilter("all"); setSearchQuery(""); }}>
+                      <span className="material-symbols-outlined">filter_alt_off</span>Đặt lại bộ lọc
+                    </button>
+                  </section>
+                </aside>
+              </div>
             </>
           )}
         </main>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { NavLink } from "react-router-dom";
 import { getFields } from "../../../api/fieldsApi";
 import { getBookings } from "../../../api/bookingsApi";
+import AdminSidebar from "../../../components/AdminSidebar/AdminSidebar";
 import './dashboard.css';
 
 /* ── Data ── */
@@ -19,54 +20,7 @@ const statusClassMap = {
   "cancelled": "cancelled"
 };
 
-const navLinks = [
-  { icon: 'dashboard', label: 'Dashboard', path: '/admin/dashboard' },
-  { icon: 'stadium', label: 'Fields', path: '/admin/fields' },
-  { icon: 'event_available', label: 'Bookings', path: '/admin/bookings' },
-  { icon: 'group', label: 'Users', path: '/admin/users' },
-  { icon: 'payments', label: 'Revenue', path: '/admin/revenue' },
-  { icon: 'calendar_month', label: 'Time Slots', path: '/admin/timeslots' },
-  { icon: 'inventory_2', label: 'Services', path: '/admin/services' },
-  { icon: 'settings', label: 'Settings', path: '/admin/settings' },
-];
 
-/* ── Sub-components ── */
-function Sidebar() {
-  return (
-    <aside className="sidebar">
-      <div className="sidebar-logo">
-        <h1>Pitch & Pulse</h1>
-        <p>Admin Console</p>
-      </div>
-
-      <nav className="sidebar-nav">
-        {navLinks.map(({ icon, label, path }) => (
-          <NavLink
-            key={label}
-            to={path}
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
-          >
-            <span className="material-symbols-outlined">{icon}</span>
-            <span>{label}</span>
-          </NavLink>
-        ))}
-      </nav>
-
-      <div className="sidebar-profile">
-        <img
-          src="https://lh3.googleusercontent.com/aida-public/AB6AXuCN8B1_XgT-gyh6hViClDnURmdEgMriI9tLL5MirBkzBqNDwUjaetJrOYSkH7rBKA25sr4LDP9m5cJoj4D6NM_H_r1SlNQ8_MhW9rS_ehEYjU7bTXPFF5sEq0e8xVMpbvktPsKgkAMsGGieA3DhoaZGVvdvBXTmeuBFMgk4IhWhmxMknWIj3Mvk7w6yRnl6hMqbw2Ls8ufDqptzZeLNQ5wSEep5KZjz1FMQVz1O028ND-V_miwWbNAIB16XihsBLMcPSWYNV-6e0us"
-          alt="Admin Profile"
-        />
-        <div>
-          <p className="profile-name">Admin Panel</p>
-          <p className="profile-role">System Manager</p>
-        </div>
-      </div>
-    </aside>
-  );
-}
 
 function TopHeader() {
   return (
@@ -85,9 +39,9 @@ function TopHeader() {
         <button className="icon-btn">
           <span className="material-symbols-outlined">help_outline</span>
         </button>
-        <button className="btn-new-booking">
+        <button className="btn-new-booking" type="button">
           <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>add</span>
-          New Booking
+          Đặt sân mới
         </button>
       </div>
     </header>
@@ -263,7 +217,7 @@ function BookingsTable({ bookings }) {
     <div className="bookings-card">
       <div className="bookings-header">
         <h3>Lượt đặt gần nhất</h3>
-        <button className="btn-view-all">Xem tất cả</button>
+        <NavLink to="/admin/bookings" className="btn-view-all">Xem tất cả lượt đặt <span className="material-symbols-outlined">arrow_forward</span></NavLink>
       </div>
 
       <div className="table-wrapper">
@@ -388,12 +342,20 @@ export default function Dashboard() {
             value: activeFields,
           },
           {
-            icon: 'group',
+            icon: 'event_note',
             iconClass: 'purple',
-            badge: 'Database',
+            badge: 'Toàn hệ thống',
             badgeClass: 'badge-purple',
-            label: 'Tổng dữ liệu sân',
-            value: fieldData.length,
+            label: 'Tổng lượt đặt',
+            value: allBookings.length,
+          },
+          {
+            icon: 'construction',
+            iconClass: 'amber',
+            badge: `${totalFields - activeFields} cần kiểm tra`,
+            badgeClass: 'badge-amber',
+            label: 'Sân chưa khả dụng',
+            value: totalFields - activeFields,
           },
         ]);
 
@@ -444,9 +406,9 @@ export default function Dashboard() {
 
   return (
     <>
-      <Sidebar />
+      <AdminSidebar />
 
-      <main className="main-content">
+      <main className="main-content admin-dashboard-main">
         <TopHeader />
 
         {loading ? (
@@ -457,20 +419,25 @@ export default function Dashboard() {
           <div className="content-area">
 
           <div className="page-heading">
-            <h2>Tổng quan hệ thống</h2>
-            <p>Chào mừng trở lại! Dưới đây là hiệu suất sân cỏ hôm nay.</p>
+            <div className="page-heading-copy">
+              <span className="dashboard-eyebrow">VẬN HÀNH CƠ SỞ <span>›</span> TỔNG QUAN HỆ THỐNG</span>
+              <h2>Chào mừng trở lại, <span>Quản trị viên!</span></h2>
+              <p>Hiệu suất vận hành sân cỏ hôm nay và tình hình đặt sân toàn hệ thống.</p>
+            </div>
+            <div className="dashboard-heading-actions">
+              <span className="dashboard-date"><span className="material-symbols-outlined">calendar_today</span>{new Date().toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })}</span>
+              <button type="button" className="dashboard-period">Hôm nay <span className="material-symbols-outlined">expand_more</span></button>
+            </div>
           </div>
 
           {/* Stats */}
           <div className="stats-grid">
-
             {stats.map((s) => (
               <StatCard key={s.label} {...s} />
             ))}
-
-            <RevenueCard />
-
           </div>
+
+          <RevenueCard />
 
           {/* Charts */}
           <div className="charts-grid">
@@ -484,11 +451,6 @@ export default function Dashboard() {
         )}
       </main>
 
-      <button className="fab">
-        <span className="material-symbols-outlined">
-          add_box
-        </span>
-      </button>
     </>
   );
 }

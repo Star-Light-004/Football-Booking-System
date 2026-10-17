@@ -1,7 +1,49 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { BASE_URL } from "../../config";
+import PageHero from "../../components/PageHero/PageHero";
 import "./MyBookings.css";
+
+const normalizeStatusKey = (status) => {
+  const s = String(status || "").trim().toLowerCase();
+  if (["pending", "chờ xác nhận", "cho xac nhan", "đang chờ", "dang cho"].includes(s)) return "pending";
+  if (["confirmed", "đã xác nhận", "da xac nhan"].includes(s)) return "confirmed";
+  if (["checked_in", "checked in", "đã check-in", "da check-in", "đã check in"].includes(s)) return "checked_in";
+  if (["completed", "hoàn thành", "hoan thanh", "đã hoàn thành"].includes(s)) return "completed";
+  if (["cancelled", "canceled", "đã hủy", "da huy", "hủy"].includes(s)) return "cancelled";
+  return s;
+};
+
+const isCompletedBooking = (status) => normalizeStatusKey(status) === "completed";
+const hasReviewedBooking = (isReviewed) => isReviewed === true || isReviewed === "true";
+
+// Khách hàng có thể hủy đơn nếu ở trạng thái 'Chờ xác nhận' hoặc 'Đã xác nhận'
+const canCustomerCancel = (status) => {
+  const s = normalizeStatusKey(status);
+  return s === "pending" || s === "confirmed";
+};
+
+const getBookingStatusLabel = (status) => {
+  const s = normalizeStatusKey(status);
+  switch (s) {
+    case "pending":    return "Chờ xác nhận";
+    case "confirmed":  return "Đã xác nhận";
+    case "checked_in": return "Đã check-in";
+    case "completed":  return "Đã hoàn thành";
+    case "cancelled":  return "Đã hủy";
+    default:           return status || "Đã đặt";
+  }
+};
+
+const STATUS_TABS = [
+  { id: "all",        label: "Tất cả",       icon: "apps" },
+  { id: "pending",    label: "Chờ xác nhận", icon: "pending_actions" },
+  { id: "confirmed",  label: "Đã xác nhận",  icon: "check_circle" },
+  { id: "checked_in", label: "Đã check-in",  icon: "login" },
+  { id: "completed",  label: "Hoàn thành",   icon: "task_alt" },
+  { id: "cancelled",  label: "Đã hủy",       icon: "cancel" },
+];
+
 import { useToast, ToastContainer } from "../../components/Toast/Toast";
 
 const BookingServiceRowItems = ({ bookingId }) => {
@@ -20,14 +62,14 @@ const BookingServiceRowItems = ({ bookingId }) => {
     if (bookingId) fetchServices();
   }, [bookingId]);
 
-  if (services.length === 0) return <span style={{ color: '#64748b', fontStyle: 'italic', fontSize: '13px' }}>Không</span>;
+  if (services.length === 0) return <span className="booking-services-empty">Không có dịch vụ thêm</span>;
 
   return (
-    <div className="booking-services-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div className="booking-services-list">
       {services.map(s => (
-        <div key={s.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+        <div key={s.id} className="booking-service-row">
           {s.service_image && (
-            <img src={s.service_image} alt={s.service_name} style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '4px' }} />
+            <img src={s.service_image} alt={s.service_name} />
           )}
           <span className="service-tag">
             {s.service_name}{s.shoe_size ? ` - size ${s.shoe_size}` : ''} x{s.quantity}
@@ -40,6 +82,11 @@ const BookingServiceRowItems = ({ bookingId }) => {
 
 const MyBookings = () => {
   const [bookings, setBookings] = useState([]);
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [timeFilter, setTimeFilter] = useState("all");
+  const [fieldFilter, setFieldFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
   const [reviewingBooking, setReviewingBooking] = useState(null);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
@@ -108,12 +155,18 @@ const MyBookings = () => {
     }
   };
 
-  const handleCancel = async (bookingId) => {
-    const confirmCancel = window.confirm("Bạn có chắc chắn muốn hủy lượt đặt sân này không?");
-    if (!confirmCancel) return;
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancellingBookingId, setCancellingBookingId] = useState(null);
 
+  const handleCancel = async (bookingId) => {
+    setCancellingBookingId(bookingId);
+    setShowCancelModal(true);
+  };
+
+  const confirmCancel = async () => {
+    setShowCancelModal(false);
     try {
-      const response = await fetch(`${BASE_URL}/bookings/${bookingId}/update/`, {
+      const response = await fetch(`${BASE_URL}/bookings/${cancellingBookingId}/update/`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -132,171 +185,337 @@ const MyBookings = () => {
       console.error("Lỗi khi hủy đặt sân:", error);
       toast.error("Lỗi kết nối máy chủ");
     }
+    setCancellingBookingId(null);
   };
 
   const stats = {
     total: bookings.length,
-    pending: bookings.filter(b => b.status === "Pending").length,
-    completed: bookings.filter(b => b.status === "Completed" || b.status === "Confirmed" || b.status === "Checked_in").length,
-    cancelled: bookings.filter(b => b.status === "Cancelled").length
+    pending: bookings.filter((b) => normalizeStatusKey(b.status) === "pending").length,
+    confirmed: bookings.filter((b) => normalizeStatusKey(b.status) === "confirmed").length,
+    checked_in: bookings.filter((b) => normalizeStatusKey(b.status) === "checked_in").length,
+    completed: bookings.filter((b) => normalizeStatusKey(b.status) === "completed").length,
+    cancelled: bookings.filter((b) => normalizeStatusKey(b.status) === "cancelled").length,
+  };
+
+  const totalSpent = bookings
+    .filter((booking) => normalizeStatusKey(booking.status) !== "cancelled")
+    .reduce((sum, booking) => sum + Number(booking.price || 0), 0);
+
+  const filteredBookings = bookings.filter((booking) => {
+    const bookingStatus = normalizeStatusKey(booking.status);
+    const matchesStatus = activeFilter === "all" || bookingStatus === activeFilter;
+    const searchValue = `${booking.fieldName || ""} ${booking.fieldAddress || ""} ${booking.id || ""}`.toLowerCase();
+    const matchesSearch = searchValue.includes(searchTerm.trim().toLowerCase());
+    const matchesField = fieldFilter === "all" || booking.fieldName === fieldFilter;
+    const bookingDay = new Date(`${booking.bookingDate}T00:00:00`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const daysFromToday = Math.floor((bookingDay - today) / (24 * 60 * 60 * 1000));
+    const matchesTime = timeFilter === "all"
+      || (timeFilter === "next7" && daysFromToday >= 0 && daysFromToday <= 7)
+      || (timeFilter === "next30" && daysFromToday >= 0 && daysFromToday <= 30)
+      || (timeFilter === "past" && daysFromToday < 0);
+    return matchesStatus && matchesSearch && matchesField && matchesTime;
+  });
+  const fieldOptions = [...new Set(bookings.map((booking) => booking.fieldName).filter(Boolean))];
+  const pageSize = 5;
+  const pageCount = Math.max(1, Math.ceil(filteredBookings.length / pageSize));
+  const visibleBookings = filteredBookings.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const featuredBooking = bookings.find((booking) => normalizeStatusKey(booking.status) !== "cancelled") || bookings[0];
+
+  const handleExport = () => {
+    const rows = [
+      ["Mã đặt sân", "Sân bóng", "Địa chỉ", "Ngày thi đấu", "Khung giờ", "Chi phí", "Trạng thái"],
+      ...filteredBookings.map((booking) => [
+        `BK${booking.id?.substring(0, 8).toUpperCase()}`,
+        booking.fieldName,
+        booking.fieldAddress,
+        booking.bookingDate,
+        booking.timeSlot,
+        booking.price,
+        getBookingStatusLabel(booking.status),
+      ]),
+    ];
+    const csv = rows.map((row) => row.map((value) => `"${String(value ?? "").replace(/"/g, '""')}"`).join(",")).join("\r\n");
+    const fileUrl = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" }));
+    const downloadLink = document.createElement("a");
+    downloadLink.href = fileUrl;
+    downloadLink.download = "lich-su-dat-san.csv";
+    downloadLink.click();
+    URL.revokeObjectURL(fileUrl);
   };
 
   return (
     <div className="my-bookings-container">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-      <aside className="my-bookings-sidebar">
-        <div className="profile-card">
-          <div className="profile-image-container">
-            <img
-              src="https://www.w3schools.com/howto/img_avatar.png"
-              alt="User"
-              className="profile-avatar"
-            />
-            <div className="rank-badge">
-              <span className="material-symbols-outlined">grade</span>
+      <PageHero
+        breadcrumb={[{ label: "Trang chủ", to: "/" }, { label: "Lịch sử đặt sân" }]}
+        eyebrow="LỊCH THI ĐẤU CỦA BẠN"
+        title="Lịch sử đặt sân"
+        description="Quản lý lịch thi đấu, tra cứu mã nhận sân và xem lại các trận đã hoàn thành."
+        action={(
+          <Link to="/fields" className="btn-add-booking">
+            <span className="material-symbols-outlined">add_circle</span>
+            Đặt sân mới
+          </Link>
+        )}
+      />
+      <main className="history-dashboard">
+        <section className="history-content">
+          <section className="summary-grid">
+            <article className="summary-card summary-card--mint">
+              <span className="summary-label">TỔNG SỐ TRẬN ĐÃ ĐẶT</span>
+              <div className="summary-value">{stats.total}<small> trận</small></div>
+              <span className="summary-foot"><span className="material-symbols-outlined">sports_soccer</span> Lịch sử đặt sân</span>
+            </article>
+            <article className="summary-card summary-card--green">
+              <span className="summary-label">CHỜ XÁC NHẬN</span>
+              <div className="summary-value">{stats.pending}<small> trận</small></div>
+              <span className="summary-foot"><span className="material-symbols-outlined">pending_actions</span> Đang chờ duyệt</span>
+            </article>
+            <article className="summary-card summary-card--blue">
+              <span className="summary-label">ĐÃ XÁC NHẬN</span>
+              <div className="summary-value">{stats.confirmed}<small> trận</small></div>
+              <span className="summary-foot"><span className="material-symbols-outlined">check_circle</span> Sẵn sàng đá sân</span>
+            </article>
+            <article className="summary-card summary-card--lavender">
+              <span className="summary-label">TỔNG CHI PHÍ ĐẶT SÂN</span>
+              <div className="summary-value summary-value--money">{totalSpent.toLocaleString("vi-VN")}<small>đ</small></div>
+              <span className="summary-foot"><span className="material-symbols-outlined">payments</span> Không tính lượt đã hủy</span>
+            </article>
+          </section>
+
+          <section className="history-tools" aria-label="Tìm và lọc lịch sử đặt sân">
+            <div className="status-order-title">
+              <span className="material-symbols-outlined flag-icon">flag</span>
+              <span>TRẠNG THÁI ĐƠN</span>
             </div>
-          </div>
-          <h3 className="profile-name">{user?.fullname || user?.full_name || user?.username || "Khách hàng"}</h3>
-          <p className="profile-rank-text">THÀNH VIÊN ĐỒNG</p>
-          <div className="profile-stats">
-            <div className="stat-box" style={{ gridColumn: "span 2" }}>
-              <span className="stat-label">THÁNG NÀY</span>
-              <span className="stat-value">{stats.completed.toString().padStart(2, '0')} lượt</span>
+            <div className="status-pills-list" role="tablist" aria-label="Lọc theo trạng thái đơn">
+              {STATUS_TABS.map((tab) => {
+                const isActive = activeFilter === tab.id;
+                const count = tab.id === "all" ? stats.total : stats[tab.id] || 0;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    data-status={tab.id}
+                    className={`status-pill-btn ${isActive ? "active" : ""}`}
+                    onClick={() => {
+                      setActiveFilter(tab.id);
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <span className="material-symbols-outlined pill-icon">{tab.icon}</span>
+                    <span className="pill-label">{tab.label}</span>
+                    {count > 0 && <span className="pill-badge">{count}</span>}
+                  </button>
+                );
+              })}
             </div>
-          </div>
-        </div>
-      </aside>
 
-      <main className="my-bookings-main">
-        <header className="header-row">
-          <div className="header-titles">
-            <h1>Lịch sử đặt sân</h1>
-            <p>Quản lý và xem lại tất cả các lượt đặt sân của bạn.</p>
-          </div>
-          <div className="header-actions">
-            <button className="btn-filter">
-              <span className="material-symbols-outlined">filter_list</span>
-              Lọc
-            </button>
-            <Link to="/fields" className="btn-add-booking">
-              <span className="material-symbols-outlined">add</span>
-              Đặt sân mới
-            </Link>
-          </div>
-        </header>
+            <div className="history-filter-row">
+              <label className="history-search">
+                <span className="material-symbols-outlined">search</span>
+                <input
+                  type="search"
+                  placeholder="Tìm theo tên sân, mã đặt..."
+                  value={searchTerm}
+                  onChange={(event) => {
+                    setSearchTerm(event.target.value);
+                    setCurrentPage(1);
+                  }}
+                />
+              </label>
+              <label className="history-select-wrap">
+                <span className="material-symbols-outlined">calendar_month</span>
+                <select value={timeFilter} onChange={(event) => { setTimeFilter(event.target.value); setCurrentPage(1); }} aria-label="Lọc theo thời gian">
+                  <option value="all">Tất cả thời gian</option>
+                  <option value="next7">7 ngày tới</option>
+                  <option value="next30">30 ngày tới</option>
+                  <option value="past">Lịch đã qua</option>
+                </select>
+              </label>
+              <label className="history-select-wrap">
+                <span className="material-symbols-outlined">stadium</span>
+                <select value={fieldFilter} onChange={(event) => { setFieldFilter(event.target.value); setCurrentPage(1); }} aria-label="Lọc theo sân">
+                  <option value="all">Tất cả sân</option>
+                  {fieldOptions.map((fieldName) => <option key={fieldName} value={fieldName}>{fieldName}</option>)}
+                </select>
+              </label>
+              <button type="button" className="history-export-button" onClick={handleExport} disabled={filteredBookings.length === 0}>
+                <span className="material-symbols-outlined">download</span> Xuất CSV
+              </button>
+            </div>
+          </section>
 
-        <section className="summary-grid">
-          <div className="summary-card">
-            <span className="summary-label">TỔNG LƯỢT ĐẶT</span>
-            <div className="summary-value">{stats.total.toString().padStart(2, '0')}</div>
-          </div>
-          <div className="summary-card">
-            <span className="summary-label">CHỜ XÁC NHẬN</span>
-            <div className="summary-value">{stats.pending.toString().padStart(2, '0')}</div>
-          </div>
-          <div className="summary-card">
-            <span className="summary-label">ĐÃ HOÀN THÀNH</span>
-            <div className="summary-value">{stats.completed.toString().padStart(2, '0')}</div>
-          </div>
-          <div className="summary-card">
-            <span className="summary-label">ĐÃ HỦY</span>
-            <div className="summary-value">{stats.cancelled.toString().padStart(2, '0')}</div>
-          </div>
-        </section>
+          <section className="history-booking-list" aria-label="Danh sách đặt sân">
+            {filteredBookings.length === 0 ? (
+              <div className="history-empty">
+                <span className="material-symbols-outlined">event_busy</span>
+                <strong>{bookings.length ? "Không tìm thấy lượt đặt phù hợp" : "Chưa có dữ liệu đặt sân"}</strong>
+                <p>{bookings.length ? "Thử từ khóa khác hoặc chọn trạng thái khác." : "Các lượt đặt sân của bạn sẽ xuất hiện tại đây."}</p>
+              </div>
+            ) : visibleBookings.map((booking, index) => {
+              const statusCategory = normalizeStatusKey(booking.status);
+              const bookingCode = `#BK${booking.id?.substring(0, 8).toUpperCase()}`;
 
-        <section className="table-container">
-          <table className="bookings-table">
-            <thead>
-              <tr>
-                <th>MÃ ĐƠN</th>
-                <th>TÊN SÂN</th>
-                <th>ĐỊA CHỈ</th>
-                <th>DỊCH VỤ THÊM</th>
-                <th>NGÀY ĐẶT</th>
-                <th>GIỜ CHƠI</th>
-                <th>TỔNG TIỀN</th>
-                <th>TRẠNG THÁI</th>
-                <th>THAO TÁC</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bookings.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="text-center py-8">Chưa có dữ liệu đặt sân.</td>
-                </tr>
-              ) : (
-                bookings.map((booking, index) => (
-                  <tr key={index}>
-                    <td>
-                      <span className="cell-id">#BK{booking.id?.substring(0, 8).toUpperCase()}</span>
-                    </td>
-                    <td>
-                      <div className="field-info">
-                        <div className="field-image-wrapper">
-                          {booking.image ? (
-                            <img
-                              src={`http://127.0.0.1:8000${booking.image}`}
-                              alt={booking.fieldName}
-                              className="table-field-image"
-                            />
-                          ) : (
-                            <div className="table-field-image-placeholder">
-                              <span className="material-symbols-outlined">sports_soccer</span>
-                            </div>
-                          )}
-                        </div>
-                        <span className="field-name">{booking.fieldName}</span>
+              return (
+                <article className={`history-booking-card ${index === 0 ? "history-booking-card--featured" : ""}`} key={booking.id || index}>
+                  <div className="history-card-topline">
+                    <span className={`history-status history-status--${statusCategory}`}>
+                      <span />{getBookingStatusLabel(booking.status)}
+                    </span>
+                    <span className="history-booking-code">MÃ: {bookingCode}</span>
+                    <span className="history-card-date">{new Date(booking.bookingDate).toLocaleDateString("vi-VN")}</span>
+                  </div>
+                  <div className="history-card-main">
+                    <div className="history-field-image">
+                      {booking.image ? (
+                        <img src={`http://127.0.0.1:8000${booking.image}`} alt={booking.fieldName} />
+                      ) : (
+                        <span className="material-symbols-outlined">stadium</span>
+                      )}
+                    </div>
+                    <div className="history-field-details">
+                      <h2>{booking.fieldName || "Sân bóng"}</h2>
+                      <p><span className="material-symbols-outlined">location_on</span>{booking.fieldAddress || "Chưa cập nhật địa chỉ"}</p>
+                      <div className="history-booking-meta">
+                        <span><span className="material-symbols-outlined">calendar_month</span>{new Date(booking.bookingDate).toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })}</span>
+                        <span><span className="material-symbols-outlined">schedule</span>{booking.timeSlot || "Chưa có khung giờ"}</span>
                       </div>
-                    </td>
-                    <td>
-                      <span className="field-address">{booking.fieldAddress || 'Chưa cập nhật'}</span>
-                    </td>
-                    <td><BookingServiceRowItems bookingId={booking.id} /></td>
-                    <td><span className="cell-date">{new Date(booking.bookingDate).toLocaleDateString('vi-VN')}</span></td>
-                    <td><span className="cell-time">{booking.timeSlot}</span></td>
-                    <td><span className="cell-price">{booking.price.toLocaleString('vi-VN')}đ</span></td>
-                    <td>
-                      <span className={`status-badge ${booking.status?.toLowerCase()}`}>
-                        {booking.status === "Confirmed" ? "Đã xác nhận" :
-                          booking.status === "Cancelled" ? "Đã hủy" :
-                            booking.status === "Pending" ? "Đang chờ" :
-                              booking.status === "Completed" ? "Hoàn thành" :
-                                booking.status === "Checked_in" ? "Đã check-in" :
-                                  booking.status || "Đã đặt"}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="table-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {booking.status === "Completed" && !booking.is_reviewed && (
-                          <button
-                            onClick={() => setReviewingBooking(booking)}
-                            className="btn-review-action"
-                          >
-                            Đánh giá
-                          </button>
-                        )}
-                        {booking.is_reviewed && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#059669' }}>check_circle</span>
-                            <span style={{ color: '#059669', fontSize: '13px', fontWeight: '600', whiteSpace: 'nowrap' }}>Đã đánh giá</span>
-                          </div>
-                        )}
-                        <Link
-                          to={`/my-bookings/${booking.id}`}
-                          state={{ booking }}
-                          className="btn-detail-link"
-                          style={{ whiteSpace: 'nowrap' }}
+                    </div>
+                  </div>
+                  <div className="history-card-services">
+                    <span className="history-services-label">DỊCH VỤ ĐI KÈM</span>
+                    <BookingServiceRowItems bookingId={booking.id} />
+                  </div>
+                  <div className="history-card-footer">
+                    <div className="history-card-total">
+                      <span>Tổng chi phí</span>
+                      <strong>{Number(booking.price || 0).toLocaleString("vi-VN")}đ</strong>
+                      {booking.discountAmount > 0 && (
+                        <small style={{ color: "#16a34a", fontWeight: 600, display: "block", fontSize: "0.75rem" }}>
+                          (Đã giảm {Number(booking.discountAmount).toLocaleString("vi-VN")}đ với mã {booking.voucherCode})
+                        </small>
+                      )}
+                    </div>
+                    <div className="history-card-actions">
+                      {isCompletedBooking(booking.status) && (
+                        <span style={{ fontSize: "0.75rem", color: "#15803d", background: "#f0fdf4", padding: "4px 8px", borderRadius: 6, border: "1px solid #bbf7d0", display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 600 }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: "0.95rem" }}>redeem</span>
+                          Tặng voucher 10%
+                        </span>
+                      )}
+                      {canCustomerCancel(booking.status) && (
+                        <button
+                          type="button"
+                          className="btn-cancel-action"
+                          onClick={() => handleCancel(booking.id)}
+                          title="Hủy lượt đặt sân này"
                         >
-                          Xem chi tiết
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                          <span className="material-symbols-outlined">cancel</span>
+                          Hủy đặt sân
+                        </button>
+                      )}
+                      {isCompletedBooking(booking.status) && !hasReviewedBooking(booking.is_reviewed) && (
+                        <button onClick={() => setReviewingBooking(booking)} className="btn-review-action btn-review-inline">
+                          <span className="material-symbols-outlined">star</span> Đánh giá
+                        </button>
+                      )}
+                      {isCompletedBooking(booking.status) && hasReviewedBooking(booking.is_reviewed) && (
+                        <span className="reviewed-label"><span className="material-symbols-outlined">task_alt</span> Đã đánh giá</span>
+                      )}
+                      <Link to={`/my-bookings/${booking.id}`} state={{ booking }} className="history-detail-link">
+                        <span className="material-symbols-outlined">description</span> Chi tiết
+                      </Link>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </section>
+
+          {filteredBookings.length > 0 && (
+            <nav className="history-pagination" aria-label="Phân trang lịch sử đặt sân">
+              <span>Hiển thị {Math.min((currentPage - 1) * pageSize + 1, filteredBookings.length)}–{Math.min(currentPage * pageSize, filteredBookings.length)} trong {filteredBookings.length} lượt</span>
+              <div>
+                <button type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={currentPage === 1} aria-label="Trang trước">
+                  <span className="material-symbols-outlined">chevron_left</span>
+                </button>
+                {Array.from({ length: pageCount }, (_, index) => index + 1).map((page) => (
+                  <button key={page} type="button" className={currentPage === page ? "active" : ""} onClick={() => setCurrentPage(page)} aria-current={currentPage === page ? "page" : undefined}>{page}</button>
+                ))}
+                <button type="button" onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))} disabled={currentPage === pageCount} aria-label="Trang sau">
+                  <span className="material-symbols-outlined">chevron_right</span>
+                </button>
+              </div>
+            </nav>
+          )}
+
+          <section className="history-support-banner">
+            <span className="material-symbols-outlined">support_agent</span>
+            <div><strong>Cần hỗ trợ về lịch sử đặt sân?</strong><p>Mở chi tiết lượt đặt để xem lại thông tin và trạng thái.</p></div>
+            <Link to="/lookup">Tra cứu đặt sân</Link>
+          </section>
         </section>
+
+        <aside className="history-rail">
+          <section className="history-ticket-card">
+            <div className="history-ticket-heading">
+              <div><span className="material-symbols-outlined">qr_code_2</span><strong>VÉ VÀO SÂN ĐIỆN TỬ</strong></div>
+              <span className="history-ticket-dot" />
+            </div>
+            {featuredBooking ? (
+              <>
+                <div className="history-ticket-qr">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${featuredBooking.id}`}
+                    alt={`QR đặt sân ${featuredBooking.fieldName}`}
+                  />
+                  <strong>#BK{featuredBooking.id?.substring(0, 8).toUpperCase()}</strong>
+                </div>
+                <div className="history-ticket-info">
+                  <strong>{featuredBooking.fieldName}</strong>
+                  <span>{featuredBooking.timeSlot} · {new Date(featuredBooking.bookingDate).toLocaleDateString("vi-VN")}</span>
+                  <small>Xuất trình mã QR này cho nhân viên khi đến sân.</small>
+                </div>
+                <a
+                  href={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${featuredBooking.id}`}
+                  download={`ma-qr-dat-san-${featuredBooking.id?.substring(0, 8)}.png`}
+                  className="history-ticket-download"
+                >
+                  <span className="material-symbols-outlined">download</span>Lưu ảnh QR vào điện thoại
+                </a>
+                <Link to={`/my-bookings/${featuredBooking.id}`} state={{ booking: featuredBooking }} className="history-ticket-link">
+                  <span className="material-symbols-outlined">description</span> Xem chi tiết lượt đặt
+                </Link>
+              </>
+            ) : (
+              <div className="history-ticket-empty"><span className="material-symbols-outlined">confirmation_number</span><p>Đặt sân để nhận vé QR tại đây.</p></div>
+            )}
+          </section>
+
+          <section className="history-rail-card history-promo-card">
+            <span className="material-symbols-outlined">sports_soccer</span>
+            <p>Tiếp tục trận đấu</p>
+            <strong>Kéo đội bóng vào trận tiếp theo</strong>
+            <Link to="/fields">Tìm sân phù hợp <span className="material-symbols-outlined">arrow_forward</span></Link>
+          </section>
+
+          <section className="history-rail-card history-policy-card">
+            <h2><span className="material-symbols-outlined">verified_user</span>Quyền lợi người đặt sân</h2>
+            <p><span className="material-symbols-outlined">check_circle</span>Thông tin đặt sân được lưu trong lịch sử tài khoản.</p>
+            <p><span className="material-symbols-outlined">check_circle</span>Chỉ lượt đặt hoàn thành mới có thể gửi đánh giá.</p>
+            <Link to="/lookup">Tra cứu mã đặt sân <span className="material-symbols-outlined">arrow_forward</span></Link>
+          </section>
+
+          <section className="history-rail-card history-support-card">
+            <span className="material-symbols-outlined">headset_mic</span>
+            <div><strong>Hỗ trợ khách hàng</strong><a href="tel:1900889922">1900 88 99 22</a><small>Hằng ngày · 06:00–23:00</small></div>
+          </section>
+        </aside>
       </main>
 
       {reviewingBooking && (
@@ -337,6 +556,52 @@ const MyBookings = () => {
                   </div>
                 </form>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCancelModal && (
+        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+          <div className="modal" style={{ background: '#fff', borderRadius: '1rem', padding: '1.5rem', maxWidth: '400px', width: '90%', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header" style={{ marginBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: '700', color: '#1e293b', margin: '0 0 0.5rem 0' }}>Xác nhận hủy đặt sân</h3>
+              <p style={{ fontSize: '0.875rem', color: '#64748b', margin: 0 }}>Bạn có chắc chắn muốn hủy lượt đặt sân này không?</p>
+            </div>
+            <div className="modal-footer" style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setShowCancelModal(false);
+                  setCancellingBookingId(null);
+                }}
+                style={{
+                  padding: '0.625rem 1.25rem',
+                  background: '#f1f5f9',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  color: '#64748b',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Không, giữ lại
+              </button>
+              <button
+                onClick={confirmCancel}
+                style={{
+                  padding: '0.625rem 1.25rem',
+                  background: '#ef4444',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  color: '#fff',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Có, hủy đặt sân
+              </button>
             </div>
           </div>
         </div>

@@ -804,4 +804,258 @@ tbody td {
 .fab .material-symbols-outlined {
   font-size: 1.875rem;
 }
+
+/* Admin dashboard reference layout */
+.sidebar {
+  width: 14rem;
+  padding: 1.1rem 0 0.75rem;
+  background: #fff;
+  box-shadow: 2px 0 16px rgba(15, 23, 42, 0.045);
+}
+
+.sidebar-logo { padding: 0 1.15rem 1.3rem; }
+.sidebar-logo h1 { font-size: 1.18rem; letter-spacing: 0; }
+.sidebar-logo p { margin-top: 2px; font-size: 0.65rem; letter-spacing: 0.06em; text-transform: uppercase; }
+.sidebar-nav { gap: 0.15rem; }
+
+.nav-link {
+  gap: 0.65rem;
+  margin: 0 0.55rem;
+  padding: 0.62rem 0.72rem;
+  border-radius: 0.55rem;
+  font-size: 0.79rem;
+}
+
+.nav-link.active { border-right: 0; }
+.nav-link .material-symbols-outlined { font-size: 1.05rem; }
+.sidebar-profile { margin: auto 0.65rem 0; padding: 0.75rem 0.55rem; border: 0; border-radius: 0.65rem; background: #f1f5ff; }
+.sidebar-profile img { width: 2rem; height: 2rem; }
+.sidebar-profile .profile-name { font-size: 0.73rem; }
+.sidebar-profile .profile-role { font-size: 0.63rem; }
+
+.main-content {
+  min-height: 100vh;
+  margin-left: 14rem;
+  background: #f7f8fc;
+}
+
+.main-content.admin-dashboard-main {
+  margin-left: 14rem;
+  padding: 0;
+  background: #f7f8fc;
+}
+
+.admin-dashboard-main .top-header {
+  width: 100%;
+  margin-left: 0;
+}
+
+.top-header {
+  height: 3.7rem;
+  padding: 0 1.5rem;
+  border-bottom: 1px solid #e8ebf1;
+  box-shadow: none;
+}
+
+.search-wrapper { max-width: 34rem; }
+.search-box input { min-height: 2.25rem; border-radius: 0.5rem; font-size: 0.78rem; }
+.header-actions { gap: 0.65rem; }
+.icon-btn { border-radius: 0.5rem; }
+.btn-new-booking { border-radius: 0.55rem; padding: 0.48rem 0.85rem; font-size: 0.75rem; }
+
+.content-area {
+  gap: 1rem;
+  padding: 1.3rem 1.5rem 1.5rem;
+}
+
+.page-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.dashboard-eyebrow {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #047857;
+  font-size: 0.63rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.dashboard-eyebrow span { padding: 0 0.25rem; color: #94a3b8; }
+.page-heading h2 { font-size: 1.45rem; line-height: 1.25; }
+.page-heading h2 span { color: #059669; }
+.page-heading p { font-size: 0.76rem; }
+
+.dashboard-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex: 0 0 auto;
+}
+
+.dashboard-date,
+.dashboard-period {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.45rem;
+  color: #475569;
+  background: #fff;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dashboard-date .material-symbols-outlined,
+.dashboard-period .material-symbols-outlined { color: #64748b; font-size: 0.95rem; }
+.dashboard-period { cursor: pointer; }
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.stat-card {
+  min-width: 0;
+  padding: 1rem 1.05rem;
+  border: 1px solid #ebedf2;
+  border-radius: 0.7rem;
+  box-shadow: 0 2px 7px rgba(15, 23, 42, 0.035);
+}
+
+.stat-card-header { margin-bottom: 0.72rem; }
+.stat-icon { padding: 0.55rem; border-radius: 0.55rem; }
+.stat-icon .material-symbols-outlined { font-size: 1.05rem; }
+.stat-icon.purple { color: #4f46e5; background: #eef0ff; }
+.stat-icon.amber { color: #b45309; background: #fef3c7; }
+.badge-amber { color: #b45309; background: #fff7ed; }
+.stat-badge { max-width: 62%; overflow: hidden; text-overflow: ellipsis; font-size: 0.58rem; letter-spacing: 0; }
+.stat-label { font-size: 0.73rem; }
+.stat-value { margin-top: 0.18rem; font-size: 1.55rem; line-height: 1.15; }
+
+.revenue-card {
+  display: flex;
+  align-items: center;
+  min-height: 145px;
+  grid-column: auto;
+  padding: 1.25rem 1.5rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(110deg, #047857, #066b51 62%, #075f4c);
+  box-shadow: 0 5px 16px rgba(5, 95, 70, 0.17);
+}
+
+.revenue-card .revenue-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr);
+  align-items: center;
+  gap: 1.35rem;
+  width: 100%;
+}
+
+.revenue-card .rev-header { grid-column: 1; margin: 0 0 0.35rem; }
+.revenue-card .rev-header .material-symbols-outlined { color: #d1fae5; }
+.revenue-card .rev-label { font-size: 0.72rem; }
+.revenue-card .rev-main { grid-column: 1; grid-row: 2; font-size: 2rem; line-height: 1.1; }
+.revenue-card .rev-main span { font-size: 0.92rem; }
+.revenue-card .rev-divider { grid-column: 2; grid-row: 1 / span 2; margin: 0; padding: 0 0 0 1.2rem; border-top: 0; border-left: 1px solid rgba(255,255,255,0.25); }
+.revenue-card .rev-sub-label { font-size: 0.65rem; letter-spacing: 0.05em; }
+.revenue-card .rev-sub-value { font-size: 1.55rem; }
+.revenue-card .blob1,
+.revenue-card .blob2 { display: none; }
+
+.charts-grid {
+  grid-template-columns: minmax(0, 1.65fr) minmax(270px, 0.85fr);
+  gap: 0.8rem;
+}
+
+.chart-card,
+.donut-card {
+  min-width: 0;
+  padding: 1.15rem;
+  border: 1px solid #ebedf2;
+  border-radius: 0.7rem;
+  box-shadow: 0 2px 7px rgba(15, 23, 42, 0.035);
+}
+
+.chart-header { margin-bottom: 0.7rem; }
+.chart-title { font-size: 0.95rem; }
+.chart-subtitle { font-size: 0.7rem; }
+.chart-select { padding: 0.38rem 0.65rem; font-size: 0.66rem; border-radius: 0.45rem; }
+.line-chart-wrapper { padding-top: 0.35rem; }
+.donut-wrapper { min-height: 190px; padding: 1rem 0; }
+.donut-ring { width: 8.5rem; height: 8.5rem; border-width: 0.85rem; }
+.donut-center .donut-num { font-size: 1.4rem; }
+.donut-center .donut-sub { font-size: 0.62rem; }
+.donut-legend { gap: 0.6rem; }
+.donut-legend-label, .donut-legend-pct { font-size: 0.72rem; }
+
+.bookings-card {
+  border: 1px solid #ebedf2;
+  border-radius: 0.7rem;
+  box-shadow: 0 2px 7px rgba(15, 23, 42, 0.035);
+}
+
+.bookings-header { padding: 1rem 1.15rem; }
+.bookings-header h3 { font-size: 0.98rem; }
+.btn-view-all { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.7rem; }
+.btn-view-all .material-symbols-outlined { font-size: 0.95rem; }
+thead tr { background: #f5f6fb; }
+thead th { padding: 0.75rem 0.85rem; font-size: 0.57rem; letter-spacing: 0.04em; white-space: nowrap; }
+tbody td { padding: 0.75rem 0.85rem; font-size: 0.72rem; }
+.booking-id { font-size: 0.68rem; }
+.customer-cell { gap: 0.5rem; }
+.avatar { width: 1.8rem; height: 1.8rem; }
+.customer-name, .field-name, .booking-time { font-size: 0.72rem; }
+.badge { padding: 0.25rem 0.55rem; font-size: 0.63rem; }
+
+@media (max-width: 1200px) {
+  .content-area { padding: 1.25rem; }
+  .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .charts-grid { grid-template-columns: minmax(0, 1.4fr) minmax(250px, 0.9fr); }
+}
+
+@media (max-width: 900px) {
+  .sidebar { width: 4.5rem; align-items: center; }
+  .sidebar-logo { width: 100%; padding: 0 0 1.1rem; text-align: center; }
+  .sidebar-logo h1 { font-size: 0; }
+  .sidebar-logo h1::before { content: "PP"; font-size: 1rem; }
+  .sidebar-logo p,
+  .nav-link > span:last-child,
+  .sidebar-profile > div { display: none; }
+  .nav-link { justify-content: center; width: 2.7rem; height: 2.7rem; margin: 0 auto; padding: 0.5rem; }
+  .sidebar-profile { justify-content: center; width: 100%; margin: auto 0 0; padding: 0.8rem 0; background: transparent; }
+  .main-content { margin-left: 4.5rem; }
+  .charts-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 620px) {
+  .top-header { padding: 0 0.8rem; }
+  .search-wrapper { max-width: none; }
+  .header-actions { gap: 0.25rem; }
+  .btn-new-booking { padding: 0.45rem 0.6rem; font-size: 0; }
+  .btn-new-booking .material-symbols-outlined { font-size: 1.1rem !important; }
+  .content-area { gap: 0.85rem; padding: 1rem 0.75rem; }
+  .page-heading { align-items: flex-start; flex-direction: column; }
+  .page-heading h2 { font-size: 1.3rem; }
+  .dashboard-heading-actions { width: 100%; justify-content: space-between; }
+  .stats-grid { gap: 0.55rem; }
+  .stat-card { padding: 0.75rem; }
+  .stat-card-header { align-items: flex-start; gap: 0.35rem; }
+  .stat-badge { font-size: 0.52rem; }
+  .stat-value { font-size: 1.3rem; }
+  .revenue-card { min-height: 0; padding: 1rem; }
+  .revenue-card .revenue-content { grid-template-columns: minmax(0, 1fr); gap: 0.75rem; }
+  .revenue-card .rev-divider { grid-column: 1; grid-row: auto; padding: 0.65rem 0 0; border-left: 0; border-top: 1px solid rgba(255,255,255,0.25); }
+  .chart-card, .donut-card { padding: 0.85rem; }
+  .bookings-header { padding: 0.85rem; }
+  thead th, tbody td { padding: 0.65rem; }
+}
  

@@ -66,14 +66,49 @@ def create_notification_on_booking_update(sender, instance, created, update_fiel
             message = f'Đặt sân của bạn tại {instance.field.field_name} vào {instance.booking_date} ({instance.start_time} - {instance.end_time}) đã được duyệt. Vui lòng thanh toán để hoàn tất.'
         
         elif new_status and (new_status.lower() == 'rejected' or new_status.lower() == 'cancelled'):
-            notification_type = 'booking_rejected'
-            title = 'Đặt sân bị từ chối'
-            message = f'Đặt sân của bạn tại {instance.field.field_name} vào {instance.booking_date} đã bị từ chối. Liên hệ quản trị viên để biết thêm chi tiết.'
+            notification_type = 'booking_cancelled'
+            title = 'Lượt đặt sân đã bị hủy'
+            message = f'Lượt đặt sân tại {instance.field.field_name} vào {instance.booking_date} ({instance.start_time} - {instance.end_time}) đã được cập nhật trạng thái hủy.'
+            try:
+                from apps.users.models import Customers
+                admins = Customers.objects.filter(role__in=['admin', 'field_owner', 'field_manager', 'receptionist'])
+                for adm in admins:
+                    Notification.objects.create(
+                        user=adm,
+                        booking=instance,
+                        notification_type='booking_cancelled',
+                        title='Khách hàng đã hủy đặt sân',
+                        message=f'Đơn đặt sân #{str(instance.id)[:8].upper()} tại {instance.field.field_name} ({instance.booking_date} {instance.start_time} - {instance.end_time}) vừa bị khách hủy.',
+                        is_read=False
+                    )
+            except Exception as adm_notif_err:
+                print("Lỗi tạo thông báo admin:", adm_notif_err)
         
-        elif new_status and new_status.lower() == 'completed':
+        elif new_status and new_status.lower() in ['completed', 'hoàn thành']:
             notification_type = 'booking_completed'
             title = 'Đặt sân hoàn thành'
             message = f'Đặt sân của bạn tại {instance.field.field_name} vào {instance.booking_date} đã hoàn thành. Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi!'
+            # 🎁 Tự động tặng voucher cho khách hàng
+            try:
+                from apps.vouchers.services import award_completion_voucher
+                award_completion_voucher(instance)
+            except Exception as voucher_err:
+                print("Lỗi tặng voucher khi hoàn thành booking:", voucher_err)
+
+            # 🎟️ Cập nhật trạng thái voucher đã sử dụng khi hoàn thành đơn
+            if instance.voucher_code:
+                try:
+                    from apps.vouchers.models import CustomerVoucher
+                    from django.utils import timezone
+                    cv = CustomerVoucher.objects.filter(code__iexact=instance.voucher_code).first()
+                    if cv:
+                        cv.is_used = True
+                        cv.used_at = timezone.now()
+                        cv.used_booking = instance
+                        cv.save()
+                        print(f"✅ Đã cập nhật voucher {cv.code} sang đã sử dụng cho đơn #{instance.id}")
+                except Exception as cv_err:
+                    print("Lỗi cập nhật voucher khi completed:", cv_err)
         
         elif new_status and new_status.lower() == 'pending':
             notification_type = 'booking_pending'

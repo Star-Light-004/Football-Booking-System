@@ -4,7 +4,7 @@ import axios from "axios";
 import { BASE_URL } from "../../config";
 import "./BookingForm.css";
 
-const BookingForm = ({ fieldId, fieldName, fieldAddress, onSlotSelect, externalServicesPrice = 0, selectedServices = {}, selectedShoeSizes = {} }) => {
+const BookingForm = ({ fieldId, fieldName, fieldAddress, fieldType, fieldImage, onSlotSelect, externalServicesPrice = 0, selectedServices = {}, selectedShoeSizes = {} }) => {
 
   const today = new Date();
   const initialYear = today.getFullYear();
@@ -201,7 +201,13 @@ const BookingForm = ({ fieldId, fieldName, fieldAddress, onSlotSelect, externalS
 
           <div
             className="relative flex items-center justify-between p-3 bg-primary/5 rounded-xl border border-primary/20 cursor-pointer"
-            onClick={() => setShowTimeSlots((v) => !v)}
+            onClick={() => {
+              setShowTimeSlots((v) => !v);
+              // Refresh slots khi mở dropdown
+              if (!showTimeSlots) {
+                fetchTimeSlots(selectedDate);
+              }
+            }}
           >
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-primary text-xl">
@@ -278,18 +284,21 @@ const BookingForm = ({ fieldId, fieldName, fieldAddress, onSlotSelect, externalS
         </div>
 
         <Link
-          to="/booking"
+          to={`/booking?field=${fieldId}`}
           state={{
             fieldId,
             fieldName,
             fieldAddress,
+            fieldType,
+            fieldImage,
             selectedDate,
             selectedTimeSlot,
             price,
             selectedServices,
             selectedShoeSizes,
             totalServicePrice: externalServicesPrice,
-            totalPrice
+            totalPrice,
+            bookingCode: `FB-${(selectedDate || "").replace(/-/g, "")}-${String(fieldId).padStart(2, "0")}`
           }}
           className={[
             "w-full font-bold py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2",

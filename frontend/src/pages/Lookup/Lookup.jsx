@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from "react";
+import PageHero from "../../components/PageHero/PageHero";
 import "./Lookup.css";
+
+const isCompletedBooking = (status) => ["completed", "hoàn thành", "hoan thanh"].includes(String(status || "").trim().toLowerCase());
+const hasReviewedBooking = (isReviewed) => isReviewed === true || isReviewed === "true";
 import { BASE_URL } from "../../config";
 import { useToast, ToastContainer } from "../../components/Toast/Toast";
 
@@ -23,106 +27,104 @@ const BookingResultItem = ({ booking, formatDateLong, maskPhone, onReviewClick }
     fetchServices();
   }, [booking.id]);
 
+  const statusLabel = booking.status === "Confirmed" ? "ĐÃ XÁC NHẬN & GIỮ CHỖ" :
+    booking.status === "Cancelled" ? "ĐÃ HỦY" :
+      isCompletedBooking(booking.status) ? "ĐÃ HOÀN THÀNH" :
+        booking.status === "Checked_in" ? "ĐÃ CHECK-IN" : "CHỜ XÁC NHẬN";
+  const statusClass = booking.status === "Cancelled" ? "cancelled" :
+    isCompletedBooking(booking.status) ? "completed" :
+      booking.status === "Checked_in" ? "checked-in" :
+        booking.status === "Pending" ? "pending" : "confirmed";
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${booking.id}`;
+
   return (
-    <div className="booking-result-card">
-      <div className="card-top-bar">
-        <span className="status-badge">
-          {booking.status === "Confirmed" ? "ĐÃ XÁC NHẬN" :
-            booking.status === "Cancelled" ? "ĐÃ HỦY" :
-              booking.status === "Completed" ? "HOÀN THÀNH" :
-                booking.status === "Checked_in" ? "ĐÃ CHECK-IN" : "CHỜ XÁC NHẬN"}
-        </span>
-        <div className="booking-meta">
-          <span>Mã đơn: <span className="booking-id-text">#BK{booking.booking_id_short}</span></span>
-          <span>Đặt lúc: {booking.createdAt}</span>
+    <article className="lookup-result-card">
+      <header className="lookup-result-header">
+        <div className="lookup-result-header__title">
+          <span className="material-symbols-outlined">confirmation_number</span>
+          <div>
+            <strong>VÉ ĐIỆN TỬ SÂN BÓNG (DIGITAL MATCH PASS)</strong>
+            <small>Xuất trình mã này tại sân để xác nhận đặt chỗ</small>
+          </div>
         </div>
-      </div>
+        <span className={`lookup-result-status lookup-result-status--${statusClass}`}>{statusLabel}</span>
+      </header>
 
-      <div className="card-body">
-        <div className="card-info-main">
-          <div className="info-item">
-            <span className="info-label">SÂN BÓNG</span>
-            <span className="info-value">{booking.fieldName}</span>
+      <div className="lookup-result-content">
+        <section className="lookup-qr-column">
+          <div className="lookup-reference">
+            <span>Mã đặt sân:</span>
+            <strong>#BK{booking.booking_id_short}</strong>
+          </div>
+          <div className="lookup-qr-frame">
+            <img src={qrUrl} alt={`Mã QR check-in đơn ${booking.booking_id_short}`} />
+            <span><span className="material-symbols-outlined">verified_user</span> QR xác nhận đặt sân</span>
+          </div>
+          <p className="lookup-qr-hint">Đưa mã QR này cho nhân viên khi đến sân để nhận chỗ.</p>
+          <a className="lookup-qr-download" href={qrUrl} download={`ma-qr-${booking.booking_id_short}.png`} target="_blank" rel="noreferrer">
+            <span className="material-symbols-outlined">download</span>Tải QR
+          </a>
+        </section>
+
+        <section className="lookup-booking-details">
+          <div className="lookup-field-heading">
+            {booking.fieldImage ? (
+              <img src={booking.fieldImage} alt={booking.fieldName} />
+            ) : (
+              <span className="material-symbols-outlined lookup-field-placeholder">stadium</span>
+            )}
+            <div>
+              <span className="lookup-field-type">SÂN BÓNG</span>
+              <h2>{booking.fieldName}</h2>
+              <p><span className="material-symbols-outlined">location_on</span>{booking.fieldAddress || "Chưa cập nhật địa chỉ"}</p>
+            </div>
           </div>
 
-          <div className="info-item">
-            <span className="info-label">THỜI GIAN</span>
-            <span className="info-value">{booking.timeSlot}</span>
-            <span className="info-subvalue">{formatDateLong(booking.bookingDate)}</span>
+          <div className="lookup-appointment-grid">
+            <div><span>Ngày thi đấu</span><strong>{formatDateLong(booking.bookingDate)}</strong></div>
+            <div><span>Khung giờ</span><strong className="lookup-time-value">{booking.timeSlot}</strong></div>
+            <div><span>Người đặt sân</span><strong>{booking.customerName}</strong></div>
+            <div><span>Số điện thoại</span><strong>{maskPhone(booking.phone)}</strong></div>
           </div>
 
-          <div className="info-item">
-            <span className="info-label">NGƯỜI ĐẶT</span>
-            <span className="info-value">{booking.customerName}</span>
-          </div>
-
-          <div className="info-item">
-            <span className="info-label">SỐ ĐIỆN THOẠI</span>
-            <span className="info-value">{maskPhone(booking.phone)}</span>
-          </div>
-
-          {/* Dịch vụ đi kèm */}
-          <div className="info-item mt-2">
-            <span className="info-label">DỊCH VỤ THÊM</span>
-            {services.length > 0 ? (
-              <div className="flex flex-wrap gap-4 mt-2">
-                {services.map(s => (
-                  <div key={s.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                    {s.service_image && (
-                      <img src={s.service_image} alt={s.service_name} style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '4px' }} />
-                    )}
-                    <span className="inline-flex items-center px-2 py-1 rounded bg-slate-100 text-slate-700 text-[10px] font-bold">
-                      {s.service_name}{s.shoe_size ? ` - size ${s.shoe_size}` : ''} x{s.quantity}
-                    </span>
-                  </div>
+          <div className="lookup-service-section">
+            <span className="lookup-section-label">DỊCH VỤ ĐI KÈM</span>
+            {loadingServices ? (
+              <span className="lookup-service-empty">Đang tải dịch vụ...</span>
+            ) : services.length > 0 ? (
+              <div className="lookup-service-list">
+                {services.map((service) => (
+                  <span className="lookup-service-chip" key={service.id}>
+                    {service.service_image && <img src={service.service_image} alt="" />}
+                    {service.service_name}{service.shoe_size ? ` · size ${service.shoe_size}` : ""} ×{service.quantity}
+                  </span>
                 ))}
               </div>
             ) : (
-              <span className="info-value text-slate-400 italic" style={{ fontSize: '13px' }}>Không</span>
+              <span className="lookup-service-empty">Không có dịch vụ thêm</span>
             )}
           </div>
 
-          <div className="price-section">
-            <span className="info-label">Tổng cộng</span>
-            <span className="total-price">{booking.price.toLocaleString("vi-VN")}đ</span>
+          <div className="lookup-price-row">
+            <span>Tổng chi phí</span>
+            <strong>{Number(booking.price || 0).toLocaleString("vi-VN")}đ</strong>
           </div>
-
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', alignItems: 'center' }}>
-            <button className="btn-download-receipt" style={{ marginTop: 0 }}>
-              <span className="material-symbols-outlined">download</span>
-              Tải biên lai
+          <div className="lookup-booking-actions">
+            <button className="btn-download-receipt" type="button">
+              <span className="material-symbols-outlined">download</span>Tải biên lai
             </button>
-            {booking.status === "Completed" && !booking.is_reviewed && (
-              <button
-                onClick={onReviewClick}
-                className="btn-download-receipt"
-                style={{ marginTop: 0, backgroundColor: '#29a847', color: 'white', border: 'none' }}
-              >
-                <span className="material-symbols-outlined">star</span>
-                Đánh giá
+            {isCompletedBooking(booking.status) && !hasReviewedBooking(booking.is_reviewed) && (
+              <button onClick={onReviewClick} className="btn-download-receipt btn-review-lookup" type="button">
+                <span className="material-symbols-outlined">star</span>Đánh giá
               </button>
             )}
-            {booking.is_reviewed && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#059669' }}>check_circle</span>
-                <span style={{ color: '#059669', fontSize: '13px', fontWeight: '600', whiteSpace: 'nowrap' }}>Đã đánh giá</span>
-              </div>
+            {hasReviewedBooking(booking.is_reviewed) && (
+              <span className="lookup-reviewed"><span className="material-symbols-outlined">check_circle</span>Đã đánh giá</span>
             )}
           </div>
-        </div>
-
-        <div className="qr-container">
-          <span className="qr-label">MÃ QR CHECK-IN</span>
-          <div className="qr-box">
-            <img
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${booking.id}`}
-              alt="QR Code"
-            />
-          </div>
-          <p className="qr-hint">Đưa mã này cho nhân viên khi đến sân để nhận chỗ.</p>
-        </div>
+        </section>
       </div>
-    </div>
+    </article>
   );
 };
 
@@ -236,20 +238,21 @@ const Lookup = () => {
   return (
     <div className="lookup-page-wrapper">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-      {/* SEARCH CARD */}
+      <PageHero
+        breadcrumb={[{ label: "Trang chủ", to: "/" }, { label: "Tra cứu đặt sân" }]}
+        eyebrow="HỆ THỐNG TRA CỨU THỜI GIAN THỰC"
+        title="Tra cứu vé & đơn đặt sân"
+        description="Nhập số điện thoại hoặc mã đặt sân để lấy lại mã QR vé sân và thông tin thi đấu."
+      />
       <div className="lookup-search-card">
-        <h1 className="lookup-title">Tra cứu đặt sân</h1>
-        <p className="lookup-subtitle">
-          Nhập thông tin bên dưới để kiểm tra chi tiết đơn đặt sân của bạn.
-        </p>
-
         <div className="lookup-grid">
           <div className="input-group">
-            <label className="input-label">
+            <label className="input-label" htmlFor="lookup-phone">
               <span className="material-symbols-outlined">call</span>
               Số điện thoại
             </label>
             <input
+              id="lookup-phone"
               type="tel"
               className="input-field"
               placeholder="Nhập số điện thoại của bạn"
@@ -259,11 +262,12 @@ const Lookup = () => {
           </div>
 
           <div className="input-group">
-            <label className="input-label">
+            <label className="input-label" htmlFor="lookup-booking-id">
               <span className="material-symbols-outlined">confirmation_number</span>
-              Mã đặt sân
+              Mã đặt sân <span className="lookup-optional-label">Không bắt buộc</span>
             </label>
             <input
+              id="lookup-booking-id"
               type="text"
               className="input-field"
               placeholder="VD: BK123456"
@@ -285,23 +289,24 @@ const Lookup = () => {
         </div>
       </div>
 
-      {/* RESULTS SECTION */}
       {searched && (
         <>
-          <div className="results-separator">
-            <div className="separator-line"></div>
-            <span className="separator-text">Kết quả tìm kiếm</span>
-            <div className="separator-line"></div>
+          <div className="lookup-results-heading">
+            <div>
+              <h2>Kết quả tra cứu</h2>
+              <span><span /> {results.length} đơn đặt sân</span>
+            </div>
+            {results.length > 0 && <small>Dữ liệu đặt sân của bạn</small>}
           </div>
 
           {results.length === 0 ? (
-            <div className="bg-white rounded-2xl p-12 text-center shadow-sm w-full max-w-[800px]">
-              <span className="material-symbols-outlined text-6xl text-slate-300 mb-4">search_off</span>
-              <h3 className="text-xl font-bold text-slate-800">Không tìm thấy đơn đặt sân</h3>
-              <p className="text-slate-500 mt-2">Vui lòng kiểm tra lại thông tin tra cứu.</p>
+            <div className="lookup-empty-state">
+              <span className="material-symbols-outlined">search_off</span>
+              <h3>Không tìm thấy đơn đặt sân</h3>
+              <p>Vui lòng kiểm tra lại số điện thoại hoặc mã đặt sân.</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-6 w-full max-w-[800px]">
+            <div className="lookup-results-list">
               {results.map((booking) => (
                 <BookingResultItem
                   key={booking.id}
@@ -316,21 +321,13 @@ const Lookup = () => {
         </>
       )}
 
-      {/* FOOTER */}
       <footer className="lookup-footer">
-        <p className="support-text">
-          Bạn gặp vấn đề khi tra cứu? <a href="#" className="support-link">Liên hệ hỗ trợ 24/7</a>
-        </p>
-        <div className="footer-badges">
-          <div className="footer-badge">
-            <span className="material-symbols-outlined">verified_user</span>
-            Bảo mật 100%
-          </div>
-          <div className="footer-badge">
-            <span className="material-symbols-outlined">bolt</span>
-            Cập nhật tức thì
-          </div>
+        <span className="material-symbols-outlined lookup-footer-icon">info</span>
+        <div className="lookup-footer-copy">
+          <strong>Lưu ý khi đến nhận sân</strong>
+          <p>Chuẩn bị mã QR và xuất trình cho nhân viên tại sân để xác nhận lượt đặt.</p>
         </div>
+        <a href="tel:1900889922" className="lookup-support-link">Hỗ trợ 1900 88 99 22</a>
       </footer>
 
       {/* Review Modal */}

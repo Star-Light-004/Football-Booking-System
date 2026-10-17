@@ -1,0 +1,47 @@
+/* ── AdminSidebar Common Styles ── */
+.sidebar .chevron {
+  margin-left: auto;
+  font-size: 1.1rem;
+  transition: transform 0.2s ease;
+}
+
+.sidebar .chevron.expanded {
+  transform: rotate(180deg);
+}
+
+.sidebar .submenu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding-left: 2.75rem;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.sidebar .submenu-link {
+  display: flex;
+  align-items: center;
+  padding: 0.45rem 0.75rem;
+  text-decoration: none;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #64748b;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.sidebar .submenu-link:hover {
+  color: #059669;
+  background: #f1f5f9;
+}
+
+.sidebar .submenu-link.active {
+  color: #059669;
+  font-weight: 600;
+  background: #ecfdf5;
+}
+
+.sidebar .sidebar-profile-btn-logout:hover {
+  background-color: #fee2e2 !important;
+  color: #dc2626 !important;
+}

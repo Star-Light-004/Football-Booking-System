@@ -1,162 +1,84 @@
-/* Navbar component styles */
+/* ──────────────────────────────────────
+   Navbar.css – Football Booking
+   ────────────────────────────────────── */
 
-.navbar {
+/* ── Wrapper ── */
+header.sticky {
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: 1000;
   width: 100%;
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 1px 8px rgba(0,0,0,0.06);
 }
 
-.navbar-container {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 0 1rem;
-}
-
-.navbar-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 5rem;
-}
-
-.navbar-brand {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.navbar-logo {
-  background: #667eea;
-  padding: 0.375rem;
-  border-radius: 0.375rem;
-  color: white;
-}
-
-.navbar-logo-icon {
-  display: block;
-  font-size: 1.5rem;
-}
-
-.navbar-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #667eea;
-}
-
-/* ── Menu container ── */
+/* ── Menu ── */
 .navbar-menu {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 2px;
 }
 
-/* ── Individual menu link ── */
 .navbar-menu-link {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.8rem;
+  gap: 5px;
+  font-size: 0.82rem;
   font-weight: 600;
-  color: #64748b;
+  color: #374151;
   text-decoration: none;
-  padding: 8px 16px;
-  border-radius: 10px;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 7px 14px;
+  border-radius: 8px;
+  transition: all 0.2s;
   white-space: nowrap;
   letter-spacing: 0.01em;
+  font-family: 'Be Vietnam Pro', sans-serif;
 }
 
 .navbar-menu-icon {
-  font-size: 1.15rem;
-  transition: transform 0.25s ease, color 0.25s ease;
+  font-size: 1.05rem !important;
+  transition: transform 0.2s ease;
 }
 
-/* ── Hover state ── */
+/* Hover */
 .navbar-menu-link:hover {
-  color: #667eea;
-  background: rgba(102, 126, 234, 0.08);
-  transform: translateY(-1px);
+  color: #16a34a;
+  background: #f0fdf4;
 }
 
 .navbar-menu-link:hover .navbar-menu-icon {
-  color: #667eea;
-  transform: scale(1.15);
-}
-
-/* ── Active / Selected state ── */
-.navbar-menu-link.active {
-  color: #fff;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.35);
-  transform: translateY(-1px);
-}
-
-.navbar-menu-link.active .navbar-menu-icon {
-  color: #fff;
   transform: scale(1.1);
 }
 
-.navbar-menu-link:active {
-  transform: translateY(0) scale(0.97);
+/* Active */
+.navbar-menu-link.active {
+  color: #16a34a;
+  background: #f0fdf4;
+  font-weight: 700;
 }
 
-.navbar-auth {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
+.navbar-menu-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 14px;
+  right: 14px;
+  height: 2px;
+  background: #16a34a;
+  border-radius: 2px 2px 0 0;
 }
 
-.auth-button {
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  text-decoration: none;
-  transition: all 0.3s ease;
+.navbar-menu-link.active .navbar-menu-icon {
+  color: #16a34a;
 }
 
-.auth-button.primary {
-  background: #667eea;
-  color: white;
-}
-
-.auth-button.primary:hover {
-  background: #5a67d8;
-}
-
-.auth-button.secondary {
-  background: transparent;
-  color: #4a5568;
-  border: 1px solid #e2e8f0;
-}
-
-.auth-button.secondary:hover {
-  background: #f7fafc;
-}
-
-.mobile-menu-toggle {
-  display: none;
-  background: none;
-  border: none;
-  color: #4a5568;
-  font-size: 1.5rem;
-  cursor: pointer;
-}
-
-@media (max-width: 768px) {
+/* ── Mobile ── */
+@media (max-width: 900px) {
   .navbar-menu {
     display: none;
-  }
-
-  .mobile-menu-toggle {
-    display: block;
-  }
-
-  .navbar-content {
-    padding: 0 1rem;
   }
 }

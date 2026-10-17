@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'apps.timeslots',
     'apps.servicesadd',
     'apps.notifications',
+    'apps.vouchers',
     'corsheaders',
     'rest_framework',
 ]

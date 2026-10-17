@@ -8,6 +8,8 @@ const Register = () => {
    const navigate = useNavigate();
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
     fullname: "",
     email: "",
@@ -64,147 +66,70 @@ const Register = () => {
   return (
     <div className="register-page">
       {message && (
-  <div className="fixed inset-0 flex items-center justify-center z-50">
-    {/* nền mờ */}
-    <div className="absolute inset-0 bg-black/40"></div>
-
-    {/* box */}
-    <div className="relative bg-white rounded-xl shadow-lg px-6 py-4 text-center w-80">
-      <p
-        className={`font-medium ${
-          isSuccess ? "text-green-600" : "text-red-600"
-        }`}
-      >
-        {message}
-      </p>
-    </div>
-  </div>
-)}
-      <div className="font-display bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex items-center justify-center p-4">
-        <div className="max-w-6xl w-full bg-white dark:bg-slate-900 rounded-xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-primary/10">
-
-          {/* Left Side Visual */}
-          <div className="hidden md:flex md:w-1/2 relative bg-primary items-center justify-center p-12 text-white overflow-hidden">
-            <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
-            <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
-            <div className="relative z-10 text-center">
-              <div className="mb-8 flex justify-center">
-                <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-lg">
-                  <span className="material-icons text-primary text-5xl">sports_soccer</span>
-                </div>
-              </div>
-              <h2 className="text-4xl font-bold mb-4">Chào mừng đến với hệ thống đặt sân</h2>
-              <p className="text-white/80 text-lg leading-relaxed">
-                Gia nhập cộng đồng yêu bóng đá, kết nối đam mê và tìm kiếm đối thủ xứng tầm chỉ trong vài cú nhấp chuột.
-              </p>
-              <div className="mt-12 grid grid-cols-2 gap-4">
-                <div className="p-4 bg-white/10 rounded-lg backdrop-blur-sm">
-                  <span className="material-icons text-3xl mb-2">event_available</span>
-                  <p className="text-sm font-medium">Đặt sân 24/7</p>
-                </div>
-                <div className="p-4 bg-white/10 rounded-lg backdrop-blur-sm">
-                  <span className="material-icons text-3xl mb-2">group_add</span>
-                  <p className="text-sm font-medium">Tìm đội nhanh</p>
-                </div>
-              </div>
-            </div>
-            <img
-              className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-overlay"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjxe-Xc003hxhA5606BPY7yY7eiFegQ0umPC0XzR82VjwFbjqGwybhLaSinCF6kjmMnvC2tx225wp_0SHiCZHkmItA1HM112ZNmWo7WuEXWhtmml17J8J66ql5ztk8F2qSW4AQ2GOwJBgvJWx8ErR0E4S6K7S4X2MQvLyrIsCpg8b9_OJL1Ch6sv8qn4zB-2V7WI_MkKfEX-GDrKiTtG0W8J2G3JGQDgk5zSjOzR-fycnSh-qh5mDiRcG44RaiZTs73yUlFkuoyag"
-              alt="background"
-            />
+        <div className="register-message-overlay" role="status" aria-live="polite">
+          <div className={`register-message-card ${isSuccess ? "success" : "error"}`}>
+            <span className="material-symbols-outlined">{isSuccess ? "check_circle" : "error"}</span>
+            <p>{message}</p>
           </div>
+        </div>
+      )}
+      <div className="register-page-content">
+        <div className="auth-card auth-card--register">
+          <section className="auth-promo auth-promo--register">
+            <span className="auth-promo-kicker"><span /> CỘNG ĐỒNG THỂ THAO</span>
+            <span className="register-promo-trophy material-symbols-outlined">emoji_events</span>
+            <div className="register-promo-brand"><span className="material-symbols-outlined">sports_soccer</span></div>
+            <h2>Chào mừng đến với hệ thống đặt sân</h2>
+            <p>Gia nhập cộng đồng yêu bóng đá, kết nối đam mê và tìm kiếm đối thủ xứng tầm chỉ trong vài cú nhấp chuột.</p>
+            <div className="register-promo-features">
+              <div><span className="material-symbols-outlined">event_available</span><strong>Đặt sân 24/7</strong><small>Xác nhận tức thì</small></div>
+              <div><span className="material-symbols-outlined">group_add</span><strong>Tìm đội nhanh</strong><small>Kết nối cộng đồng</small></div>
+            </div>
+            <div className="register-promo-bottom">
+              <div><strong>24/7</strong><small>ĐẶT SÂN TRỰC TUYẾN</small></div>
+              <div><strong>QR</strong><small>NHẬN SÂN NHANH</small></div>
+            </div>
+          </section>
 
-          {/* Right Side */}
-          <div className="w-full md:w-1/2 p-8 lg:p-12">
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Đăng ký tài khoản</h1>
-              <p className="text-slate-500 dark:text-slate-400">
-                Vui lòng điền thông tin để bắt đầu trải nghiệm
-              </p>
+          <section className="auth-form-panel register-form-panel">
+            <div className="auth-form-heading register-form-heading">
+              <h1>Đăng ký tài khoản</h1>
+              <p>Vui lòng điền thông tin để bắt đầu trải nghiệm đặt sân siêu tốc.</p>
             </div>
 
-            {/* ✅ THÊM onSubmit */}
-            <form className="space-y-5" onSubmit={handleSubmit}>
-              {/* Họ và tên */}
-              <div>
-                <label className="block text-sm font-medium mb-1.5">Họ và tên</label>
-                <div className="relative">
-                  <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2">person</span>
-                  <input
-                    id="fullname"
-                    onChange={handleChange}
-                    className="w-full pl-12 pr-4 py-3"
-                    type="text"
-                  />
-                </div>
+            <form className="auth-form register-form" onSubmit={handleSubmit}>
+              <div className="auth-field">
+                <label htmlFor="fullname">Họ và tên <b>*</b></label>
+                <div className="auth-input-wrap"><span className="material-symbols-outlined">person</span><input id="fullname" onChange={handleChange} placeholder="Nguyễn Văn A" type="text" autoComplete="name" /></div>
+              </div>
+              <div className="auth-field">
+                <label htmlFor="email">Email <b>*</b></label>
+                <div className="auth-input-wrap"><span className="material-symbols-outlined">mail</span><input id="email" onChange={handleChange} placeholder="example@football.vn" type="email" autoComplete="email" /></div>
+              </div>
+              <div className="auth-field">
+                <label htmlFor="phone">Số điện thoại <b>*</b></label>
+                <div className="auth-input-wrap"><span className="material-symbols-outlined">call</span><input id="phone" onChange={handleChange} placeholder="0987 654 321" type="tel" autoComplete="tel" /></div>
+              </div>
+              <div className="auth-field">
+                <label htmlFor="password">Mật khẩu <b>*</b></label>
+                <div className="auth-input-wrap"><span className="material-symbols-outlined">lock</span><input id="password" onChange={handleChange} placeholder="Tối thiểu 8 ký tự" type={showPassword ? "text" : "password"} autoComplete="new-password" /><button className="auth-password-toggle" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}><span className="material-symbols-outlined">{showPassword ? "visibility_off" : "visibility"}</span></button></div>
+              </div>
+              <div className="auth-field">
+                <label htmlFor="confirmPassword">Nhập lại mật khẩu <b>*</b></label>
+                <div className="auth-input-wrap"><span className="material-symbols-outlined">lock_reset</span><input id="confirmPassword" onChange={handleChange} placeholder="Nhập lại mật khẩu vừa tạo" type={showConfirmPassword ? "text" : "password"} autoComplete="new-password" /><button className="auth-password-toggle" type="button" onClick={() => setShowConfirmPassword((visible) => !visible)} aria-label={showConfirmPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}><span className="material-symbols-outlined">{showConfirmPassword ? "visibility_off" : "visibility"}</span></button></div>
               </div>
 
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-medium mb-1.5">Email</label>
-                <div className="relative">
-                  <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2">email</span>
-                  <input
-                    id="email"
-                    onChange={handleChange}
-                    className="w-full pl-12 pr-4 py-3"
-                    type="email"
-                  />
-                </div>
-              </div>
-
-              {/* Phone */}
-              <div>
-                <label className="block text-sm font-medium mb-1.5">Số điện thoại</label>
-                <div className="relative">
-                  <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2">phone</span>
-                  <input
-                    id="phone"
-                    onChange={handleChange}
-                    className="w-full pl-12 pr-4 py-3"
-                    type="tel"
-                  />
-                </div>
-              </div>
-
-              {/* Password */}
-              <div>
-                <label className="block text-sm font-medium mb-1.5">Mật khẩu</label>
-                <div className="relative">
-                  <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2">lock</span>
-                  <input
-                    id="password"
-                    onChange={handleChange}
-                    className="w-full pl-12 pr-4 py-3"
-                    type="password"
-                  />
-                </div>
-              </div>
-
-              {/* Confirm */}
-              <div>
-                <label className="block text-sm font-medium mb-1.5">Nhập lại mật khẩu</label>
-                <div className="relative">
-                  <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2">lock</span>
-                  <input
-                    id="confirmPassword"
-                    onChange={handleChange}
-                    className="w-full pl-12 pr-4 py-3"
-                    type="password"
-                  />
-                </div>
-              </div>
-
-              <button
-                className="w-full bg-primary text-white py-3.5 rounded-lg"
-                type="submit"
-              >
-                ĐĂNG KÝ NGAY
-              </button>
-
+              <label className="auth-check-row register-terms"><input type="checkbox" /><span>Tôi đồng ý với <Link to="/contact">Điều khoản dịch vụ</Link> và <Link to="/contact">Chính sách bảo mật</Link> của Football Booking.</span></label>
+              <button className="auth-submit-button" type="submit">ĐĂNG KÝ NGAY <span className="material-symbols-outlined">arrow_forward</span></button>
             </form>
-          </div>
+
+            <div className="auth-divider"><span>HOẶC ĐĂNG KÝ NHANH BẰNG</span></div>
+            <div className="auth-social-buttons">
+              <button type="button"><img src="https://cdn-icons-png.flaticon.com/512/281/281764.png" alt="" />Google</button>
+              <button type="button"><img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="" />Facebook</button>
+            </div>
+            <p className="auth-switch-prompt">Đã có tài khoản? <Link to="/login">Đăng nhập ngay</Link></p>
+          </section>
         </div>
       </div>
     </div>

@@ -1,137 +1,107 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from "react-router-dom";
 import './revenue.css';
- 
-/* ── Data ── */
-const navLinks = [
-  { icon: 'dashboard', label: 'Dashboard', path: '/admin/dashboard' },
-  { icon: 'stadium', label: 'Fields', path: '/admin/fields' },
-  { icon: 'event_available', label: 'Bookings', path: '/admin/bookings' },
-  { icon: 'group', label: 'Users', path: '/admin/users' },
-  { icon: 'payments', label: 'Revenue', path: '/admin/revenue' },
-  { icon: 'calendar_month', label: 'Time Slots', path: '/admin/timeslots' },
-  { icon: 'inventory_2', label: 'Services', path: '/admin/services' },
-  { icon: 'settings', label: 'Settings', path: '/admin/settings' },
+import AdminSidebar from '../../../components/AdminSidebar/AdminSidebar';
+
+/* ── Mock Data for Charts & Transactions ── */
+const barData = [
+  { label: 'T1', height: '40%', type: 'light' },
+  { label: 'T2', height: '55%', type: 'light' },
+  { label: 'T3', height: '68%', type: 'light' },
+  { label: 'T4', height: '72%', type: 'light' },
+  { label: 'T5', height: '90%', type: 'active', activeLabel: true },
+  { label: 'T6', height: '80%', type: 'light' },
+  { label: 'T7', height: '65%', type: 'light' },
+  { label: 'T8', height: '70%', type: 'light' },
+  { label: 'T9', height: '60%', type: 'light' },
+  { label: 'T10', height: '75%', type: 'light' },
+  { label: 'T11', height: '45%', type: 'future', dashed: true, faded: true },
+  { label: 'T12', height: '50%', type: 'future', dashed: true, faded: true },
 ];
 
-const barData = [
-  { label: 'Jan', height: '45%', type: 'light',  faded: false },
-  { label: 'Feb', height: '60%', type: 'light',  faded: false },
-  { label: 'Mar', height: '55%', type: 'light',  faded: false },
-  { label: 'Apr', height: '80%', type: 'light',  faded: false },
-  { label: 'May', height: '95%', type: 'active', faded: false, activeLabel: true },
-  { label: 'Jun', height: '20%', type: 'future', faded: true,  dashed: true },
-  { label: 'Jul', height: '0%',  type: 'none',   faded: true,  dashed: true },
-];
- 
-const donutSegments = [
-  { label: 'Sân 7 người',  dotClass: 'green',       pct: '65%', strokeArray: '65, 100', strokeOffset: '0'   },
-  { label: 'Sân 5 người',  dotClass: 'light-green',  pct: '25%', strokeArray: '25, 100', strokeOffset: '-65' },
-  { label: 'Sân 11 người', dotClass: 'secondary',    pct: '10%', strokeArray: '10, 100', strokeOffset: '-90' },
-];
- 
 const donutColors = ['#10b981', '#6ee7b7', '#3b683e'];
- 
+const donutSegments = [
+  { label: 'Sân 5 người', strokeArray: '55 100', strokeOffset: 0, dotClass: 'green', pct: '55%' },
+  { label: 'Sân 7 người', strokeArray: '30 100', strokeOffset: -55, dotClass: 'light-green', pct: '30%' },
+  { label: 'Sân 11 người', strokeArray: '15 100', strokeOffset: -85, dotClass: 'secondary', pct: '15%' },
+];
+
 const transactions = [
   {
-    id: '#INV-8821',
-    avatarClass: 'green',
+    id: '#HD-9082',
+    name: 'Nguyễn Văn An',
     initials: 'NA',
-    name: 'Nguyễn Anh Tuấn',
-    field: 'Sân A2 - 7 người',
-    date: '24/05/2024, 18:30',
-    price: '450.000 đ',
+    avatarClass: 'green',
+    field: 'Sân 5A',
+    date: '28/05/2024 - 18:30',
+    price: '350.000 đ',
     statusClass: 'success',
-    statusLabel: 'Thành công',
+    statusLabel: 'Hoàn tất',
   },
   {
-    id: '#INV-8822',
+    id: '#HD-9081',
+    name: 'Trần Minh Tuấn',
+    initials: 'MT',
     avatarClass: 'blue',
-    initials: 'LM',
-    name: 'Lê Minh',
-    field: 'Sân B1 - 5 người',
-    date: '24/05/2024, 20:00',
-    price: '300.000 đ',
+    field: 'Sân 7B',
+    date: '28/05/2024 - 17:00',
+    price: '650.000 đ',
     statusClass: 'success',
-    statusLabel: 'Thành công',
+    statusLabel: 'Hoàn tất',
   },
   {
-    id: '#INV-8823',
+    id: '#HD-9080',
+    name: 'Lê Hoàng Long',
+    initials: 'HL',
     avatarClass: 'zinc',
-    initials: 'TH',
-    name: 'Trần Huy',
-    field: 'Sân C - 11 người',
-    date: '25/05/2024, 17:00',
-    price: '1.200.000 đ',
+    field: 'Sân 5B',
+    date: '28/05/2024 - 16:00',
+    price: '300.000 đ',
     statusClass: 'pending',
     statusLabel: 'Chờ thanh toán',
   },
+  {
+    id: '#HD-9079',
+    name: 'Phạm Đức Huy',
+    initials: 'DH',
+    avatarClass: 'green',
+    field: 'Sân 11A',
+    date: '27/05/2024 - 19:00',
+    price: '1.200.000 đ',
+    statusClass: 'success',
+    statusLabel: 'Hoàn tất',
+  },
+  {
+    id: '#HD-9078',
+    name: 'Vũ Quốc Khánh',
+    initials: 'QK',
+    avatarClass: 'blue',
+    field: 'Sân 7A',
+    date: '27/05/2024 - 20:00',
+    price: '650.000 đ',
+    statusClass: 'success',
+    statusLabel: 'Hoàn tất',
+  },
 ];
- 
-/* ── Sub-components ── */
-function Sidebar() {
 
-  const location = useLocation();
-
-  return (
-    <aside className="sidebar">
-      <div className="sidebar-logo">
-        <h1>Pitch & Pulse</h1>
-        <p>Admin Console</p>
-      </div>
-
-      <nav className="sidebar-nav">
-        {navLinks.map(({ icon, label, path }) => (
-          <Link
-            key={label}
-            to={path}
-            className={`nav-link ${
-              location.pathname === path ? "active" : ""
-            }`}
-          >
-            <span className="material-symbols-outlined">{icon}</span>
-            <span>{label}</span>
-          </Link>
-        ))}
-      </nav>
-
-      <div className="sidebar-profile">
-        <div className="sidebar-profile-inner">
-          <img
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBLiCYpgt5GJMbyFGFVf4YJqRw6dm4cgkTseIG-1F3mP1AqG1_7nIa4tqQKmw0Psla6CvxhVW2gOSZCwz03EABUu-fEgN6l4SUMV6RKGSzcr2PbISzH5d_4yfjhu7g3sF00crS1zT0OHbwHI-8Hv2NYLBU_MzxUK8wTei8tKEdZwM0w5VvdVTduBDiudMVq816PDK0HHYEtfKOv_G70KjkAlchAx8GtrQDbMfG1UbKg4oPAzenDStiUUuvHlODQAl3vte9nLNYDy8A"
-            alt="Admin"
-          />
-          <div>
-            <p className="profile-name">Test</p>
-            <p className="profile-role">Super Admin</p>
-          </div>
-        </div>
-      </div>
-    </aside>
-  );
-}
- 
-function TopHeader() {
+function TopHeader({ onExport }) {
   return (
     <header className="top-header">
-      <div className="search-pill">
-        <span className="material-symbols-outlined">search</span>
+      <div className="search-box">
+        <span className="material-symbols-outlined search-icon">search</span>
         <input type="text" placeholder="Tìm kiếm giao dịch, hóa đơn..." />
       </div>
- 
-      <div className="header-right">
-        <div className="icon-group">
-          <button className="icon-btn">
-            <span className="material-symbols-outlined">notifications</span>
-          </button>
-          <button className="icon-btn">
-            <span className="material-symbols-outlined">help_outline</span>
-          </button>
-        </div>
+
+      <div className="header-actions">
+        <button className="icon-btn" title="Thông báo">
+          <span className="material-symbols-outlined">notifications</span>
+        </button>
+        <button className="icon-btn" title="Trợ giúp">
+          <span className="material-symbols-outlined">help_outline</span>
+        </button>
         <div className="header-divider" />
-        <button className="btn-new-booking">
-          <span className="material-symbols-outlined">add</span>
-          New Booking
+        <button className="btn-new-booking" onClick={onExport}>
+          <span className="material-symbols-outlined">file_download</span>
+          Xuất báo cáo
         </button>
       </div>
     </header>
@@ -326,17 +296,15 @@ function TransactionTable() {
   );
 }
  
-function ExportFAB() {
-  const [open, setOpen] = useState(false);
- 
+function ExportFAB({ open, setOpen }) {
   return (
     <div className="fab-container">
       <div className={`export-menu ${open ? 'visible' : 'hidden'}`}>
-        <button className="export-menu-btn">
+        <button className="export-menu-btn" onClick={() => alert("Tính năng xuất PDF đang được xử lý")}>
           <span className="material-symbols-outlined pdf">picture_as_pdf</span>
           Xuất PDF (A4)
         </button>
-        <button className="export-menu-btn">
+        <button className="export-menu-btn" onClick={() => alert("Tính năng xuất Excel đang được xử lý")}>
           <span className="material-symbols-outlined excel">table_view</span>
           Xuất Excel (.xlsx)
         </button>
@@ -347,51 +315,58 @@ function ExportFAB() {
     </div>
   );
 }
- 
+
 /* ── Main Revenue Component ── */
 export default function Revenue() {
+  const [openExport, setOpenExport] = useState(false);
+
   return (
-    <>
-      <Sidebar />
-      <TopHeader />
- 
-      <main className="main-content">
-        {/* Page Header */}
-        <div className="page-header">
-          <div>
-            <h2>Báo cáo doanh thu</h2>
-            <p>Phân tích chi tiết hiệu quả hoạt động kinh doanh sân bãi.</p>
-          </div>
-          <div className="date-picker-wrap">
-            <div className="date-range-display">
-              <span className="material-symbols-outlined">calendar_today</span>
-              <span>01/05/2024 - 31/05/2024</span>
+    <div className="revenue-page-layout">
+      <AdminSidebar />
+      <div className="revenue-page-container">
+        <TopHeader onExport={() => setOpenExport((v) => !v)} />
+
+        <main className="main-content revenue-main-content">
+          {/* Page Header */}
+          <div className="page-header-alt">
+            <div className="header-text">
+              <span className="admin-page-eyebrow">
+                PITCH &amp; PULSE OPERATIONS <span>›</span> TÀI CHÍNH &amp; KINH DOANH
+              </span>
+              <h2>Báo cáo doanh thu</h2>
+              <p>Phân tích chi tiết hiệu quả hoạt động kinh doanh sân bãi theo thời gian thực.</p>
             </div>
-            <button className="btn-expand">
-              <span className="material-symbols-outlined">expand_more</span>
-            </button>
-            <button className="btn-export">
-              <span className="material-symbols-outlined">file_download</span>
-              Xuất báo cáo
-            </button>
+            <div className="date-picker-wrap">
+              <div className="date-range-display">
+                <span className="material-symbols-outlined">calendar_today</span>
+                <span>01/05/2024 - 31/05/2024</span>
+              </div>
+              <button className="btn-expand">
+                <span className="material-symbols-outlined">expand_more</span>
+              </button>
+              <button className="btn-primary-gradient" onClick={() => setOpenExport((v) => !v)}>
+                <span className="material-symbols-outlined">file_download</span>
+                Xuất báo cáo
+              </button>
+            </div>
           </div>
-        </div>
- 
-        {/* Summary Cards */}
-        <SummaryCards />
- 
-        {/* Charts */}
-        <div className="charts-grid">
-          <BarChart />
-          <DonutChart />
-        </div>
- 
-        {/* Transactions */}
-        <TransactionTable />
-      </main>
- 
+
+          {/* Summary Cards */}
+          <SummaryCards />
+
+          {/* Charts */}
+          <div className="charts-grid">
+            <BarChart />
+            <DonutChart />
+          </div>
+
+          {/* Transactions */}
+          <TransactionTable />
+        </main>
+      </div>
+
       {/* FAB */}
-      <ExportFAB />
-    </>
+      <ExportFAB open={openExport} setOpen={setOpenExport} />
+    </div>
   );
 }

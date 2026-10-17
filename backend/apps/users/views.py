@@ -5,7 +5,130 @@ from django.utils import timezone
 import uuid
 from django.contrib.auth.hashers import check_password, make_password
 
-from .models import Customers
+import json
+import os
+from django.conf import settings
+from .models import Customers, RolePermission
+
+ROLE_PERMISSIONS_FILE = os.path.join(settings.BASE_DIR, 'role_permissions.json')
+
+DEFAULT_PERMISSIONS = {
+    'customer': [
+        'bookings_view', 'bookings_create',
+    ],
+    'field_owner': [
+        'dashboard_view',
+        'fields_view', 'fields_create', 'fields_edit', 'fields_delete',
+        'bookings_view', 'bookings_create', 'bookings_edit', 'bookings_cancel',
+        'timeslots_view', 'timeslots_create', 'timeslots_edit', 'timeslots_delete',
+        'services_view', 'services_create', 'services_edit', 'services_delete',
+        'vouchers_view', 'vouchers_create', 'vouchers_edit', 'vouchers_delete',
+        'users_view', 'users_create', 'users_edit',
+        'revenue_view', 'revenue_export',
+        'maintenance_manage', 'cleaning_manage',
+        'settings_manage',
+    ],
+    'field_manager': [
+        'dashboard_view',
+        'fields_view', 'fields_edit',
+        'bookings_view', 'bookings_create', 'bookings_edit', 'bookings_cancel',
+        'timeslots_view', 'timeslots_create', 'timeslots_edit',
+        'services_view', 'services_create', 'services_edit',
+        'vouchers_view', 'vouchers_create', 'vouchers_edit',
+        'users_view',
+        'maintenance_manage', 'cleaning_manage',
+    ],
+    'receptionist': [
+        'dashboard_view',
+        'fields_view',
+        'bookings_view', 'bookings_create', 'bookings_edit',
+        'timeslots_view',
+        'services_view',
+        'vouchers_view',
+    ],
+    'cashier': [
+        'dashboard_view',
+        'bookings_view', 'bookings_edit',
+        'revenue_view', 'revenue_export',
+        'services_view',
+        'vouchers_view',
+    ],
+    'cleaner': [
+        'cleaning_manage',
+    ],
+    'service_staff': [
+        'dashboard_view',
+        'services_view', 'services_create', 'services_edit',
+    ],
+    'maintenance': [
+        'dashboard_view',
+        'fields_view',
+        'maintenance_manage',
+    ],
+    'admin': [
+        'dashboard_view',
+        'fields_view', 'fields_create', 'fields_edit', 'fields_delete',
+        'bookings_view', 'bookings_create', 'bookings_edit', 'bookings_cancel',
+        'timeslots_view', 'timeslots_create', 'timeslots_edit', 'timeslots_delete',
+        'services_view', 'services_create', 'services_edit', 'services_delete',
+        'vouchers_view', 'vouchers_create', 'vouchers_edit', 'vouchers_delete',
+        'users_view', 'users_create', 'users_edit', 'users_delete',
+        'revenue_view', 'revenue_export',
+        'maintenance_manage', 'cleaning_manage',
+        'settings_manage',
+    ],
+}
+
+
+def load_all_role_permissions():
+    """Lấy danh sách quyền của tất cả role từ DB, fallback sang file JSON hoặc DEFAULT_PERMISSIONS."""
+    perms = {k: list(v) for k, v in DEFAULT_PERMISSIONS.items()}
+    try:
+        db_records = RolePermission.objects.all()
+        if db_records.exists():
+            for rec in db_records:
+                perms[rec.role] = rec.permissions
+            return perms
+    except Exception:
+        pass
+
+    if os.path.exists(ROLE_PERMISSIONS_FILE):
+        try:
+            with open(ROLE_PERMISSIONS_FILE, 'r', encoding='utf-8') as f:
+                saved = json.load(f)
+                if isinstance(saved, dict):
+                    perms.update(saved)
+                    return perms
+        except Exception:
+            pass
+
+    return perms
+
+
+def save_all_role_permissions(new_perms):
+    """Lưu ma trận phân quyền vào cả file JSON và DB."""
+    try:
+        with open(ROLE_PERMISSIONS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(new_perms, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print("Lỗi lưu file role_permissions.json:", e)
+
+    try:
+        for role_name, p_list in new_perms.items():
+            RolePermission.objects.update_or_create(
+                role=role_name,
+                defaults={'permissions': p_list}
+            )
+    except Exception as e:
+        print("Lỗi lưu DB RolePermission:", e)
+
+
+def get_permissions_for_role(role):
+    """Lấy danh sách quyền cho role."""
+    if role == 'admin':
+        return list(DEFAULT_PERMISSIONS['admin'])
+    all_perms = load_all_role_permissions()
+    return all_perms.get(role, [])
 
 
 # ================= REGISTER =================
@@ -69,14 +192,35 @@ def login(request):
     return Response({
         "message": "Đăng nhập thành công",
         "user": {
-            "id":       str(user.id),
-            "fullname": user.full_name,
-            "email":    user.email,
-            "phone":    user.phone,
-            "role":     user.role,
-            "status":   user.status,
+            "id":          str(user.id),
+            "fullname":    user.full_name,
+            "email":       user.email,
+            "phone":       user.phone,
+            "role":        user.role,
+            "status":      user.status,
+            "permissions": get_permissions_for_role(user.role),
         }
     })
+
+
+# ================= ROLE PERMISSIONS APIs =================
+@api_view(['GET', 'PUT'])
+def role_permissions_view(request):
+    if request.method == 'GET':
+        perms = load_all_role_permissions()
+        return Response(perms)
+    elif request.method == 'PUT':
+        new_perms = request.data
+        if not isinstance(new_perms, dict):
+            return Response({"error": "Dữ liệu phân quyền không hợp lệ"}, status=400)
+        save_all_role_permissions(new_perms)
+        return Response({"message": "Cập nhật phân quyền thành công", "permissions": new_perms})
+
+
+@api_view(['POST'])
+def reset_role_permissions_view(request):
+    save_all_role_permissions(DEFAULT_PERMISSIONS)
+    return Response({"message": "Đã đặt lại phân quyền về mặc định", "permissions": DEFAULT_PERMISSIONS})
 
 
 # ================= GET ALL USERS =================
@@ -172,5 +316,38 @@ def delete_user(request, user_id):
         return Response({"message": "Xóa thành công"})
     except Customers.DoesNotExist:
         return Response({"error": "Không tìm thấy user"}, status=404)
+    except Exception as e:
+        return Response({"error": str(e)}, status=400)
+
+
+# ================= CREATE GUEST USER =================
+@api_view(['POST'])
+def create_guest_user(request):
+    """Tạo hồ sơ khách vãng lai (không cần mật khẩu đăng nhập)."""
+    try:
+        data = request.data
+        phone = str(data.get('phone', '')).strip()
+        fullname = str(data.get('fullname', '')).strip() or 'Khách vãng lai'
+        email = str(data.get('email', '')).strip()
+
+        if not phone:
+            return Response({"error": "Vui lòng nhập số điện thoại"}, status=400)
+
+        existing = Customers.objects.filter(phone=phone).first()
+        if existing:
+            return Response({"error": "Số điện thoại này đã tồn tại trong hệ thống"}, status=400)
+
+        guest = Customers.objects.create(
+            id=uuid.uuid4(),
+            full_name=fullname,
+            phone=phone,
+            email=email,
+            user=None,
+            password_hash=None,
+            role='customer',
+            is_active=True,
+            created_at=timezone.now()
+        )
+        return Response({"message": "Thêm khách vãng lai thành công", "id": str(guest.id)})
     except Exception as e:
         return Response({"error": str(e)}, status=400)

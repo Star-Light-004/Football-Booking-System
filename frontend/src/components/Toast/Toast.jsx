@@ -29,13 +29,16 @@ const ToastItem = ({ toast, onRemove }) => {
 };
 
 // ─── Container renders all toasts ────────────────────────────────────────────
-export const ToastContainer = ({ toasts, onRemove }) => (
-  <div className="toast-container">
-    {toasts.map((t) => (
-      <ToastItem key={t.id} toast={t} onRemove={onRemove} />
-    ))}
-  </div>
-);
+export const ToastContainer = ({ toasts = [], onRemove, removeToast }) => {
+  const handleRemove = onRemove || removeToast;
+  return (
+    <div className="toast-container">
+      {toasts.map((t) => (
+        <ToastItem key={t.id} toast={t} onRemove={handleRemove} />
+      ))}
+    </div>
+  );
+};
 
 // ─── Hook to use inside any component ────────────────────────────────────────
 export const useToast = () => {
@@ -50,12 +53,14 @@ export const useToast = () => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const toast = {
-    success: (msg, dur) => addToast(msg, "success", dur),
-    error: (msg, dur) => addToast(msg, "error", dur),
-    warning: (msg, dur) => addToast(msg, "warning", dur),
-    info: (msg, dur) => addToast(msg, "info", dur),
-  };
+  const toast = useCallback((msg, type = "info", dur) => {
+    addToast(msg, type, dur);
+  }, [addToast]);
+
+  toast.success = (msg, dur) => addToast(msg, "success", dur);
+  toast.error = (msg, dur) => addToast(msg, "error", dur);
+  toast.warning = (msg, dur) => addToast(msg, "warning", dur);
+  toast.info = (msg, dur) => addToast(msg, "info", dur);
 
   return { toasts, removeToast, toast };
 };

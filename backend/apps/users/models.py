@@ -18,9 +18,16 @@ class Admin(models.Model):
 class Customers(models.Model):
 
     class Role(models.TextChoices):
-        CUSTOMER = 'customer', 'Khách hàng'
-        STAFF    = 'staff',    'Nhân viên'
-        ADMIN    = 'admin',    'Quản trị viên'
+        CUSTOMER      = 'customer',      'Người dùng'
+        FIELD_OWNER   = 'field_owner',   'Chủ sân'
+        FIELD_MANAGER = 'field_manager', 'Người quản lý sân'
+        RECEPTIONIST  = 'receptionist',  'Lễ tân'
+        CASHIER       = 'cashier',       'Nhân viên thu ngân'
+        CLEANER       = 'cleaner',       'Nhân viên dọn dẹp'
+        SERVICE_STAFF = 'service_staff', 'Nhân viên dịch vụ'
+        MAINTENANCE   = 'maintenance',   'Nhân viên bảo trì sân'
+        ADMIN         = 'admin',         'Quản trị viên'
+
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
@@ -39,7 +46,7 @@ class Customers(models.Model):
 
     # ── Phân quyền vai trò ──────────────────────────────────────────────────
     role = models.CharField(
-        max_length=20,
+        max_length=30,
         choices=Role.choices,
         default=Role.CUSTOMER,
         verbose_name='Vai trò',
@@ -65,3 +72,18 @@ class Customers(models.Model):
     def status(self):
         """Trả về trạng thái dạng chuỗi để tương thích với serializer cũ."""
         return 'active' if self.is_active else 'locked'
+
+
+class RolePermission(models.Model):
+    role = models.CharField(max_length=50, unique=True, verbose_name='Vai trò')
+    permissions = models.JSONField(default=list, verbose_name='Danh sách quyền')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Cập nhật lúc')
+
+    class Meta:
+        managed = True
+        db_table = 'role_permissions'
+        verbose_name = 'Phân quyền vai trò'
+        verbose_name_plural = 'Phân quyền vai trò'
+
+    def __str__(self):
+        return f"{self.role}: {len(self.permissions)} quyền"

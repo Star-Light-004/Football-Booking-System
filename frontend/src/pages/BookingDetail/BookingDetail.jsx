@@ -5,6 +5,11 @@ import "./BookingDetail.css";
 import { useToast, ToastContainer } from "../../components/Toast/Toast";
 import { BASE_URL } from "../../config";
 
+const canCustomerCancel = (status) => {
+  const s = String(status || "").trim().toLowerCase();
+  return ["pending", "chờ xác nhận", "cho xac nhan", "confirmed", "đã xác nhận", "da xac nhan"].includes(s);
+};
+
 const BookingDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
