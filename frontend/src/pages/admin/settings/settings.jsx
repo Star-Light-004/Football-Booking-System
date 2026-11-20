@@ -1,6 +1,8 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import "./settings.css";
 import AdminSidebar from "../../../components/AdminSidebar/AdminSidebar";
+import { useToast, ToastContainer } from "../../../components/Toast/Toast";
 
 function TopHeader() {
   return (
@@ -11,20 +13,28 @@ function TopHeader() {
       </div>
 
       <div className="header-actions">
-        <button className="icon-btn">
+        <button className="icon-btn" type="button" title="Thông báo">
           <span className="material-symbols-outlined">notifications</span>
         </button>
-        <button className="icon-btn">
+        <button className="icon-btn" type="button" title="Trợ giúp">
           <span className="material-symbols-outlined">help_outline</span>
         </button>
+        <div className="header-divider" />
+        <Link to="/admin/bookings" className="btn-new-booking">
+          <span className="material-symbols-outlined">add</span>
+          Đặt sân mới
+        </Link>
       </div>
     </header>
   );
 }
 
 export default function AdminSettings() {
+  const { toasts, showToast } = useToast();
+
   return (
     <>
+      <ToastContainer toasts={toasts} />
       <AdminSidebar />
       <TopHeader />
 
@@ -32,9 +42,20 @@ export default function AdminSettings() {
         <div className="content-inner">
           <div className="page-header">
             <div>
+              <span className="fields-eyebrow">
+                VẬN HÀNH CƠ SỞ <span>›</span> THIẾT LẬP HỆ THỐNG
+              </span>
               <h2>Cài đặt hệ thống</h2>
               <p>Quản lý cấu hình chung, thông báo và bảo mật của hệ thống sân bóng.</p>
             </div>
+            <button
+              className="btn-add-field"
+              type="button"
+              onClick={() => showToast("Đã lưu thiết lập hệ thống thành công!", "success")}
+            >
+              <span className="material-symbols-outlined">save</span>
+              Lưu thay đổi
+            </button>
           </div>
 
           <div className="settings-grid">
@@ -46,7 +67,7 @@ export default function AdminSettings() {
               <div className="settings-form">
                 <div className="form-group">
                   <label>Tên hệ thống</label>
-                  <input type="text" defaultValue="Pitch & Pulse Football" className="settings-input" />
+                  <input type="text" defaultValue="Sân Bóng Đá Hải Châu - Đà Nẵng" className="settings-input" />
                 </div>
                 <div className="form-group">
                   <label>Số điện thoại hỗ trợ hotline</label>
@@ -54,7 +75,7 @@ export default function AdminSettings() {
                 </div>
                 <div className="form-group">
                   <label>Email liên hệ</label>
-                  <input type="email" defaultValue="support@pitchpulse.vn" className="settings-input" />
+                  <input type="email" defaultValue="support@sanbonghaichau.vn" className="settings-input" />
                 </div>
               </div>
             </div>

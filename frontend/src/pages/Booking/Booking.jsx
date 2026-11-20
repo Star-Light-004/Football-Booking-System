@@ -1,12 +1,17 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { getUserProfile } from "../../api/usersApi";
-import { createBooking } from "../../api/bookingsApi";
+import { createBooking, updateBooking, getCustomerBookingLimits } from "../../api/bookingsApi";
 import { getServices, createBookingService } from "../../api/servicesApi";
 import { getFieldDetail, getFields } from "../../api/fieldsApi";
 import timeslotsApi from "../../api/timeslotsApi";
 import { validateVoucher, getMyVouchers } from "../../api/vouchersApi";
+import { createQrPayment, checkPaymentStatus, simulatePaymentTest } from "../../api/paymentsApi";
 import PageHero from "../../components/PageHero/PageHero";
+import { useToast, ToastContainer } from "../../components/Toast/Toast";
+import ConfirmModal from "../../components/ConfirmModal/ConfirmModal";
+import { broadcastSyncEvent, onSyncEvent } from "../../utils/realtimeSync";
+import { isSlotExpired, getLocalDateString } from "../../utils/timeslotUtils";
 import "./Booking.css";
 
 const getSlotDurationMinutes = (slot) => {
@@ -34,6 +39,7 @@ const Booking = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const rawLocationData = location.state;
+  const { toasts, removeToast, toast } = useToast();
 
   // ─── Booking Draft / Field State ──────────────────────────────────────────
   const [bookingInfo, setBookingInfo] = useState(() => {
@@ -55,6 +61,43 @@ const Booking = () => {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [allFieldsList, setAllFieldsList] = useState([]);
 
+  // Khởi tạo danh sách khung giờ đã chọn (tối đa 3 khung giờ)
+  const [selectedSlots, setSelectedSlots] = useState(() => {
+    if (rawLocationData?.slots && Array.isArray(rawLocationData.slots) && rawLocationData.slots.length > 0) {
+      return rawLocationData.slots;
+    }
+    if (bookingInfo?.slots && Array.isArray(bookingInfo.slots) && bookingInfo.slots.length > 0) {
+      return bookingInfo.slots;
+    }
+    const initTime = rawLocationData?.selectedTimeSlot || bookingInfo?.selectedTimeSlot;
+    if (initTime) {
+      const parts = String(initTime).split(", ");
+      return parts.map((p) => {
+        const [st, et] = p.split("-").map((x) => x.trim());
+        return { start_time: st, end_time: et, price: rawLocationData?.price || bookingInfo?.price || 350000 };
+      });
+    }
+    return [];
+  });
+
+  const [customerLimits, setCustomerLimits] = useState({
+    same_field_booked_count: 0,
+    same_field_slots: [],
+    other_field_slots: [],
+    max_slots_per_day: 3,
+  });
+
+  const [confirmConfig, setConfirmConfig] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    confirmText: "Xác nhận",
+    cancelText: "Hủy bỏ",
+    type: "danger",
+    onConfirm: () => {},
+    onCancel: () => {},
+  });
+
   // Kiểm tra tài khoản thành viên hiện tại
   const currentUser = (() => {
     try {
@@ -65,13 +108,101 @@ const Booking = () => {
     }
   })();
 
-  // Form states
-  const [customerName, setCustomerName] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [email, setEmail] = useState("");
+  // Form states - tự động lấy thông tin người dùng đã đăng nhập nếu có
+  const [customerName, setCustomerName] = useState(() => currentUser?.fullname || currentUser?.username || "");
+  const [phoneNumber, setPhoneNumber] = useState(() => currentUser?.phone || "");
+  const [email, setEmail] = useState(() => currentUser?.email || "");
   const [teamName, setTeamName] = useState("");
   const [note, setNote] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [paymentMethod, setPaymentMethod] = useState("qr");
+
+  // ─── QR Payment States (VietQR / SePay) ──────────────────────────────
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [qrData, setQrData] = useState(null);
+  const [qrCountdown, setQrCountdown] = useState(600);
+  const [qrPaymentSuccess, setQrPaymentSuccess] = useState(false);
+  const [copiedField, setCopiedField] = useState("");
+  const [simulating, setSimulating] = useState(false);
+  const qrPollRef = useRef(null);
+  const qrTimerRef = useRef(null);
+  const pendingSuccessStateRef = useRef(null);
+  const showQrModalRef = useRef(false);
+  const createdBookingSlotsRef = useRef([]);
+  const isSubmittingBookingRef = useRef(false);
+
+  useEffect(() => {
+    showQrModalRef.current = showQrModal;
+  }, [showQrModal]);
+
+  const handleCopy = (text, fieldName) => {
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(String(text));
+      setCopiedField(fieldName);
+      setTimeout(() => setCopiedField(""), 2000);
+    }
+  };
+
+  const handleCloseQrModal = async () => {
+    if (qrPollRef.current) clearInterval(qrPollRef.current);
+    if (qrTimerRef.current) clearInterval(qrTimerRef.current);
+
+    const activeBookingId = qrData?.booking_id;
+    if (activeBookingId && !qrPaymentSuccess) {
+      setConfirmConfig({
+        isOpen: true,
+        title: "Đơn đặt sân đang chờ thanh toán",
+        message:
+          "Đơn đặt sân của bạn đang ở trạng thái Chờ thanh toán.\n\n" +
+          "• [Hủy đơn]: Hủy đơn đặt sân này và giải phóng khung giờ trống cho người khác.\n" +
+          "• [Giữ đơn & Xem vé]: Giữ nguyên đơn đặt sân và chuyển đến trang thông tin vé.",
+        confirmText: "Hủy đơn & Trả giờ",
+        cancelText: "Giữ đơn (Xem vé)",
+        type: "danger",
+        onConfirm: async () => {
+          try {
+            await updateBooking(activeBookingId, { status: "Cancelled" });
+            broadcastSyncEvent("booking_cancelled", { bookingId: activeBookingId });
+            toast.info("Đã hủy đơn đặt sân và giải phóng khung giờ.");
+            fetchSlots(false);
+          } catch (err) {
+            console.error("Lỗi khi hủy đơn:", err);
+          }
+          createdBookingSlotsRef.current = [];
+          isSubmittingBookingRef.current = false;
+          setShowQrModal(false);
+          setQrData(null);
+        },
+        onCancel: () => {
+          setShowQrModal(false);
+          broadcastSyncEvent("booking_created", { bookingId: activeBookingId });
+          navigate("/booking/success", { state: pendingSuccessStateRef.current });
+        },
+      });
+      return;
+    }
+
+    setShowQrModal(false);
+  };
+
+  const handleSimulatePayment = async () => {
+    if (!qrData?.booking_id || simulating) return;
+    setSimulating(true);
+    try {
+      await simulatePaymentTest(qrData.booking_id);
+    } catch (err) {
+      console.error("Lỗi giả lập thanh toán:", err);
+    } finally {
+      setSimulating(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (qrPollRef.current) clearInterval(qrPollRef.current);
+      if (qrTimerRef.current) clearInterval(qrTimerRef.current);
+    };
+  }, []);
+
   const [voucherCode, setVoucherCode] = useState(
     () => rawLocationData?.voucherCode || rawLocationData?.appliedVoucher?.code || bookingInfo?.voucherCode || ""
   );
@@ -93,12 +224,15 @@ const Booking = () => {
       setVoucherCode(passedVoucher.code || passedCode || "");
     } else if (passedCode) {
       setVoucherCode(passedCode);
-      if (!appliedVoucher) {
-        const rawPrice = (bookingInfo?.price || 0) + selectedServicesList.reduce((acc, s) => acc + s.price * s.quantity, 0);
+        const fieldPrice = bookingInfo?.price || 0;
+        const servicePrice = selectedServicesList.reduce((acc, s) => acc + s.price * s.quantity, 0);
+        const rawPrice = fieldPrice + servicePrice;
         validateVoucher({
           code: passedCode,
           customer_id: currentUser?.id || null,
           total_price: rawPrice > 0 ? rawPrice : 350000,
+          field_price: fieldPrice > 0 ? fieldPrice : 350000,
+          service_price: servicePrice,
         })
           .then((res) => {
             if (res.data?.valid) {
@@ -106,7 +240,6 @@ const Booking = () => {
             }
           })
           .catch(() => {});
-      }
     }
   }, [bookingInfo, rawLocationData]);
 
@@ -229,44 +362,156 @@ const Booking = () => {
     }
   }, [location.search, rawLocationData]);
 
-  // ─── Tải Timeslots theo sân và ngày ──────────────────────────────────
+  // ─── Tải giới hạn đặt sân của khách hàng ────────────────────────────
   useEffect(() => {
-    if (!bookingInfo?.fieldId) return;
-    const date =
-      bookingInfo.selectedDate || new Date().toISOString().split("T")[0];
-    setLoadingSlots(true);
-    timeslotsApi
-      .getByField(bookingInfo.fieldId, date)
-      .then((res) => {
-        const slots = (res.data || [])
-          .filter((slot) => getSlotDurationMinutes(slot) === 60)
-          .sort((a, b) => a.start_time.localeCompare(b.start_time));
-        setAvailableSlots(slots);
-        // Nếu chưa chọn slot, tự động chọn slot còn trống đầu tiên
-        if (!bookingInfo.selectedTimeSlot && slots.length > 0) {
-          const firstAvail = slots.find((s) => s.status === "available");
-          if (firstAvail) {
-            const tr = `${firstAvail.start_time} - ${firstAvail.end_time}`;
-            setBookingInfo((prev) => {
-              const updated = {
-                ...prev,
-                selectedTimeSlot: tr,
-                price: firstAvail.price || prev?.price || 350000,
-              };
-              try {
-                sessionStorage.setItem("booking_draft", JSON.stringify(updated));
-              } catch (e) {}
-              return updated;
-            });
-          }
-        }
+    const fieldId = bookingInfo?.fieldId;
+    const date = bookingInfo?.selectedDate || new Date().toISOString().split("T")[0];
+    if (fieldId && date) {
+      getCustomerBookingLimits({
+        fieldId,
+        date,
+        customerId: currentUser?.id || null,
+        phone: phoneNumber || currentUser?.phone || null,
       })
-      .catch((err) => {
+        .then((res) => {
+          if (res.data) setCustomerLimits(res.data);
+        })
+        .catch(() => {});
+    }
+  }, [bookingInfo?.fieldId, bookingInfo?.selectedDate, currentUser?.id, phoneNumber]);
+
+  // ─── Ref đồng bộ selectedSlots cho polling và event ──────────────
+  const selectedSlotsRef = useRef(selectedSlots);
+  useEffect(() => {
+    selectedSlotsRef.current = selectedSlots;
+  }, [selectedSlots]);
+
+  // ─── Tải Timeslots theo sân và ngày (hỗ trợ silent refresh cho realtime) ──
+  const fetchSlots = useCallback(async (isSilent = false) => {
+    if (!bookingInfo?.fieldId) return;
+    const date = bookingInfo.selectedDate || new Date().toISOString().split("T")[0];
+    if (!isSilent) setLoadingSlots(true);
+    try {
+      const res = await timeslotsApi.getByField(bookingInfo.fieldId, date);
+      const slots = (res.data || [])
+        .filter((slot) => getSlotDurationMinutes(slot) === 60)
+        .sort((a, b) => a.start_time.localeCompare(b.start_time));
+      setAvailableSlots(slots);
+
+      // Kiểm tra nếu slot người dùng đang chọn bị người khác đặt hoặc khóa trong thời gian thực
+      // Nếu đang mở cổng thanh toán QR hoặc đang gửi đơn đặt, không kiểm tra xung đột
+      if (showQrModalRef.current || isSubmittingBookingRef.current) {
+        return;
+      }
+
+      const currentSelected = selectedSlotsRef.current || [];
+      if (currentSelected.length > 0 && slots.length > 0) {
+        // Loại trừ các slot thuộc đơn vừa được tạo của chính khách hàng này
+        const createdSlots = createdBookingSlotsRef.current || [];
+        const slotsToCheck = currentSelected.filter(
+          (sel) => !createdSlots.some((cs) => cs.start_time === sel.start_time && cs.end_time === sel.end_time)
+        );
+
+        if (slotsToCheck.length === 0) {
+          return;
+        }
+
+        const invalidSlots = slotsToCheck.filter((sel) => {
+          const match = slots.find((s) => s.start_time === sel.start_time && s.end_time === sel.end_time);
+          return match && match.status !== "available";
+        });
+
+        if (invalidSlots.length > 0) {
+          const invalidLabels = invalidSlots.map((s) => `${s.start_time} - ${s.end_time}`).join(", ");
+          toast.warning(`Khung giờ (${invalidLabels}) vừa có người khác đặt hoặc bị khóa! Đã tự động cập nhật.`);
+          const remainingSlots = currentSelected.filter(
+            (sel) => !invalidSlots.some((inv) => inv.start_time === sel.start_time && inv.end_time === sel.end_time)
+          );
+          setSelectedSlots(remainingSlots);
+          setBookingInfo((prev) => {
+            const timeSlotStr = remainingSlots.map((s) => `${s.start_time} - ${s.end_time}`).join(", ");
+            const updated = {
+              ...prev,
+              slots: remainingSlots,
+              selectedTimeSlots: remainingSlots.map((s) => `${s.start_time} - ${s.end_time}`),
+              selectedTimeSlot: timeSlotStr,
+            };
+            try {
+              sessionStorage.setItem("booking_draft", JSON.stringify(updated));
+            } catch (e) {}
+            return updated;
+          });
+        }
+      }
+
+      // Nếu chưa có khung giờ nào được chọn, tự động chọn slot đầu tiên khả dụng (lần tải đầu)
+      if (!isSilent && (!selectedSlotsRef.current || selectedSlotsRef.current.length === 0) && slots.length > 0) {
+        const firstAvail = slots.find((s) => s.status === "available" && !isSlotExpired(date, s.start_time));
+        if (firstAvail) {
+          const tr = `${firstAvail.start_time} - ${firstAvail.end_time}`;
+          const initSlotObj = {
+            start_time: firstAvail.start_time,
+            end_time: firstAvail.end_time,
+            price: Number(firstAvail.price) || bookingInfo?.price || 350000,
+          };
+          setSelectedSlots([initSlotObj]);
+          setBookingInfo((prev) => {
+            const updated = {
+              ...prev,
+              slots: [initSlotObj],
+              selectedTimeSlots: [tr],
+              selectedTimeSlot: tr,
+              price: initSlotObj.price,
+            };
+            try {
+              sessionStorage.setItem("booking_draft", JSON.stringify(updated));
+            } catch (e) {}
+            return updated;
+          });
+        }
+      }
+    } catch (err) {
+      if (!isSilent) {
         console.error("Lỗi lấy khung giờ:", err);
         setAvailableSlots([]);
-      })
-      .finally(() => setLoadingSlots(false));
-  }, [bookingInfo?.fieldId, bookingInfo?.selectedDate]);
+      }
+    } finally {
+      if (!isSilent) setLoadingSlots(false);
+    }
+  }, [bookingInfo?.fieldId, bookingInfo?.selectedDate, toast]);
+
+  // Lần đầu hoặc khi đổi sân/ngày
+  useEffect(() => {
+    fetchSlots(false);
+  }, [fetchSlots]);
+
+  // Lắng nghe Realtime Cross-tab Sync & Smart Polling (3.5s)
+  useEffect(() => {
+    const unsub = onSyncEvent((event) => {
+      if (event?.type?.startsWith("booking_") || event?.type?.startsWith("timeslot_")) {
+        fetchSlots(true);
+      }
+    });
+
+    const pollTimer = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        fetchSlots(true);
+      }
+    }, 3500);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        fetchSlots(true);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      unsub();
+      clearInterval(pollTimer);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [fetchSlots]);
 
   // ─── Đổi sân nếu người dùng chọn sân khác ───────────────────────────
   const handleFieldChange = (fieldId) => {
@@ -277,6 +522,7 @@ const Booking = () => {
         if (f) {
           const todayStr =
             bookingInfo?.selectedDate || new Date().toISOString().split("T")[0];
+          setSelectedSlots([]);
           const updated = {
             ...bookingInfo,
             fieldId: f.id,
@@ -286,6 +532,8 @@ const Booking = () => {
             fieldImage: f.image_url,
             price: f.price_per_hour || 350000,
             selectedTimeSlot: "",
+            slots: [],
+            selectedTimeSlots: [],
             bookingCode: `FB-${todayStr.replace(/-/g, "")}-${String(f.id).padStart(2, "0")}`,
           };
           setBookingInfo(updated);
@@ -301,11 +549,14 @@ const Booking = () => {
   // ─── Đổi ngày thi đấu ────────────────────────────────────────────────
   const handleDateChange = (e) => {
     const newDate = e.target.value;
+    setSelectedSlots([]);
     setBookingInfo((prev) => {
       const updated = {
         ...prev,
         selectedDate: newDate,
         selectedTimeSlot: "",
+        slots: [],
+        selectedTimeSlots: [],
         bookingCode: `FB-${newDate.replace(/-/g, "")}-${String(prev?.fieldId || 1).padStart(2, "0")}`,
       };
       try {
@@ -315,14 +566,59 @@ const Booking = () => {
     });
   };
 
-  // ─── Chọn khung giờ ──────────────────────────────────────────────────
+  // ─── Chọn khung giờ (Tối đa 3 khung giờ / ngày / sân & Chặn trùng sân khác) ──
   const handleSlotSelect = (slot) => {
+    if (slot.status !== "available" || isSlotExpired(bookingInfo?.selectedDate, slot.start_time)) return;
     const tr = `${slot.start_time} - ${slot.end_time}`;
+
+    // 🔹 Kiểm tra quy tắc 2: Đã đặt khung giờ nào ở sân khác thì không được đặt ở sân này
+    const otherConflict = customerLimits.other_field_slots?.find(
+      (o) => o.start_time === slot.start_time || o.time === tr
+    );
+    if (otherConflict) {
+      toast.warning(`Bạn đã đặt khung giờ ${tr} tại ${otherConflict.field_name} trong ngày này. Bạn không thể đặt tiếp khung giờ đó ở sân khác.`);
+      return;
+    }
+
+    const existingIndex = selectedSlots.findIndex(
+      (s) => (s.id && s.id === slot.id) || `${s.start_time} - ${s.end_time}` === tr
+    );
+
+    let nextSlots = [];
+    if (existingIndex !== -1) {
+      if (selectedSlots.length === 1) {
+        toast.warning("Đơn đặt phải có ít nhất một khung giờ!");
+        return;
+      }
+      nextSlots = selectedSlots.filter((_, idx) => idx !== existingIndex);
+    } else {
+      // 🔹 Kiểm tra quy tắc 1: Chỉ được đặt tối đa 3 khung giờ khác nhau của 1 ngày của 1 sân
+      const bookedAtThisField = customerLimits.same_field_booked_count || 0;
+      if (selectedSlots.length + bookedAtThisField >= 3) {
+        toast.warning(
+          bookedAtThisField > 0
+            ? `Bạn chỉ được đặt tối đa 3 khung giờ khác nhau của 1 ngày của 1 sân (đã đặt ${bookedAtThisField} khung giờ trước đó).`
+            : "Chỉ được đặt tối đa 3 khung giờ khác nhau của 1 ngày của 1 sân!"
+        );
+        return;
+      }
+      nextSlots = [...selectedSlots, slot].sort((a, b) => a.start_time.localeCompare(b.start_time));
+    }
+
+    setSelectedSlots(nextSlots);
+    const combinedStr = nextSlots.map((s) => `${s.start_time} - ${s.end_time}`).join(", ");
+    const nextPrice = nextSlots.reduce(
+      (sum, s) => sum + (Number(s.price) || (bookingInfo?.price || 350000)),
+      0
+    );
+
     setBookingInfo((prev) => {
       const updated = {
         ...prev,
-        selectedTimeSlot: tr,
-        price: slot.price || prev?.price || 350000,
+        slots: nextSlots,
+        selectedTimeSlots: nextSlots.map((s) => `${s.start_time} - ${s.end_time}`),
+        selectedTimeSlot: combinedStr,
+        price: nextPrice,
       };
       try {
         sessionStorage.setItem("booking_draft", JSON.stringify(updated));
@@ -336,7 +632,8 @@ const Booking = () => {
     const fetchServices = async () => {
       try {
         const res = await getServices();
-        setAllServices(res.data || []);
+        const list = Array.isArray(res?.data) ? res.data : (res?.data?.services || []);
+        setAllServices(list);
       } catch (err) {
         console.error("Lỗi lấy dịch vụ:", err);
       }
@@ -369,12 +666,18 @@ const Booking = () => {
   // ─── Load user ────────────────────────────────────────────────────────
   useEffect(() => {
     const fetchUser = async () => {
-      const user = JSON.parse(localStorage.getItem("user"));
+      const user = JSON.parse(localStorage.getItem("user") || "null");
       if (!user) return;
+      if (user.fullname) setCustomerName((prev) => prev || user.fullname);
+      if (user.phone) setPhoneNumber((prev) => prev || user.phone);
+      if (user.email) setEmail((prev) => prev || user.email);
       try {
         const res = await getUserProfile(user.id);
-        setCustomerName(res.data.fullname || "");
-        setPhoneNumber(res.data.phone || "");
+        if (res.data) {
+          if (res.data.fullname) setCustomerName(res.data.fullname);
+          if (res.data.phone) setPhoneNumber(res.data.phone);
+          if (res.data.email) setEmail(res.data.email);
+        }
       } catch (err) {
         console.log("Lỗi lấy user:", err);
       }
@@ -403,11 +706,15 @@ const Booking = () => {
     setValidatingVoucher(true);
     setVoucherError("");
     try {
-      const rawPrice = (bookingInfo?.price || 0) + selectedServicesList.reduce((acc, s) => acc + s.price * s.quantity, 0);
+      const fieldPrice = bookingInfo?.price || 0;
+      const servicePrice = selectedServicesList.reduce((acc, s) => acc + s.price * s.quantity, 0);
+      const rawPrice = fieldPrice + servicePrice;
       const res = await validateVoucher({
         code,
         customer_id: currentUser?.id,
         total_price: rawPrice,
+        field_price: fieldPrice,
+        service_price: servicePrice,
       });
 
       if (res.data?.valid) {
@@ -438,19 +745,19 @@ const Booking = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!customerName.trim()) {
-      alert("Vui lòng nhập họ và tên người đặt sân!");
+      toast.warning("Vui lòng nhập họ và tên người đặt sân!");
       return;
     }
     if (!phoneNumber.trim()) {
-      alert("Vui lòng nhập số điện thoại để nhận thông tin đặt sân!");
+      toast.warning("Vui lòng nhập số điện thoại để nhận thông tin đặt sân!");
       return;
     }
     if (!bookingInfo?.fieldId) {
-      alert("Vui lòng chọn sân bóng trước khi tiếp tục!");
+      toast.warning("Vui lòng chọn sân bóng trước khi tiếp tục!");
       return;
     }
     if (!bookingInfo?.selectedTimeSlot) {
-      alert("Vui lòng chọn khung giờ thi đấu trước khi tiếp tục!");
+      toast.warning("Vui lòng chọn khung giờ thi đấu trước khi tiếp tục!");
       return;
     }
     setShowModal(true);
@@ -514,26 +821,50 @@ const Booking = () => {
   const handleConfirm = async () => {
     clearInterval(modalTimerRef.current);
     if (!customerName.trim()) {
-      alert("Vui lòng nhập họ và tên người đặt sân");
+      toast.warning("Vui lòng nhập họ và tên người đặt sân");
       setShowModal(false);
       return;
     }
     if (!phoneNumber.trim()) {
-      alert("Vui lòng nhập số điện thoại để nhận thông tin đặt sân");
+      toast.warning("Vui lòng nhập số điện thoại để nhận thông tin đặt sân");
       setShowModal(false);
       return;
     }
     if (!bookingInfo?.fieldId) {
-      alert("Vui lòng chọn sân bóng trước khi xác nhận đặt sân");
+      toast.warning("Vui lòng chọn sân bóng trước khi xác nhận đặt sân");
       setShowModal(false);
       return;
     }
-    if (!bookingInfo?.selectedTimeSlot || !bookingInfo.selectedTimeSlot.includes("-")) {
-      alert("Vui lòng chọn khung giờ thi đấu trước khi xác nhận đặt sân");
+    const effectiveSlots = selectedSlots.length > 0 ? selectedSlots : (
+      bookingInfo?.selectedTimeSlot ? [{
+        start_time: bookingInfo.selectedTimeSlot.split("-")[0].trim(),
+        end_time: bookingInfo.selectedTimeSlot.split("-")[1].trim(),
+        price: fieldPrice
+      }] : []
+    );
+
+    if (effectiveSlots.length === 0) {
+      toast.warning("Vui lòng chọn khung giờ thi đấu trước khi xác nhận đặt sân");
       setShowModal(false);
       return;
     }
+
+    // 🔹 Kiểm tra số lượng dịch vụ so với tồn kho
+    for (const item of selectedServicesList) {
+      const stock = item.stock !== undefined ? Number(item.stock) : 999;
+      if (item.quantity > stock) {
+        toast.warning(
+          stock <= 0
+            ? `Dịch vụ "${item.name}" hiện đã hết hàng trong kho.`
+            : `Dịch vụ "${item.name}" chỉ còn ${stock} sản phẩm trong kho. Bạn đã chọn ${item.quantity}.`
+        );
+        setShowModal(false);
+        return;
+      }
+    }
+
     setSubmitting(true);
+    isSubmittingBookingRef.current = true;
 
     const booking = {
       customer_id: currentUser?.id || null,
@@ -543,16 +874,24 @@ const Booking = () => {
       notes: [teamName ? `Đội bóng: ${teamName}` : "", note].filter(Boolean).join(" | "),
       field_id: bookingInfo.fieldId,
       booking_date: bookingInfo.selectedDate || new Date().toISOString().split("T")[0],
-      start_time: bookingInfo.selectedTimeSlot.split("-")[0].trim(),
-      end_time: bookingInfo.selectedTimeSlot.split("-")[1].trim(),
+      start_time: effectiveSlots[0].start_time,
+      end_time: effectiveSlots[0].end_time,
+      slots: effectiveSlots.map((s) => ({
+        start_time: s.start_time,
+        end_time: s.end_time,
+        price: Number(s.price) || (fieldPrice / effectiveSlots.length),
+      })),
       total_price: totalPrice,
       voucher_code: appliedVoucher?.code || null,
       discount_amount: discountAmount,
+      payment_method: paymentMethod,
     };
 
     try {
       const res = await createBooking(booking);
       const { booking_id, booking_id_short } = res.data;
+      createdBookingSlotsRef.current = effectiveSlots;
+
       for (const item of selectedServicesList) {
         await createBookingService({
           booking_id,
@@ -562,89 +901,147 @@ const Booking = () => {
           shoe_size: item.shoeSize || null,
         });
       }
+      const successState = {
+        bookingCode: booking_id_short || bookingInfo.bookingCode,
+        fullId: booking_id,
+        bookingDetails: {
+          fieldName: bookingInfo.fieldName,
+          fieldType: typeLabel,
+          fieldAddress: bookingInfo.fieldAddress,
+          fieldImage: bookingInfo.fieldImage,
+          bookingDate: booking.booking_date,
+          timeSlot: effectiveSlots.map((s) => `${s.start_time} - ${s.end_time}`).join(", "),
+          durationMinutes: effectiveSlots.length * 60,
+          includedAmenities: ["1 Quả bóng số 5", "2 Bộ áo bib phân đội", "Dàn đèn LED cao áp"],
+          fieldPrice,
+          services: selectedServicesList.map((item) => ({
+            id: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            shoeSize: item.shoeSize,
+            totalPrice: item.price * item.quantity,
+          })),
+          discountCode: appliedVoucher?.code || "",
+          discountAmount,
+          totalPrice,
+          paymentMethod: PAYMENT_OPTIONS.find((option) => option.value === paymentMethod)?.name || "Chưa chọn",
+        },
+      };
+
       try {
         sessionStorage.removeItem("booking_draft");
       } catch (e) {}
-      navigate("/booking/success", {
-        state: {
-          bookingCode: booking_id_short || bookingInfo.bookingCode,
-          fullId: booking_id,
-          bookingDetails: {
-            fieldName: bookingInfo.fieldName,
-            fieldType: typeLabel,
-            fieldAddress: bookingInfo.fieldAddress,
-            fieldImage: bookingInfo.fieldImage,
-            bookingDate: booking.booking_date,
-            timeSlot: bookingInfo.selectedTimeSlot,
-            durationMinutes: getSlotDurationMinutes({
-              start_time: booking.start_time,
-              end_time: booking.end_time,
-            }),
-            includedAmenities: ["1 Quả bóng số 5", "2 Bộ áo bib phân đội", "Dàn đèn LED cao áp"],
-            fieldPrice,
-            services: selectedServicesList.map((item) => ({
-              id: item.id,
-              name: item.name,
-              quantity: item.quantity,
-              shoeSize: item.shoeSize,
-              totalPrice: item.price * item.quantity,
-            })),
-            discountCode: appliedVoucher?.code || "",
-            discountAmount,
-            totalPrice,
-            paymentMethod: PAYMENT_OPTIONS.find((option) => option.value === paymentMethod)?.name || "Chưa chọn",
-          },
-        },
-      });
+
+      // ─── Nếu chọn thanh toán trực tuyến qua VietQR ───────────────────────
+      if (paymentMethod === "qr" || paymentMethod === "deposit") {
+        const payAmount = paymentMethod === "deposit" ? Math.round(totalPrice * 0.5) : totalPrice;
+        const qrRes = await createQrPayment({
+          booking_id,
+          amount: payAmount,
+        });
+
+        if (qrRes.data?.success) {
+          pendingSuccessStateRef.current = successState;
+          setQrData(qrRes.data);
+          setQrCountdown(600);
+          setQrPaymentSuccess(false);
+          setShowModal(false);
+          setSubmitting(false);
+          setShowQrModal(true);
+
+          // Bắt đầu đếm ngược 10 phút
+          if (qrTimerRef.current) clearInterval(qrTimerRef.current);
+          qrTimerRef.current = setInterval(() => {
+            setQrCountdown((prev) => {
+              if (prev <= 1) {
+                clearInterval(qrTimerRef.current);
+                if (booking_id) {
+                  updateBooking(booking_id, { status: "Cancelled" }).catch(() => {});
+                  broadcastSyncEvent("booking_cancelled", { bookingId: booking_id });
+                }
+                setShowQrModal(false);
+                createdBookingSlotsRef.current = [];
+                isSubmittingBookingRef.current = false;
+                toast.error("Hết thời gian thanh toán QR (10 phút). Đơn đặt sân đã tự động hủy.");
+                fetchSlots(false);
+                return 0;
+              }
+              return prev - 1;
+            });
+          }, 1000);
+
+          // Bắt đầu Polling kiểm tra trạng thái mỗi 2 giây
+          if (qrPollRef.current) clearInterval(qrPollRef.current);
+          qrPollRef.current = setInterval(async () => {
+            try {
+              const statusRes = await checkPaymentStatus(booking_id);
+              if (statusRes.data?.is_paid) {
+                clearInterval(qrPollRef.current);
+                clearInterval(qrTimerRef.current);
+                setQrPaymentSuccess(true);
+                setTimeout(() => {
+                  setShowQrModal(false);
+                  broadcastSyncEvent("booking_created", { bookingId: booking_id });
+                  navigate("/booking/success", { state: pendingSuccessStateRef.current });
+                }, 1600);
+              }
+            } catch (pollErr) {
+              console.log("Lỗi polling payment status:", pollErr);
+            }
+          }, 2000);
+
+          return;
+        }
+      }
+
+      // Thanh toán tiền mặt tại sân
+      broadcastSyncEvent("booking_created", { bookingId: booking_id });
+      navigate("/booking/success", { state: successState });
     } catch (err) {
       console.log("Lỗi đặt sân:", err);
-      alert(
+      isSubmittingBookingRef.current = false;
+      createdBookingSlotsRef.current = [];
+      const msg =
         err.response?.data?.message ||
-          err.response?.data?.error ||
-          "Có lỗi xảy ra khi đặt sân. Vui lòng kiểm tra lại!"
-      );
+        err.response?.data?.error ||
+        "Có lỗi xảy ra khi đặt sân. Vui lòng kiểm tra lại!";
+      toast.error(msg);
       setSubmitting(false);
       setShowModal(false);
     }
   };
 
   // Modal countdown ring
-  const radius = 36;
+  const radius = 42;
   const circumference = 2 * Math.PI * radius;
   const progress = (modalCountdown / 15) * circumference;
   const isLow = modalCountdown <= 5;
 
   const PAYMENT_OPTIONS = [
     {
+      value: "qr",
+      name: "Chuyển khoản QR Napas 24/7 (SePay)",
+      desc: "Quét mã VietQR bằng app ngân hàng bất kỳ, hệ thống tự động nhận diện thanh toán ngay.",
+      badge: { label: "TỰ ĐỘNG DUYỆT 24/7", cls: "recommended" },
+      badgeRight: { label: "Khuyên dùng", cls: "free" },
+      disabled: false,
+    },
+    {
       value: "cash",
       name: "Thanh toán tại sân",
       desc: "Trả tiền mặt hoặc chuyển khoản tại quầy khi đến nhận sân thi đấu.",
-      badge: { label: "ĐƯỢC CHỌN", cls: "recommended" },
+      badge: { label: "TRẢ SAU", cls: "partial" },
       disabled: false,
-    },
-    {
-      value: "qr",
-      name: "Chuyển khoản QR Napas 24/7 (VietQR)",
-      desc: "Quét mã QR Napas bằng bất kỳ ứng dụng ngân hàng nào, giữ sân ngay sau 3 giây.",
-      badge: { label: "Tự động duyệt", cls: "partial" },
-      badgeRight: { label: "Miễn phí giao dịch", cls: "free" },
-      disabled: false,
-    },
-    {
-      value: "ewallet",
-      name: "Ví điện tử MoMo / ZaloPay",
-      desc: "Thanh toán qua ví điện tử liên kết tiện lợi và nhận hoàn xu.",
-      badgeRight: { label: "Sắp ra mắt", cls: "coming" },
-      disabled: true,
     },
     {
       value: "deposit",
-      name: "Đặt cọc 50% trước (200.000đ)",
-      desc: "Lựa chọn tối ưu để chắc chắn giữ sân trong các khung giờ cao điểm ban đêm.",
+      name: "Đặt cọc 50% trước (SePay)",
+      desc: "Chuyển khoản cọc 50% qua QR để chắc chắn giữ sân giờ cao điểm, 50% còn lại thanh toán tại sân.",
       badgeRight: { label: "Còn lại thanh toán tại sân", cls: "partial" },
       disabled: false,
     },
   ];
+
 
   return (
     <div className="bk-page">
@@ -789,7 +1186,12 @@ const Booking = () => {
                 </div>
                 <div className="bk-form-group">
                   <label className="bk-label">
-                    Email <span className="bk-label-badge orange">Tùy chọn</span>
+                    Email{" "}
+                    {currentUser?.email ? (
+                      <span className="bk-label-badge">Đã liên kết</span>
+                    ) : (
+                      <span className="bk-label-badge orange">Tùy chọn</span>
+                    )}
                   </label>
                   <div className="bk-input-wrap">
                     <span className="material-symbols-outlined bk-input-icon">
@@ -988,7 +1390,7 @@ const Booking = () => {
                     {formattedDate}
                   </div>
                   <div className="bk-summary-time-item__sub">
-                    Thời lượng: 60 phút thi đấu
+                    Thời lượng: {selectedSlots.length > 0 ? selectedSlots.length * 60 : 60} phút thi đấu
                   </div>
                   {/* Cho phép chọn đổi ngày */}
                   <div className="bk-date-change-wrap">
@@ -1005,9 +1407,13 @@ const Booking = () => {
                 </div>
 
                 <div className="bk-summary-time-item">
-                  <div className="bk-summary-time-item__label">Khung giờ:</div>
-                  <div className="bk-summary-time-item__value" style={{ color: "#16a34a" }}>
-                    {bookingInfo?.selectedTimeSlot || (loadingSlots ? "Đang tải giờ..." : "Chưa chọn giờ")}
+                  <div className="bk-summary-time-item__label">
+                    Khung giờ:
+                  </div>
+                  <div className="bk-summary-time-item__value" style={{ color: "#16a34a", fontSize: selectedSlots.length > 1 ? "0.85rem" : "0.95rem" }}>
+                    {selectedSlots.length > 0
+                      ? selectedSlots.map((s) => `${s.start_time} - ${s.end_time}`).join(", ")
+                      : (loadingSlots ? "Đang tải giờ..." : "Chưa chọn giờ")}
                   </div>
                   <div className="bk-summary-time-item__sub">
                     Mặt cỏ nhân tạo: FIFA Pro tiêu chuẩn
@@ -1018,26 +1424,51 @@ const Booking = () => {
               {/* Slot selector chips (nếu người dùng muốn chọn hoặc đổi khung giờ) */}
               <div className="bk-summary-slots-box">
                 <div className="bk-summary-slots-title">
-                  <span>Khung giờ khả dụng ngày {formatDateDisplay(bookingInfo?.selectedDate)}:</span>
-                  {loadingSlots && <span style={{ fontSize: "0.7rem", color: "#16a34a" }}>Đang làm mới...</span>}
+                  <span>Khung giờ ngày {formatDateDisplay(bookingInfo?.selectedDate)}:</span>
                 </div>
+
                 {availableSlots.length > 0 ? (
                   <div className="bk-slots-chips">
                     {availableSlots.map((slot) => {
+                      const isPast = isSlotExpired(bookingInfo?.selectedDate, slot.start_time);
                       const isBooked = slot.status !== "available";
                       const timeRange = `${slot.start_time} - ${slot.end_time}`;
-                      const isSelected = bookingInfo?.selectedTimeSlot === timeRange;
+                      const otherConflict = customerLimits.other_field_slots?.find(
+                        (o) => o.start_time === slot.start_time || o.time === timeRange
+                      );
+                      const isDisabled = isBooked || isPast || Boolean(otherConflict);
+                      const isSelected = selectedSlots.some(
+                        (s) => (s.id && s.id === slot.id) || `${s.start_time} - ${s.end_time}` === timeRange
+                      );
+                      const selIndex = selectedSlots.findIndex(
+                        (s) => (s.id && s.id === slot.id) || `${s.start_time} - ${s.end_time}` === timeRange
+                      );
+
                       return (
                         <button
                           key={slot.id}
                           type="button"
-                          disabled={isBooked}
-                          className={`bk-slot-chip ${isSelected ? "selected" : ""} ${isBooked ? "booked" : ""}`}
+                          disabled={isDisabled}
+                          className={`bk-slot-chip ${isSelected ? "selected" : ""} ${isBooked ? "booked" : ""} ${isPast ? "past-dimmed" : ""} ${otherConflict ? "booked-other" : ""}`}
                           onClick={() => handleSlotSelect(slot)}
-                          title={isBooked ? "Đã có người đặt" : `${slot.price?.toLocaleString()}đ`}
+                          title={
+                            isPast
+                              ? "Khung giờ này đã qua hôm nay"
+                              : otherConflict
+                              ? `Bạn đã đặt khung giờ này tại ${otherConflict.field_name}`
+                              : isBooked
+                              ? "Đã có người đặt"
+                              : `${slot.price?.toLocaleString()}đ - Bấm để chọn/bỏ chọn (tối đa 3)`
+                          }
                         >
                           {timeRange}
-                          {isBooked && <span className="bk-slot-chip__status">Đã đặt</span>}
+                          {isPast ? null : isBooked ? (
+                            <span className="bk-slot-chip__status">Đã đặt</span>
+                          ) : otherConflict ? (
+                            <span className="bk-slot-chip__status" style={{ fontSize: "0.58rem" }}>Đã đặt ở {otherConflict.field_name}</span>
+                          ) : isSelected ? (
+                            <span className="bk-slot-chip__status">✓ Đang chọn</span>
+                          ) : null}
                         </button>
                       );
                     })}
@@ -1381,80 +1812,406 @@ const Booking = () => {
         </div>
       )}
 
-      {/* ═══ COUNTDOWN MODAL ═══ */}
+      {/* ═══ COUNTDOWN CONFIRMATION MODAL ═══ */}
       {showModal && (
         <div className="cd-overlay" onClick={handleCancel}>
           <div
             className={`cd-modal${isLow ? " cd-modal--urgent" : ""}`}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="cd-header">
-              <span className="cd-header-icon">⚽</span>
-              <h2 className="cd-title">Xác nhận đặt sân</h2>
-              <p className="cd-subtitle">Vui lòng xác nhận trong thời gian quy định</p>
-            </div>
-
-            <div className="cd-info-box">
-              <div className="cd-info-row">
-                <span className="cd-info-label">🏟️ Sân</span>
-                <span className="cd-info-value">{bookingInfo?.fieldName || "—"}</span>
+            {/* Header: Gradient Banner with Sports Icon & Close Button */}
+            <div className="cd-modal__header">
+              <div className="cd-modal__header-left">
+                <div className="cd-modal__badge-icon">
+                  <span className="material-symbols-outlined">sports_soccer</span>
+                </div>
+                <div>
+                  <h3 className="cd-modal__title">Xác nhận đặt sân</h3>
+                  <p className="cd-modal__subtitle">Vui lòng kiểm tra và xác nhận trong thời gian giữ chỗ</p>
+                </div>
               </div>
-              <div className="cd-info-row">
-                <span className="cd-info-label">📅 Ngày</span>
-                <span className="cd-info-value">{formattedDate}</span>
-              </div>
-              <div className="cd-info-row">
-                <span className="cd-info-label">🕐 Giờ</span>
-                <span className="cd-info-value">{bookingInfo?.selectedTimeSlot || "—"}</span>
-              </div>
-              <div className="cd-info-row cd-info-row--total">
-                <span className="cd-info-label">💰 Tổng</span>
-                <span className="cd-info-value cd-info-price">
-                  {totalPrice.toLocaleString("vi-VN")}đ
-                </span>
-              </div>
-            </div>
-
-            <div className="cd-timer-wrap">
-              <svg className="cd-ring" viewBox="0 0 88 88">
-                <circle cx="44" cy="44" r={radius} fill="none" stroke="#e5e7eb" strokeWidth="7" />
-                <circle
-                  cx="44"
-                  cy="44"
-                  r={radius}
-                  fill="none"
-                  stroke={isLow ? "#ef4444" : "#16a34a"}
-                  strokeWidth="7"
-                  strokeLinecap="round"
-                  strokeDasharray={circumference}
-                  strokeDashoffset={circumference - progress}
-                  style={{ transition: "stroke-dashoffset 0.9s linear, stroke 0.3s" }}
-                  transform="rotate(-90 44 44)"
-                />
-              </svg>
-              <div className={`cd-timer-num${isLow ? " cd-timer-num--low" : ""}`}>
-                {modalCountdown}
-              </div>
-              <p className="cd-timer-label">giây còn lại</p>
-            </div>
-
-            {isLow && <p className="cd-warning">⚠️ Sắp hết thời gian! Nhấn xác nhận ngay.</p>}
-
-            <div className="cd-actions">
-              <button className="cd-btn cd-btn--cancel" onClick={handleCancel} disabled={submitting}>
-                ✕ Hủy bỏ
-              </button>
-              <button className="cd-btn cd-btn--confirm" onClick={handleConfirm} disabled={submitting}>
-                {submitting ? <span className="cd-spinner" /> : "✔ Xác nhận"}
+              <button
+                type="button"
+                className="cd-modal__close-btn"
+                onClick={handleCancel}
+                title="Đóng"
+              >
+                <span className="material-symbols-outlined">close</span>
               </button>
             </div>
 
-            <p className="cd-note">
-              Nếu không xác nhận trong 15s, yêu cầu sẽ tự động hủy
-            </p>
+            <div className="cd-modal__body">
+              {/* Ticket Information Card */}
+              <div className="cd-info-card">
+                <div className="cd-info-row">
+                  <div className="cd-info-label-group">
+                    <span className="material-symbols-outlined cd-info-icon">stadium</span>
+                    <span className="cd-info-label">Sân bóng</span>
+                  </div>
+                  <div className="cd-info-value-group">
+                    <span className="cd-info-value">{bookingInfo?.fieldName || "—"}</span>
+                    {typeLabel && <span className="cd-badge-type">{typeLabel}</span>}
+                  </div>
+                </div>
+
+                <div className="cd-info-row">
+                  <div className="cd-info-label-group">
+                    <span className="material-symbols-outlined cd-info-icon">calendar_month</span>
+                    <span className="cd-info-label">Ngày thi đấu</span>
+                  </div>
+                  <span className="cd-info-value">{formattedDate}</span>
+                </div>
+
+                <div className="cd-info-row">
+                  <div className="cd-info-label-group">
+                    <span className="material-symbols-outlined cd-info-icon">schedule</span>
+                    <span className="cd-info-label">Khung giờ</span>
+                  </div>
+                  <div className="cd-time-pill">
+                    <span className="material-symbols-outlined cd-time-icon">timer</span>
+                    <span>{bookingInfo?.selectedTimeSlot || "—"}</span>
+                  </div>
+                </div>
+
+                {/* Dịch vụ đi kèm đã chọn */}
+                {selectedServicesList.length > 0 && (
+                  <div className="cd-services-section">
+                    <div className="cd-services-heading">
+                      <div className="cd-info-label-group">
+                        <span className="material-symbols-outlined cd-info-icon">sports</span>
+                        <span className="cd-info-label">Dịch vụ đi kèm</span>
+                      </div>
+                      <span className="cd-services-count">{selectedServicesList.length} dịch vụ</span>
+                    </div>
+                    <div className="cd-services-list">
+                      {selectedServicesList.map((srv) => (
+                        <div key={srv.id} className="cd-service-item">
+                          <div className="cd-service-info">
+                            <span className="cd-service-dot" />
+                            <span className="cd-service-name">
+                              {srv.name} {srv.shoeSize ? `(Size ${srv.shoeSize})` : ""}
+                            </span>
+                            <span className="cd-service-qty">×{srv.quantity}</span>
+                          </div>
+                          <span className="cd-service-price">
+                            {srv.price === 0 ? "Miễn phí" : `${(srv.price * srv.quantity).toLocaleString("vi-VN")}đ`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Ưu đãi Voucher nếu có */}
+                {discountAmount > 0 && (
+                  <div className="cd-info-row cd-info-row--discount">
+                    <div className="cd-info-label-group">
+                      <span className="material-symbols-outlined cd-info-icon cd-info-icon--voucher">confirmation_number</span>
+                      <span className="cd-info-label">Voucher ưu đãi</span>
+                    </div>
+                    <div className="cd-voucher-badge">
+                      <span className="cd-voucher-code">{appliedVoucher?.code || voucherCode}</span>
+                      <span className="cd-discount-price">-{discountAmount.toLocaleString("vi-VN")}đ</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Hình thức thanh toán */}
+                <div className="cd-info-row">
+                  <div className="cd-info-label-group">
+                    <span className="material-symbols-outlined cd-info-icon">credit_card</span>
+                    <span className="cd-info-label">Thanh toán</span>
+                  </div>
+                  <span className="cd-payment-badge">
+                    {paymentMethod === "qr"
+                      ? "Chuyển khoản QR Napas 24/7"
+                      : paymentMethod === "deposit"
+                      ? "Đặt cọc 50% (QR)"
+                      : "Thanh toán tại sân"}
+                  </span>
+                </div>
+
+                <div className="cd-info-row cd-info-row--total">
+                  <div className="cd-info-label-group">
+                    <span className="material-symbols-outlined cd-info-icon cd-info-icon--total">payments</span>
+                    <span className="cd-info-label cd-info-label--total">Tổng thanh toán</span>
+                  </div>
+                  <span className="cd-info-price">
+                    {totalPrice.toLocaleString("vi-VN")}đ
+                  </span>
+                </div>
+              </div>
+
+              {/* Countdown Radar Circle */}
+              <div className={`cd-timer-section${isLow ? " cd-timer-section--urgent" : ""}`}>
+                <div className="cd-timer-circle-wrap">
+                  <svg className="cd-ring" viewBox="0 0 100 100">
+                    <defs>
+                      <linearGradient id="cdGradNormal" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#10b981" />
+                        <stop offset="100%" stopColor="#059669" />
+                      </linearGradient>
+                      <linearGradient id="cdGradUrgent" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#f87171" />
+                        <stop offset="100%" stopColor="#dc2626" />
+                      </linearGradient>
+                    </defs>
+                    <circle cx="50" cy="50" r={radius} fill="none" stroke="#f1f5f9" strokeWidth="8" />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r={radius}
+                      fill="none"
+                      stroke={isLow ? "url(#cdGradUrgent)" : "url(#cdGradNormal)"}
+                      strokeWidth="8"
+                      strokeLinecap="round"
+                      strokeDasharray={circumference}
+                      strokeDashoffset={circumference - progress}
+                      className="cd-ring__progress"
+                      transform="rotate(-90 50 50)"
+                    />
+                  </svg>
+                  <div className="cd-timer-center">
+                    <span className={`cd-timer-digits${isLow ? " cd-timer-digits--urgent" : ""}`}>
+                      {String(modalCountdown).padStart(2, "0")}
+                    </span>
+                    <span className="cd-timer-unit">GIÂY</span>
+                  </div>
+                </div>
+
+                <div className="cd-timer-status-box">
+                  <div className="cd-timer-status-pill">
+                    <span className={`cd-status-dot${isLow ? " cd-status-dot--urgent" : ""}`} />
+                    <span className="cd-status-text">
+                      {isLow ? "Sắp hết thời gian giữ chỗ!" : "Đang tạm giữ chỗ cho bạn"}
+                    </span>
+                  </div>
+                  <p className="cd-timer-desc">
+                    {isLow ? "Nhấn xác nhận ngay để hoàn tất đơn đặt sân" : "Hệ thống đang khóa slot này để chờ bạn xác nhận"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="cd-actions">
+                <button
+                  type="button"
+                  className="cd-btn cd-btn--cancel"
+                  onClick={handleCancel}
+                  disabled={submitting}
+                >
+                  <span className="material-symbols-outlined">close</span>
+                  <span>Hủy bỏ</span>
+                </button>
+                <button
+                  type="button"
+                  className={`cd-btn cd-btn--confirm${isLow ? " cd-btn--confirm-urgent" : ""}`}
+                  onClick={handleConfirm}
+                  disabled={submitting}
+                >
+                  {submitting ? (
+                    <>
+                      <span className="cd-spinner" />
+                      <span>Đang xử lý...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined">check_circle</span>
+                      <span>Xác nhận đặt</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Bottom Security Note */}
+              <div className="cd-security-note">
+                <span className="material-symbols-outlined">lock_clock</span>
+                <span>Nếu không xác nhận trong 15s, yêu cầu sẽ tự động hủy để trả lại slot trống.</span>
+              </div>
+            </div>
           </div>
         </div>
       )}
+
+      {/* ═══ VIETQR PAYMENT MODAL (AUTO-DETECT VIA SEPAY) ═══ */}
+      {showQrModal && qrData && (
+        <div className="qr-overlay" onClick={handleCloseQrModal}>
+          <div className="qr-modal" onClick={(e) => e.stopPropagation()}>
+            {qrPaymentSuccess ? (
+              <div className="qr-modal--success">
+                <div className="qr-success-icon-wrap">
+                  <span className="material-symbols-outlined" style={{ fontSize: 44 }}>check_circle</span>
+                </div>
+                <h3 className="qr-success-title">Thanh toán thành công!</h3>
+                <p className="qr-success-desc">
+                  Hệ thống đã nhận diện giao dịch thành công. Đang tạo vé điện tử...
+                </p>
+                <div className="cd-spinner" style={{ borderColor: "#16a34a", borderTopColor: "transparent", margin: "0 auto" }} />
+              </div>
+            ) : (
+              <>
+                <div className="qr-modal__header">
+                  <div className="qr-modal__header-info">
+                    <div className="qr-modal__badge-icon">
+                      <span className="material-symbols-outlined">qr_code_scanner</span>
+                    </div>
+                    <div>
+                      <h3 className="qr-modal__title">Quét mã QR thanh toán</h3>
+                      <p className="qr-modal__subtitle">Tự động xác nhận giao dịch qua SePay Napas 24/7</p>
+                    </div>
+                  </div>
+                  <button className="qr-modal__close-btn" onClick={handleCloseQrModal} title="Đóng">
+                    ✕
+                  </button>
+                </div>
+
+                <div className="qr-modal__body">
+                  {/* Left QR Column */}
+                  <div className="qr-code-box">
+                    <div className="qr-img-wrapper">
+                      <img
+                        src={qrData.qr_url}
+                        alt="Mã QR SePay thanh toán"
+                        className="qr-img"
+                      />
+                    </div>
+                    <div className="qr-code-box__label">
+                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: "#16a34a" }}>verified</span>
+                      <span>Mã QR Napas 24/7 hợp lệ</span>
+                    </div>
+                    <div className="qr-code-box__timer">
+                      <span className="material-symbols-outlined" style={{ fontSize: 15 }}>timer</span>
+                      <span>
+                        {String(Math.floor(qrCountdown / 60)).padStart(2, "0")}:
+                        {String(qrCountdown % 60).padStart(2, "0")}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Right Details Column */}
+                  <div className="qr-details">
+                    <div className="qr-detail-row">
+                      <div>
+                        <span className="qr-detail-label">Ngân hàng thụ hưởng</span>
+                        <div className="qr-detail-value">{qrData.bank_name || "Vietcombank"}</div>
+                      </div>
+                    </div>
+
+                    <div className="qr-detail-row">
+                      <div>
+                        <span className="qr-detail-label">Số tài khoản</span>
+                        <div className="qr-detail-value">{qrData.account_no}</div>
+                      </div>
+                      <button
+                        type="button"
+                        className={`qr-copy-btn ${copiedField === "acc" ? "qr-copy-btn--copied" : ""}`}
+                        onClick={() => handleCopy(qrData.account_no, "acc")}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+                          {copiedField === "acc" ? "check" : "content_copy"}
+                        </span>
+                        {copiedField === "acc" ? "Đã chép" : "Sao chép"}
+                      </button>
+                    </div>
+
+                    <div className="qr-detail-row">
+                      <div>
+                        <span className="qr-detail-label">Tên chủ tài khoản</span>
+                        <div className="qr-detail-value">{qrData.account_name}</div>
+                      </div>
+                    </div>
+
+                    <div className="qr-detail-row">
+                      <div>
+                        <span className="qr-detail-label">Số tiền thanh toán</span>
+                        <div className="qr-detail-value qr-detail-value--amount">
+                          {Number(qrData.amount || 0).toLocaleString("vi-VN")}đ
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className={`qr-copy-btn ${copiedField === "amt" ? "qr-copy-btn--copied" : ""}`}
+                        onClick={() => handleCopy(qrData.amount, "amt")}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+                          {copiedField === "amt" ? "check" : "content_copy"}
+                        </span>
+                        {copiedField === "amt" ? "Đã chép" : "Sao chép"}
+                      </button>
+                    </div>
+
+                    <div className="qr-detail-row" style={{ background: "#f0fdf4", borderColor: "#86efac" }}>
+                      <div>
+                        <span className="qr-detail-label" style={{ color: "#166534" }}>Nội dung chuyển khoản (bắt buộc)</span>
+                        <div className="qr-detail-value qr-detail-value--code">{qrData.payment_code}</div>
+                      </div>
+                      <button
+                        type="button"
+                        className={`qr-copy-btn ${copiedField === "code" ? "qr-copy-btn--copied" : ""}`}
+                        onClick={() => handleCopy(qrData.payment_code, "code")}
+                        style={{ background: "#22c55e", color: "#fff" }}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+                          {copiedField === "code" ? "check" : "content_copy"}
+                        </span>
+                        {copiedField === "code" ? "Đã chép" : "Sao chép"}
+                      </button>
+                    </div>
+
+                    <div className="qr-notice">
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>info</span>
+                      <div>
+                        Mở App ngân hàng quét mã QR trên. Hệ thống sẽ <strong>tự động nhận diện sau 2-3 giây</strong> khi tiền vào tài khoản!
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Radar Status Bar & Test Demo Trigger */}
+                <div className="qr-status-bar">
+                  <div className="qr-status-bar__left">
+                    <div className="qr-status-pulse">
+                      <div className="qr-status-pulse__dot" />
+                      <div className="qr-status-pulse__ring" />
+                    </div>
+                    <div>
+                      <div className="qr-status-text">Đang lắng nghe giao dịch chuyển khoản...</div>
+                      <div className="qr-status-sub">Trang sẽ tự động chuyển khi nhận được tiền</div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="qr-simulate-btn"
+                    onClick={handleSimulatePayment}
+                    disabled={simulating}
+                    title="Bấm để kích hoạt thanh toán ngay mà không cần chuyển tiền thật (Dành cho Test / Báo cáo)"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 14, color: "#f59e0b" }}>bolt</span>
+                    {simulating ? "Đang xử lý..." : "Mô phỏng Test"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+      {/* MODAL XÁC NHẬN IN-SCREEN */}
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        cancelText={confirmConfig.cancelText}
+        type={confirmConfig.type}
+        onConfirm={confirmConfig.onConfirm}
+        onClose={() => {
+          setConfirmConfig((prev) => ({ ...prev, isOpen: false }));
+          if (confirmConfig.onCancel) confirmConfig.onCancel();
+        }}
+      />
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 };

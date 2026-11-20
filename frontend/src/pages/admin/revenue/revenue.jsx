@@ -1,105 +1,51 @@
-import React, { useState } from 'react';
-import './revenue.css';
+import React, { useState, useEffect, useMemo } from 'react';
 import AdminSidebar from '../../../components/AdminSidebar/AdminSidebar';
+import { useToast, ToastContainer } from '../../../components/Toast/Toast';
+import { getRevenueAnalytics } from '../../../api/paymentsApi';
+import { getFields } from '../../../api/fieldsApi';
+import { getMaintenanceIssues } from '../../../api/facilityApi';
+import { onSyncEvent } from '../../../utils/realtimeSync';
+import './revenue.css';
 
-/* ── Mock Data for Charts & Transactions ── */
-const barData = [
-  { label: 'T1', height: '40%', type: 'light' },
-  { label: 'T2', height: '55%', type: 'light' },
-  { label: 'T3', height: '68%', type: 'light' },
-  { label: 'T4', height: '72%', type: 'light' },
-  { label: 'T5', height: '90%', type: 'active', activeLabel: true },
-  { label: 'T6', height: '80%', type: 'light' },
-  { label: 'T7', height: '65%', type: 'light' },
-  { label: 'T8', height: '70%', type: 'light' },
-  { label: 'T9', height: '60%', type: 'light' },
-  { label: 'T10', height: '75%', type: 'light' },
-  { label: 'T11', height: '45%', type: 'future', dashed: true, faded: true },
-  { label: 'T12', height: '50%', type: 'future', dashed: true, faded: true },
-];
+const formatCurrency = (val) => {
+  return Number(val || 0).toLocaleString('vi-VN');
+};
 
-const donutColors = ['#10b981', '#6ee7b7', '#3b683e'];
-const donutSegments = [
-  { label: 'Sân 5 người', strokeArray: '55 100', strokeOffset: 0, dotClass: 'green', pct: '55%' },
-  { label: 'Sân 7 người', strokeArray: '30 100', strokeOffset: -55, dotClass: 'light-green', pct: '30%' },
-  { label: 'Sân 11 người', strokeArray: '15 100', strokeOffset: -85, dotClass: 'secondary', pct: '15%' },
-];
-
-const transactions = [
-  {
-    id: '#HD-9082',
-    name: 'Nguyễn Văn An',
-    initials: 'NA',
-    avatarClass: 'green',
-    field: 'Sân 5A',
-    date: '28/05/2024 - 18:30',
-    price: '350.000 đ',
-    statusClass: 'success',
-    statusLabel: 'Hoàn tất',
-  },
-  {
-    id: '#HD-9081',
-    name: 'Trần Minh Tuấn',
-    initials: 'MT',
-    avatarClass: 'blue',
-    field: 'Sân 7B',
-    date: '28/05/2024 - 17:00',
-    price: '650.000 đ',
-    statusClass: 'success',
-    statusLabel: 'Hoàn tất',
-  },
-  {
-    id: '#HD-9080',
-    name: 'Lê Hoàng Long',
-    initials: 'HL',
-    avatarClass: 'zinc',
-    field: 'Sân 5B',
-    date: '28/05/2024 - 16:00',
-    price: '300.000 đ',
-    statusClass: 'pending',
-    statusLabel: 'Chờ thanh toán',
-  },
-  {
-    id: '#HD-9079',
-    name: 'Phạm Đức Huy',
-    initials: 'DH',
-    avatarClass: 'green',
-    field: 'Sân 11A',
-    date: '27/05/2024 - 19:00',
-    price: '1.200.000 đ',
-    statusClass: 'success',
-    statusLabel: 'Hoàn tất',
-  },
-  {
-    id: '#HD-9078',
-    name: 'Vũ Quốc Khánh',
-    initials: 'QK',
-    avatarClass: 'blue',
-    field: 'Sân 7A',
-    date: '27/05/2024 - 20:00',
-    price: '650.000 đ',
-    statusClass: 'success',
-    statusLabel: 'Hoàn tất',
-  },
-];
-
-function TopHeader({ onExport }) {
+function TopHeader({ onExport, searchTerm, onSearchChange, onRefresh, loading }) {
   return (
     <header className="top-header">
-      <div className="search-box">
-        <span className="material-symbols-outlined search-icon">search</span>
-        <input type="text" placeholder="Tìm kiếm giao dịch, hóa đơn..." />
+      <div className="search-wrapper">
+        <div className="search-box">
+          <span className="material-symbols-outlined search-icon">search</span>
+          <input
+            type="text"
+            placeholder="Tìm kiếm giao dịch, sự cố, thiết bị, sân bóng..."
+            value={searchTerm}
+            onChange={(e) => onSearchChange(e.target.value)}
+          />
+        </div>
       </div>
 
       <div className="header-actions">
-        <button className="icon-btn" title="Thông báo">
+        <button
+          className="icon-btn"
+          title="Làm mới dữ liệu"
+          onClick={onRefresh}
+          disabled={loading}
+          type="button"
+        >
+          <span className={`material-symbols-outlined ${loading ? 'spin-icon' : ''}`}>
+            sync
+          </span>
+        </button>
+        <button className="icon-btn" title="Thông báo" type="button">
           <span className="material-symbols-outlined">notifications</span>
         </button>
-        <button className="icon-btn" title="Trợ giúp">
+        <button className="icon-btn" title="Trợ giúp" type="button">
           <span className="material-symbols-outlined">help_outline</span>
         </button>
         <div className="header-divider" />
-        <button className="btn-new-booking" onClick={onExport}>
+        <button className="btn-new-booking" onClick={onExport} type="button">
           <span className="material-symbols-outlined">file_download</span>
           Xuất báo cáo
         </button>
@@ -107,142 +53,271 @@ function TopHeader({ onExport }) {
     </header>
   );
 }
- 
-function SummaryCards() {
+
+function SummaryCards({ summary, selectedPeriod = 'all' }) {
+  const growthRate = summary?.growth_pct ?? 0;
+  const isPositiveGrowth = growthRate >= 0;
+  const expectedRevenue = summary?.expected_revenue || 0;
+  const totalRevenue = summary?.total_revenue || 0;
+
+  // Tính tỷ lệ đạt mục tiêu doanh thu (so với dự kiến)
+  const targetPct = expectedRevenue > 0
+    ? Math.min(100, Math.round((totalRevenue / expectedRevenue) * 100))
+    : 100;
+
+  const periodBadge =
+    selectedPeriod === 'today'
+      ? 'Hôm nay'
+      : selectedPeriod === 'week'
+      ? 'Tuần này'
+      : selectedPeriod === 'month'
+      ? 'Tháng này'
+      : selectedPeriod === 'year'
+      ? 'Năm nay'
+      : 'Toàn thời gian';
+
+  const periodLabel =
+    selectedPeriod === 'today'
+      ? 'Doanh thu hôm nay'
+      : selectedPeriod === 'week'
+      ? 'Doanh thu tuần này'
+      : selectedPeriod === 'month'
+      ? 'Doanh thu tháng này'
+      : selectedPeriod === 'year'
+      ? 'Doanh thu năm nay'
+      : 'Tổng doanh thu thực tế';
+
   return (
     <div className="summary-grid">
-      {/* Actual Revenue */}
+      {/* 1. Doanh thu thực tế */}
       <div className="card-actual">
         <div className="card-content">
           <div className="card-header">
             <div className="card-icon-wrap white-glass">
               <span className="material-symbols-outlined">account_balance_wallet</span>
             </div>
-            <span className="card-badge white-glass">Thực tế</span>
+            <span className="card-badge white-glass">{periodBadge}</span>
           </div>
-          <p className="card-label">Doanh thu thực tế</p>
+          <p className="card-label">{periodLabel}</p>
           <h3 className="card-value">
-            1,240,500,000 <span className="unit">đ</span>
+            {formatCurrency(totalRevenue)} <span className="unit">đ</span>
           </h3>
+          <div className="card-sub-info">
+            <span className="sub-tag">
+              <span className="material-symbols-outlined">today</span>
+              Hôm nay: {formatCurrency(summary?.today_revenue)} đ
+            </span>
+          </div>
         </div>
         <div className="card-blob" />
       </div>
- 
-      {/* Expected Revenue */}
+
+      {/* 2. Doanh thu dự kiến */}
       <div className="card-white">
         <div>
           <div className="card-header">
             <div className="card-icon-wrap green-light">
-              <span className="material-symbols-outlined" style={{ color: 'var(--color-secondary)' }}>insights</span>
+              <span className="material-symbols-outlined" style={{ color: 'var(--color-secondary)' }}>
+                insights
+              </span>
             </div>
-            <span className="card-badge green-soft">Dự kiến</span>
+            <span className="card-badge green-soft">Kỳ vọng</span>
           </div>
           <p className="card-label">Doanh thu dự kiến</p>
           <h3 className="card-value">
-            1,500,000,000 <span className="unit">đ</span>
+            {formatCurrency(expectedRevenue)} <span className="unit">đ</span>
           </h3>
         </div>
         <div className="progress-wrap">
           <div className="progress-track">
-            <div className="progress-fill" style={{ width: '82.7%' }} />
+            <div className="progress-fill" style={{ width: `${targetPct}%` }} />
           </div>
-          <span className="progress-pct">82.7%</span>
+          <span className="progress-pct">{targetPct}% đạt</span>
         </div>
       </div>
- 
-      {/* Growth Rate */}
+
+      {/* 3. Doanh thu tháng này & Tăng trưởng */}
       <div className="card-white">
         <div>
           <div className="card-header">
-            <div className="card-icon-wrap pink-light">
-              <span className="material-symbols-outlined" style={{ color: 'var(--color-tertiary)' }}>trending_up</span>
+            <div className="card-icon-wrap blue-light">
+              <span className="material-symbols-outlined" style={{ color: '#2563eb' }}>
+                calendar_month
+              </span>
             </div>
-            <span className="card-badge pink-soft">Tăng trưởng</span>
+            <span className={`card-badge ${isPositiveGrowth ? 'green-soft' : 'pink-soft'}`}>
+              {isPositiveGrowth ? `+${growthRate}%` : `${growthRate}%`}
+            </span>
           </div>
-          <p className="card-label">Tỷ lệ tăng trưởng</p>
-          <h3 className="card-value">+12.4%</h3>
+          <p className="card-label">Doanh thu tháng này</p>
+          <h3 className="card-value">
+            {formatCurrency(summary?.this_month_revenue)} <span className="unit">đ</span>
+          </h3>
         </div>
-        <p className="card-italic">So với cùng kỳ tháng trước (T4/2024)</p>
+        <p className="card-italic">
+          {isPositiveGrowth ? '📈 Tăng trưởng' : '📉 Giảm'} so với tháng trước ({formatCurrency(summary?.last_month_revenue)} đ)
+        </p>
+      </div>
+
+      {/* 4. Giá trị trung bình đơn & Lượt đặt */}
+      <div className="card-white">
+        <div>
+          <div className="card-header">
+            <div className="card-icon-wrap amber-light">
+              <span className="material-symbols-outlined" style={{ color: '#d97706' }}>
+                receipt_long
+              </span>
+            </div>
+            <span className="card-badge amber-soft">
+              {summary?.successful_orders || 0} đơn thành công
+            </span>
+          </div>
+          <p className="card-label">Giá trị trung bình đơn</p>
+          <h3 className="card-value">
+            {formatCurrency(summary?.avg_order_value)} <span className="unit">đ</span>
+          </h3>
+        </div>
+        <p className="card-italic">
+          Tổng số lượt đặt: <b>{summary?.total_orders || 0}</b> | Đã hủy: <b>{summary?.cancelled_orders || 0}</b>
+        </p>
       </div>
     </div>
   );
 }
- 
-function BarChart() {
+
+function BarChart({ monthlyStats, selectedYear, onYearChange, availableYears }) {
+  const [hoveredMonth, setHoveredMonth] = useState(null);
+
   return (
     <div className="chart-card">
       <div className="chart-header">
         <div>
-          <h4 className="chart-title">Xu hướng doanh thu</h4>
-          <p className="chart-subtitle">Thống kê doanh thu theo tháng trong năm 2024</p>
+          <h4 className="chart-title">Xu hướng doanh thu theo tháng</h4>
+          <p className="chart-subtitle">
+            Doanh thu thực tế từng tháng trong năm {selectedYear}
+          </p>
         </div>
-        <select className="chart-select">
-          <option>Năm 2024</option>
-          <option>Năm 2023</option>
-        </select>
+        <div className="chart-actions">
+          <select
+            className="chart-select"
+            value={selectedYear}
+            onChange={(e) => onYearChange(Number(e.target.value))}
+          >
+            {availableYears?.map((y) => (
+              <option key={y} value={y}>
+                Năm {y}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
- 
-      <div className="bar-chart">
-        {barData.map(({ label, height, type, faded, dashed, activeLabel }) => (
-          <div key={label} className={`bar-col${faded ? ' faded' : ''}`}>
-            <div className={`bar-track${dashed ? ' dashed' : ''}`}>
-              {type !== 'none' && (
-                <div className={`bar-fill ${type}`} style={{ height }} />
-              )}
-            </div>
-            <span className={`bar-label${activeLabel ? ' active' : ''}`}>{label}</span>
+
+      <div className="bar-chart-container">
+        {hoveredMonth && (
+          <div className="bar-tooltip">
+            <strong>Tháng {hoveredMonth.month}/{selectedYear}</strong>
+            <div>Doanh thu: {formatCurrency(hoveredMonth.revenue)} đ</div>
+            <small>{hoveredMonth.count} lượt đặt sân</small>
           </div>
-        ))}
+        )}
+
+        <div className="bar-chart">
+          {monthlyStats?.map((m) => {
+            const isZero = m.revenue === 0;
+            const barClass = m.is_current
+              ? 'active'
+              : m.is_future
+              ? 'future'
+              : isZero
+              ? 'zero'
+              : 'normal';
+
+            return (
+              <div
+                key={m.label}
+                className={`bar-col ${m.is_future ? 'faded' : ''}`}
+                onMouseEnter={() => setHoveredMonth(m)}
+                onMouseLeave={() => setHoveredMonth(null)}
+              >
+                <div className="bar-track">
+                  <div
+                    className={`bar-fill ${barClass}`}
+                    style={{ height: m.height }}
+                  >
+                    {m.revenue > 0 && (
+                      <span className="bar-val-badge">
+                        {m.revenue >= 1000000
+                          ? `${(m.revenue / 1000000).toFixed(1)}M`
+                          : `${Math.round(m.revenue / 1000)}k`}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <span className={`bar-label ${m.is_current ? 'active' : ''}`}>
+                  {m.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
 }
- 
-function DonutChart() {
-  const CIRCUMFERENCE = 100;
-  const cx = 18, cy = 18, r = 15.9155;
- 
+
+function DonutChart({ segments }) {
+  const cx = 18;
+  const cy = 18;
+  const r = 15.9155;
+
   return (
     <div className="donut-card">
-      <h4 className="chart-title">Cơ cấu doanh thu</h4>
-      <p className="donut-subtitle">Phân loại theo loại hình sân</p>
- 
+      <div className="donut-header">
+        <h4 className="chart-title">Cơ cấu loại sân</h4>
+        <p className="donut-subtitle">Tỷ lệ đóng góp doanh thu theo quy mô sân</p>
+      </div>
+
       <div className="donut-chart-wrap">
         <div className="donut-svg-wrap">
           <svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
-            {/* Background track */}
             <path
               d={`M ${cx} 2.0845 a ${r} ${r} 0 0 1 0 31.831 a ${r} ${r} 0 0 1 0 -31.831`}
-              fill="none" stroke="#f4f4f5"
-              strokeWidth="4" strokeDasharray="100, 100"
+              fill="none"
+              stroke="#f1f5f9"
+              strokeWidth="4.2"
+              strokeDasharray="100 100"
             />
-            {/* Segments */}
-            {donutSegments.map(({ label, strokeArray, strokeOffset }, i) => (
+            {segments?.map((seg) => (
               <path
-                key={label}
+                key={seg.label}
                 d={`M ${cx} 2.0845 a ${r} ${r} 0 0 1 0 31.831 a ${r} ${r} 0 0 1 0 -31.831`}
                 fill="none"
-                stroke={donutColors[i]}
-                strokeWidth="4"
-                strokeDasharray={strokeArray}
-                strokeDashoffset={strokeOffset}
+                stroke={seg.color}
+                strokeWidth="4.2"
+                strokeDasharray={seg.strokeArray}
+                strokeDashoffset={seg.strokeOffset}
+                strokeLinecap="round"
+                className="donut-segment"
               />
             ))}
           </svg>
           <div className="donut-center-label">
             <span className="donut-center-value">100%</span>
-            <span className="donut-center-sub">Tổng thể</span>
+            <span className="donut-center-sub">Cơ cấu</span>
           </div>
         </div>
- 
+
         <div className="donut-legend">
-          {donutSegments.map(({ label, dotClass, pct }) => (
-            <div key={label} className="donut-legend-row">
+          {segments?.map((seg) => (
+            <div key={seg.label} className="donut-legend-row">
               <div className="donut-legend-label">
-                <span className={`legend-dot ${dotClass}`} />
-                {label}
+                <span className="legend-dot" style={{ backgroundColor: seg.color }} />
+                <span className="legend-name">{seg.label}</span>
               </div>
-              <span className="donut-legend-pct">{pct}</span>
+              <div className="donut-legend-right">
+                <span className="donut-legend-amount">{formatCurrency(seg.revenue)}đ</span>
+                <span className="donut-legend-pct">({seg.pct})</span>
+              </div>
             </div>
           ))}
         </div>
@@ -250,123 +325,1169 @@ function DonutChart() {
     </div>
   );
 }
- 
-function TransactionTable() {
+
+function TransactionTable({ transactions, searchTerm, selectedPeriod, onPeriodChange }) {
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [internalPeriod, setInternalPeriod] = useState('all');
+
+  const txPeriod = selectedPeriod !== undefined ? selectedPeriod : internalPeriod;
+  const setTxPeriod = onPeriodChange || setInternalPeriod;
+
+  const filtered = useMemo(() => {
+    return transactions.filter((t) => {
+      const matchSearch =
+        !searchTerm ||
+        t.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        t.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        t.phone?.includes(searchTerm) ||
+        t.field?.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchStatus =
+        statusFilter === 'all' ||
+        (statusFilter === 'success' && t.status_class === 'success') ||
+        (statusFilter === 'info' && t.status_class === 'info') ||
+        (statusFilter === 'pending' && t.status_class === 'pending') ||
+        (statusFilter === 'cancelled' && t.status_class === 'cancelled');
+
+      // Period filter
+      let matchPeriod = true;
+      if (txPeriod !== 'all') {
+        const dStr = t.booking_date || t.date;
+        if (dStr) {
+          const now = new Date();
+          let tDate = null;
+          if (typeof dStr === 'string' && dStr.includes('/')) {
+            const parts = dStr.split(' ')[0].split('/');
+            if (parts.length === 3) tDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+          } else {
+            tDate = new Date(dStr);
+          }
+          if (tDate && !isNaN(tDate.getTime())) {
+            if (txPeriod === 'today') {
+              matchPeriod = String(dStr).slice(0, 10) === now.toISOString().slice(0, 10);
+            } else if (txPeriod === 'week') {
+              const diffDays = (now - tDate) / (1000 * 60 * 60 * 24);
+              matchPeriod = diffDays >= 0 && diffDays <= 7;
+            } else if (txPeriod === 'month') {
+              matchPeriod = tDate.getFullYear() === now.getFullYear() && tDate.getMonth() === now.getMonth();
+            } else if (txPeriod === 'year') {
+              matchPeriod = tDate.getFullYear() === now.getFullYear();
+            }
+          }
+        }
+      }
+
+      return matchSearch && matchStatus && matchPeriod;
+    });
+  }, [transactions, searchTerm, statusFilter, txPeriod]);
+
+  const getInitials = (name) => {
+    if (!name) return 'KH';
+    const parts = name.trim().split(' ');
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
   return (
     <section className="tx-section">
       <div className="tx-header">
-        <h4>Lịch sử giao dịch gần đây</h4>
-        <button className="btn-view-all">Xem tất cả</button>
+        <div>
+          <h4>Lịch sử giao dịch &amp; Hóa đơn ({filtered.length})</h4>
+          <p className="tx-subtitle">Danh sách đơn đặt sân và thanh toán thực tế trong hệ thống</p>
+        </div>
+
+        <div className="tx-filters">
+          <button
+            type="button"
+            className={`tx-filter-btn ${statusFilter === 'all' ? 'active' : ''}`}
+            onClick={() => setStatusFilter('all')}
+          >
+            Tất cả
+          </button>
+          <button
+            type="button"
+            className={`tx-filter-btn ${statusFilter === 'success' ? 'active' : ''}`}
+            onClick={() => setStatusFilter('success')}
+          >
+            Đã hoàn thành (Doanh thu)
+          </button>
+          <button
+            type="button"
+            className={`tx-filter-btn ${statusFilter === 'info' ? 'active' : ''}`}
+            onClick={() => setStatusFilter('info')}
+          >
+            Đã xác nhận
+          </button>
+          <button
+            type="button"
+            className={`tx-filter-btn ${statusFilter === 'pending' ? 'active' : ''}`}
+            onClick={() => setStatusFilter('pending')}
+          >
+            Chờ xử lý
+          </button>
+          <button
+            type="button"
+            className={`tx-filter-btn ${statusFilter === 'cancelled' ? 'active' : ''}`}
+            onClick={() => setStatusFilter('cancelled')}
+          >
+            Đã hủy
+          </button>
+        </div>
+
+        {/* Quick Period Filter Pills */}
+        <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#006b2c' }}>calendar_month</span>
+            Thời gian:
+          </span>
+          {[
+            { key: 'all', label: 'Tất cả' },
+            { key: 'today', label: 'Hôm nay' },
+            { key: 'week', label: 'Tuần này' },
+            { key: 'month', label: 'Tháng này' },
+            { key: 'year', label: 'Năm nay' },
+          ].map((p) => (
+            <button
+              key={p.key}
+              type="button"
+              className={`tx-filter-btn ${txPeriod === p.key ? 'active' : ''}`}
+              style={{ borderRadius: '9999px', fontSize: '0.78rem', padding: '5px 12px' }}
+              onClick={() => setTxPeriod(p.key)}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
       </div>
- 
+
       <div className="table-wrapper">
         <table>
           <thead>
             <tr>
-              <th>Mã hóa đơn</th>
+              <th>Mã đơn</th>
               <th>Khách hàng</th>
-              <th>Sân bãi</th>
-              <th>Ngày đặt</th>
-              <th>Tổng tiền</th>
+              <th>Sân bóng</th>
+              <th>Thời gian thi đấu</th>
+              <th>Phương thức</th>
+              <th>Số tiền</th>
               <th className="right">Trạng thái</th>
             </tr>
           </thead>
           <tbody>
-            {transactions.map((t) => (
-              <tr key={t.id}>
-                <td><span className="inv-id">{t.id}</span></td>
-                <td>
-                  <div className="customer-cell">
-                    <div className={`avatar ${t.avatarClass}`}>{t.initials}</div>
-                    <span className="customer-name">{t.name}</span>
-                  </div>
-                </td>
-                <td><span className="field-badge">{t.field}</span></td>
-                <td><span className="tx-date">{t.date}</span></td>
-                <td><span className="tx-price">{t.price}</span></td>
-                <td className="tx-status-cell">
-                  <span className={`tx-badge ${t.statusClass}`}>{t.statusLabel}</span>
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan="7" style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 36, display: 'block', marginBottom: 8 }}>
+                    receipt_long
+                  </span>
+                  Không tìm thấy giao dịch nào phù hợp với bộ lọc
                 </td>
               </tr>
-            ))}
+            ) : (
+              filtered.map((t) => (
+                <tr key={t.id + t.date}>
+                  <td>
+                    <span className="inv-id">#{t.id}</span>
+                  </td>
+                  <td>
+                    <div className="customer-cell">
+                      <div className="avatar green">{getInitials(t.name)}</div>
+                      <div>
+                        <span className="customer-name">{t.name}</span>
+                        {t.phone && <small className="customer-phone">{t.phone}</small>}
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <span className="field-badge">{t.field}</span>
+                  </td>
+                  <td>
+                    <span className="tx-date">{t.date}</span>
+                  </td>
+                  <td>
+                    <span className="tx-method-badge">{t.payment_method}</span>
+                  </td>
+                  <td>
+                    <span className="tx-price">{formatCurrency(t.price)} đ</span>
+                    {t.discount > 0 && (
+                      <small className="tx-discount">(-{formatCurrency(t.discount)}đ voucher)</small>
+                    )}
+                  </td>
+                  <td className="tx-status-cell">
+                    <span className={`tx-badge ${t.status_class}`}>{t.status_label}</span>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
     </section>
   );
 }
- 
-function ExportFAB({ open, setOpen }) {
+
+/* ── 2. CÁC COMPONENT TAB CHI PHÍ BẢO TRÌ ── */
+
+function MaintenanceSummaryCards({ issues, totalRevenue }) {
+  const actualCost = issues
+    .filter((i) => i.status === 'done' || i.status === 'resolved')
+    .reduce((sum, i) => sum + (parseFloat(i.cost) || 0), 0);
+
+  const estimatedCost = issues.reduce(
+    (sum, i) => sum + (parseFloat(i.estimatedCost || i.estimated_cost) || 0),
+    0
+  );
+
+  const doneCount = issues.filter((i) => i.status === 'done' || i.status === 'resolved').length;
+  const activeCount = issues.filter((i) => i.status !== 'done' && i.status !== 'resolved').length;
+
+  const costRatio = totalRevenue > 0 ? ((actualCost / totalRevenue) * 100).toFixed(1) : '0';
+
   return (
-    <div className="fab-container">
-      <div className={`export-menu ${open ? 'visible' : 'hidden'}`}>
-        <button className="export-menu-btn" onClick={() => alert("Tính năng xuất PDF đang được xử lý")}>
-          <span className="material-symbols-outlined pdf">picture_as_pdf</span>
-          Xuất PDF (A4)
-        </button>
-        <button className="export-menu-btn" onClick={() => alert("Tính năng xuất Excel đang được xử lý")}>
-          <span className="material-symbols-outlined excel">table_view</span>
-          Xuất Excel (.xlsx)
-        </button>
+    <div className="summary-grid">
+      {/* 1. Tổng chi phí bảo trì thực tế */}
+      <div className="card-actual" style={{ background: 'linear-gradient(135deg, #b91c1c 0%, #dc2626 100%)' }}>
+        <div className="card-content">
+          <div className="card-header">
+            <div className="card-icon-wrap white-glass">
+              <span className="material-symbols-outlined">payments</span>
+            </div>
+            <span className="card-badge white-glass">Chi phí thực tế</span>
+          </div>
+          <p className="card-label">Tổng chi phí bảo trì thực tế</p>
+          <h3 className="card-value">
+            {formatCurrency(actualCost)} <span className="unit">đ</span>
+          </h3>
+          <div className="card-sub-info">
+            <span className="sub-tag">
+              <span className="material-symbols-outlined">task_alt</span>
+              Đã khắc phục: {doneCount} phiếu sự cố
+            </span>
+          </div>
+        </div>
+        <div className="card-blob" />
       </div>
-      <button className="fab-btn" onClick={() => setOpen((v) => !v)}>
-        <span className="material-symbols-outlined">download_for_offline</span>
-      </button>
+
+      {/* 2. Tổng chi phí dự kiến */}
+      <div className="card-white">
+        <div>
+          <div className="card-header">
+            <div className="card-icon-wrap amber-light">
+              <span className="material-symbols-outlined" style={{ color: '#d97706' }}>
+                request_quote
+              </span>
+            </div>
+            <span className="card-badge amber-soft">Kế hoạch</span>
+          </div>
+          <p className="card-label">Tổng chi phí bảo trì dự kiến</p>
+          <h3 className="card-value">
+            {formatCurrency(estimatedCost)} <span className="unit">đ</span>
+          </h3>
+        </div>
+        <div className="progress-wrap">
+          <div className="progress-track">
+            <div
+              className="progress-fill"
+              style={{
+                width: `${estimatedCost > 0 ? Math.min(100, Math.round((actualCost / estimatedCost) * 100)) : 100}%`,
+                background: '#d97706',
+              }}
+            />
+          </div>
+          <span className="progress-pct">
+            {estimatedCost > 0 ? Math.round((actualCost / estimatedCost) * 100) : 0}% chi
+          </span>
+        </div>
+      </div>
+
+      {/* 3. Tình trạng phiếu bảo trì */}
+      <div className="card-white">
+        <div>
+          <div className="card-header">
+            <div className="card-icon-wrap blue-light">
+              <span className="material-symbols-outlined" style={{ color: '#2563eb' }}>
+                build
+              </span>
+            </div>
+            <span className="card-badge blue-soft">{issues.length} phiếu</span>
+          </div>
+          <p className="card-label">Tình trạng phiếu bảo trì</p>
+          <h3 className="card-value">
+            {activeCount} <span className="unit" style={{ fontSize: '1rem', color: '#ef4444' }}>cần sửa</span>
+          </h3>
+        </div>
+        <p className="card-italic">
+          Đã hoàn thành: <b>{doneCount}</b> | Chờ xử lý / Đang sửa: <b>{activeCount}</b>
+        </p>
+      </div>
+
+      {/* 4. Tỷ lệ chi phí bảo trì / Doanh thu */}
+      <div className="card-white">
+        <div>
+          <div className="card-header">
+            <div className="card-icon-wrap green-light">
+              <span className="material-symbols-outlined" style={{ color: '#059669' }}>
+                percent
+              </span>
+            </div>
+            <span className="card-badge green-soft">Chỉ số tài chính</span>
+          </div>
+          <p className="card-label">Tỷ lệ bảo trì / Doanh thu</p>
+          <h3 className="card-value">
+            {costRatio}%
+          </h3>
+        </div>
+        <p className="card-italic">
+          Chiếm {costRatio}% trên tổng {formatCurrency(totalRevenue)} đ doanh thu
+        </p>
+      </div>
     </div>
   );
 }
 
-/* ── Main Revenue Component ── */
-export default function Revenue() {
-  const [openExport, setOpenExport] = useState(false);
+function MaintenanceAnalytics({ issues, fieldsList }) {
+  // Thống kê theo sân bóng
+  const pitchStats = useMemo(() => {
+    const map = {};
+    fieldsList.forEach((f) => {
+      map[f.field_name] = { name: f.field_name, actualCost: 0, estimatedCost: 0, count: 0 };
+    });
+
+    issues.forEach((i) => {
+      const pName = i.fieldName || i.field_name || 'Khác';
+      if (!map[pName]) {
+        map[pName] = { name: pName, actualCost: 0, estimatedCost: 0, count: 0 };
+      }
+      map[pName].actualCost += parseFloat(i.cost) || 0;
+      map[pName].estimatedCost += parseFloat(i.estimatedCost || i.estimated_cost) || 0;
+      map[pName].count += 1;
+    });
+
+    return Object.values(map);
+  }, [issues, fieldsList]);
+
+  const maxPitchCost = Math.max(...pitchStats.map((p) => p.actualCost), 1);
+
+  // Thống kê theo hạng mục
+  const categoryStats = useMemo(() => {
+    const map = {};
+    issues.forEach((i) => {
+      const cat = i.category || 'Khác';
+      if (!map[cat]) {
+        map[cat] = { name: cat, actualCost: 0, estimatedCost: 0, count: 0 };
+      }
+      map[cat].actualCost += parseFloat(i.cost) || 0;
+      map[cat].estimatedCost += parseFloat(i.estimatedCost || i.estimated_cost) || 0;
+      map[cat].count += 1;
+    });
+    return Object.values(map).sort((a, b) => b.actualCost - a.actualCost);
+  }, [issues]);
+
+  const maxCatCost = Math.max(...categoryStats.map((c) => c.actualCost), 1);
 
   return (
-    <div className="revenue-page-layout">
-      <AdminSidebar />
-      <div className="revenue-page-container">
-        <TopHeader onExport={() => setOpenExport((v) => !v)} />
+    <div className="maintenance-analytics-grid">
+      {/* 1. Chi phí theo sân bóng */}
+      <div className="m-breakdown-card">
+        <h4>Chi phí bảo trì theo sân bóng</h4>
+        <p>Phân bổ chi phí sửa chữa thực tế giữa các sân bóng trong cơ sở</p>
 
-        <main className="main-content revenue-main-content">
-          {/* Page Header */}
-          <div className="page-header-alt">
-            <div className="header-text">
-              <span className="admin-page-eyebrow">
-                PITCH &amp; PULSE OPERATIONS <span>›</span> TÀI CHÍNH &amp; KINH DOANH
-              </span>
-              <h2>Báo cáo doanh thu</h2>
-              <p>Phân tích chi tiết hiệu quả hoạt động kinh doanh sân bãi theo thời gian thực.</p>
-            </div>
-            <div className="date-picker-wrap">
-              <div className="date-range-display">
-                <span className="material-symbols-outlined">calendar_today</span>
-                <span>01/05/2024 - 31/05/2024</span>
+        <div>
+          {pitchStats.map((p) => {
+            const pct = Math.round((p.actualCost / maxPitchCost) * 100);
+            return (
+              <div key={p.name} className="breakdown-row">
+                <div className="breakdown-header-line">
+                  <strong>{p.name}</strong>
+                  <span>
+                    <strong style={{ color: p.actualCost > 0 ? '#b91c1c' : '#64748b' }}>
+                      {formatCurrency(p.actualCost)} đ
+                    </strong>{' '}
+                    <small style={{ color: '#94a3b8' }}>({p.count} phiếu)</small>
+                  </span>
+                </div>
+                <div className="breakdown-progress-track">
+                  <div
+                    className="breakdown-progress-fill"
+                    style={{
+                      width: `${pct}%`,
+                      background: p.actualCost > 0 ? '#b91c1c' : '#cbd5e1',
+                    }}
+                  />
+                </div>
               </div>
-              <button className="btn-expand">
-                <span className="material-symbols-outlined">expand_more</span>
-              </button>
-              <button className="btn-primary-gradient" onClick={() => setOpenExport((v) => !v)}>
-                <span className="material-symbols-outlined">file_download</span>
-                Xuất báo cáo
-              </button>
-            </div>
-          </div>
-
-          {/* Summary Cards */}
-          <SummaryCards />
-
-          {/* Charts */}
-          <div className="charts-grid">
-            <BarChart />
-            <DonutChart />
-          </div>
-
-          {/* Transactions */}
-          <TransactionTable />
-        </main>
+            );
+          })}
+        </div>
       </div>
 
-      {/* FAB */}
-      <ExportFAB open={openExport} setOpen={setOpenExport} />
+      {/* 2. Chi phí theo hạng mục thiết bị */}
+      <div className="m-breakdown-card">
+        <h4>Chi phí theo hạng mục thiết bị</h4>
+        <p>Chi tiết các thiết bị, cơ sở vật chất phát sinh chi phí sửa chữa</p>
+
+        <div>
+          {categoryStats.map((c) => {
+            const pct = Math.round((c.actualCost / maxCatCost) * 100);
+            return (
+              <div key={c.name} className="breakdown-row">
+                <div className="breakdown-header-line">
+                  <span>{c.name}</span>
+                  <span>
+                    <strong>{formatCurrency(c.actualCost)} đ</strong>{' '}
+                    <small style={{ color: '#64748b' }}>(DK: {formatCurrency(c.estimatedCost)} đ)</small>
+                  </span>
+                </div>
+                <div className="breakdown-progress-track">
+                  <div
+                    className="breakdown-progress-fill"
+                    style={{ width: `${pct}%`, background: '#d97706' }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
+  );
+}
+
+function MaintenanceTable({ issues, searchTerm }) {
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  const filtered = useMemo(() => {
+    return issues.filter((i) => {
+      const matchSearch =
+        !searchTerm ||
+        (i.fieldName || i.field_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (i.category || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (i.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (i.reportedBy || i.reported_by_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(i.id).toLowerCase().includes(searchTerm.toLowerCase());
+
+      const isDone = i.status === 'done' || i.status === 'resolved';
+      const isFixing = i.status === 'fixing';
+      const isPending = i.status === 'pending';
+
+      const matchStatus =
+        statusFilter === 'all' ||
+        (statusFilter === 'done' && isDone) ||
+        (statusFilter === 'fixing' && isFixing) ||
+        (statusFilter === 'pending' && isPending);
+
+      return matchSearch && matchStatus;
+    });
+  }, [issues, searchTerm, statusFilter]);
+
+  return (
+    <section className="tx-section">
+      <div className="tx-header">
+        <div>
+          <h4>Tất cả thông tin bảo trì &amp; Chi phí phát sinh ({filtered.length})</h4>
+          <p className="tx-subtitle">
+            Hồ sơ chi tiết từng phiếu sửa chữa, nguồn báo hỏng, dự kiến và chi phí thực tế
+          </p>
+        </div>
+
+        <div className="tx-filters">
+          <button
+            type="button"
+            className={`tx-filter-btn ${statusFilter === 'all' ? 'active' : ''}`}
+            onClick={() => setStatusFilter('all')}
+          >
+            Tất cả
+          </button>
+          <button
+            type="button"
+            className={`tx-filter-btn ${statusFilter === 'done' ? 'active' : ''}`}
+            onClick={() => setStatusFilter('done')}
+          >
+            Đã sửa xong
+          </button>
+          <button
+            type="button"
+            className={`tx-filter-btn ${statusFilter === 'fixing' ? 'active' : ''}`}
+            onClick={() => setStatusFilter('fixing')}
+          >
+            Đang sửa
+          </button>
+          <button
+            type="button"
+            className={`tx-filter-btn ${statusFilter === 'pending' ? 'active' : ''}`}
+            onClick={() => setStatusFilter('pending')}
+          >
+            Chờ xử lý
+          </button>
+        </div>
+      </div>
+
+      <div className="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Mã phiếu</th>
+              <th>Sân bóng</th>
+              <th>Hạng mục thiết bị</th>
+              <th>Mô tả sự cố</th>
+              <th>Nguồn báo</th>
+              <th>Mức độ</th>
+              <th>Chi phí dự kiến</th>
+              <th>Chi phí thực tế</th>
+              <th>Chênh lệch</th>
+              <th>Thời gian báo</th>
+              <th>Ngày hoàn thành</th>
+              <th className="right">Trạng thái</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan="12" style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 36, display: 'block', marginBottom: 8 }}>
+                    construction
+                  </span>
+                  Không có phiếu bảo trì nào phù hợp với bộ lọc
+                </td>
+              </tr>
+            ) : (
+              filtered.map((item) => {
+                const isDone = item.status === 'done' || item.status === 'resolved';
+                const reporter = item.reportedBy || item.reported_by_name || 'Kỹ thuật';
+                const isCleaning =
+                  reporter.toLowerCase().includes('vệ sinh') ||
+                  reporter.toLowerCase().includes('dọn dẹp');
+
+                const estCost = parseFloat(item.estimatedCost || item.estimated_cost) || 0;
+                const actCost = parseFloat(item.cost) || 0;
+                const diff = actCost - estCost;
+
+                return (
+                  <tr key={item.id}>
+                    <td>
+                      <span className="inv-id">#{String(item.id).slice(0, 8)}</span>
+                    </td>
+                    <td>
+                      <strong style={{ color: '#0f172a' }}>{item.fieldName || item.field_name || 'Sân'}</strong>
+                    </td>
+                    <td>
+                      <span className="field-badge">{item.category}</span>
+                    </td>
+                    <td style={{ maxWidth: 220 }}>
+                      <span className="issue-desc" title={item.description}>
+                        {item.description}
+                      </span>
+                    </td>
+                    <td>
+                      {isCleaning ? (
+                        <span className="m-source-pill cleaning" title="Báo từ vệ sinh sân">
+                          <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>
+                            cleaning_services
+                          </span>
+                          Từ vệ sinh
+                        </span>
+                      ) : (
+                        <span className="m-source-pill tech" title="Kỹ thuật lập">
+                          <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>
+                            build
+                          </span>
+                          {reporter}
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      <span
+                        className={`priority-badge priority-${
+                          item.priority === 'Khẩn cấp' || item.priority === 'Cao' ? 'high' : 'normal'
+                        }`}
+                      >
+                        {item.priority}
+                      </span>
+                    </td>
+                    <td>
+                      <span style={{ fontWeight: 600, color: '#475569' }}>
+                        {formatCurrency(estCost)} đ
+                      </span>
+                    </td>
+                    <td>
+                      <span style={{ fontWeight: 700, color: actCost > 0 ? '#b91c1c' : '#94a3b8' }}>
+                        {actCost > 0 ? `${formatCurrency(actCost)} đ` : '0 đ'}
+                      </span>
+                    </td>
+                    <td>
+                      {isDone && estCost > 0 ? (
+                        diff <= 0 ? (
+                          <span style={{ color: '#059669', fontSize: '0.78rem', fontWeight: 600 }}>
+                            Tiết kiệm {formatCurrency(Math.abs(diff))}đ
+                          </span>
+                        ) : (
+                          <span style={{ color: '#dc2626', fontSize: '0.78rem', fontWeight: 600 }}>
+                            + {formatCurrency(diff)}đ
+                          </span>
+                        )
+                      ) : (
+                        <span style={{ color: '#94a3b8' }}>—</span>
+                      )}
+                    </td>
+                    <td>
+                      <span className="tx-date">{item.createdAt || item.created_at || 'Vừa xong'}</span>
+                    </td>
+                    <td>
+                      <span className="tx-date" style={{ color: isDone ? '#059669' : '#94a3b8' }}>
+                        {item.resolvedAt || (isDone ? 'Đã hoàn thành' : 'Chưa xong')}
+                      </span>
+                    </td>
+                    <td className="tx-status-cell">
+                      {isDone ? (
+                        <span className="tx-badge success">Đã sửa xong</span>
+                      ) : item.status === 'fixing' ? (
+                        <span className="tx-badge pending">Đang sửa chữa</span>
+                      ) : (
+                        <span className="tx-badge cancelled" style={{ background: '#fee2e2', color: '#b91c1c' }}>
+                          Chờ xử lý
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+export default function Revenue() {
+  const { toast, toasts, removeToast } = useToast();
+  const [activeTab, setActiveTab] = useState('revenue'); // 'revenue' | 'maintenance'
+  const [loading, setLoading] = useState(true);
+  const [revenueData, setRevenueData] = useState(null);
+  const [maintenanceIssues, setMaintenanceIssues] = useState([]);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedPeriod, setSelectedPeriod] = useState('all'); // 'all' | 'today' | 'week' | 'month' | 'year'
+  const [selectedField, setSelectedField] = useState('all');
+  const [fieldsList, setFieldsList] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [openExport, setOpenExport] = useState(false);
+
+  const ISSUES_STORAGE_KEY = 'pitch_maintenance_issues';
+
+  // Tải danh sách sân bóng để lọc
+  useEffect(() => {
+    getFields()
+      .then((res) => {
+        const list = res.data?.fields || (Array.isArray(res.data) ? res.data : []);
+        setFieldsList(list);
+      })
+      .catch((err) => console.log('Lỗi lấy danh sách sân:', err));
+  }, []);
+
+  // Tải dữ liệu sự cố bảo trì
+  const fetchMaintenance = () => {
+    getMaintenanceIssues()
+      .then((res) => {
+        const serverList = res.data?.results || res.data || [];
+        if (Array.isArray(serverList) && serverList.length > 0) {
+          setMaintenanceIssues(serverList);
+          localStorage.setItem(ISSUES_STORAGE_KEY, JSON.stringify(serverList));
+        } else {
+          const saved = localStorage.getItem(ISSUES_STORAGE_KEY);
+          if (saved) setMaintenanceIssues(JSON.parse(saved));
+        }
+      })
+      .catch(() => {
+        const saved = localStorage.getItem(ISSUES_STORAGE_KEY);
+        if (saved) {
+          setMaintenanceIssues(JSON.parse(saved));
+        }
+      });
+  };
+
+  // Tải dữ liệu thống kê doanh thu thực tế
+  const fetchRevenue = (isSilent = false) => {
+    if (!isSilent) setLoading(true);
+    const params = {
+      year: selectedYear,
+    };
+    if (selectedField !== 'all') {
+      params.field_id = selectedField;
+    }
+
+    getRevenueAnalytics(params)
+      .then((res) => {
+        if (res.data?.success) {
+          setRevenueData(res.data);
+        }
+      })
+      .catch((err) => {
+        console.error('Lỗi tải thống kê doanh thu:', err);
+      })
+      .finally(() => {
+        if (!isSilent) setLoading(false);
+      });
+
+    fetchMaintenance();
+  };
+
+  useEffect(() => {
+    fetchRevenue(false);
+
+    // Smart background polling mỗi 4s để cập nhật doanh thu tự động
+    const timer = setInterval(() => {
+      fetchRevenue(true);
+    }, 4000);
+
+    // Lắng nghe realtime khi có thanh toán, đặt sân mới hoặc báo hỏng
+    const cleanup = onSyncEvent((event) => {
+      if (
+        event?.type?.startsWith('booking_') ||
+        event?.type?.startsWith('payment_') ||
+        event?.type?.startsWith('maintenance_') ||
+        event?.type === 'field_maintenance_resolved' ||
+        event?.type === 'services_updated'
+      ) {
+        fetchRevenue(true);
+      }
+    });
+
+    return () => {
+      clearInterval(timer);
+      cleanup();
+    };
+  }, [selectedYear, selectedField]);
+
+  // Lọc danh sách bảo trì theo sân nếu có chọn
+  const filteredMaintenanceIssues = useMemo(() => {
+    if (selectedField === 'all') return maintenanceIssues;
+    const selectedFieldObj = fieldsList.find((f) => String(f.id) === String(selectedField));
+    const targetName = selectedFieldObj?.field_name?.toLowerCase();
+
+    return maintenanceIssues.filter((i) => {
+      const matchId = i.field && String(i.field) === String(selectedField);
+      const matchName =
+        targetName && (i.fieldName || i.field_name || '').toLowerCase() === targetName;
+      return matchId || matchName;
+    });
+  }, [maintenanceIssues, selectedField, fieldsList]);
+
+  // Kiểm tra ngày trong kỳ lọc nhanh
+  const isDateInPeriod = (dStr, period) => {
+    if (!dStr || period === 'all') return true;
+    const now = new Date();
+    let tDate = null;
+    if (typeof dStr === 'string' && dStr.includes('/')) {
+      const parts = dStr.split(' ')[0].split('/');
+      if (parts.length === 3) tDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+    } else {
+      tDate = new Date(dStr);
+    }
+    if (!tDate || isNaN(tDate.getTime())) return true;
+
+    if (period === 'today') {
+      return (
+        tDate.getFullYear() === now.getFullYear() &&
+        tDate.getMonth() === now.getMonth() &&
+        tDate.getDate() === now.getDate()
+      );
+    }
+    if (period === 'week') {
+      const diffDays = (now - tDate) / (1000 * 60 * 60 * 24);
+      return diffDays >= 0 && diffDays <= 7;
+    }
+    if (period === 'month') {
+      return tDate.getFullYear() === now.getFullYear() && tDate.getMonth() === now.getMonth();
+    }
+    if (period === 'year') {
+      return tDate.getFullYear() === now.getFullYear();
+    }
+    return true;
+  };
+
+  // Tính toán KPI doanh thu theo kỳ đã chọn (Chỉ tính đơn Completed vào Doanh thu thực tế)
+  const activeSummary = useMemo(() => {
+    if (!revenueData?.summary) return null;
+    if (selectedPeriod === 'all') return revenueData.summary;
+
+    const txs = revenueData.transactions || [];
+    const filteredTxs = txs.filter((t) =>
+      isDateInPeriod(t.booking_date || t.date || t.created_at, selectedPeriod)
+    );
+
+    const completedTxs = filteredTxs.filter((t) => t.status_class === 'success');
+    const totalRev = completedTxs.reduce((sum, t) => sum + (Number(t.price) || 0), 0);
+    const expectedRev = filteredTxs
+      .filter((t) => t.status_class !== 'cancelled')
+      .reduce((sum, t) => sum + (Number(t.price) || 0), 0);
+    const successfulOrders = completedTxs.length;
+    const totalOrders = filteredTxs.length;
+    const cancelledOrders = filteredTxs.filter((t) => t.status_class === 'cancelled').length;
+    const avgOrderValue = successfulOrders > 0 ? Math.round(totalRev / successfulOrders) : 0;
+
+    return {
+      ...revenueData.summary,
+      total_revenue: totalRev,
+      expected_revenue: expectedRev,
+      successful_orders: successfulOrders,
+      total_orders: totalOrders,
+      cancelled_orders: cancelledOrders,
+      avg_order_value: avgOrderValue,
+    };
+  }, [revenueData, selectedPeriod]);
+
+  // Xuất file Excel / CSV
+  const handleExportCSV = () => {
+    if (activeTab === 'maintenance') {
+      // Xuất danh sách chi phí bảo trì
+      const list = filteredMaintenanceIssues;
+      if (list.length === 0) {
+        toast.warning('Không có dữ liệu bảo trì để xuất báo cáo.');
+        return;
+      }
+
+      const headers = [
+        'Mã phiếu',
+        'Sân bóng',
+        'Hạng mục',
+        'Mô tả sự cố',
+        'Người báo cáo',
+        'Mức độ ưu tiên',
+        'Chi phí dự kiến (VNĐ)',
+        'Chi phí thực tế (VNĐ)',
+        'Ngày báo cáo',
+        'Ngày hoàn thành',
+        'Trạng thái',
+      ];
+
+      const rows = list.map((item) => {
+        const estCost = parseFloat(item.estimatedCost || item.estimated_cost) || 0;
+        const actCost = parseFloat(item.cost) || 0;
+        const isDone = item.status === 'done' || item.status === 'resolved';
+
+        return [
+          `"${item.id}"`,
+          `"${item.fieldName || item.field_name || ''}"`,
+          `"${item.category || ''}"`,
+          `"${(item.description || '').replace(/"/g, '""')}"`,
+          `"${item.reportedBy || item.reported_by_name || ''}"`,
+          `"${item.priority || ''}"`,
+          estCost,
+          actCost,
+          `"${item.createdAt || item.created_at || ''}"`,
+          `"${item.resolvedAt || (isDone ? 'Đã hoàn thành' : '')}"`,
+          `"${isDone ? 'Đã sửa xong' : item.status === 'fixing' ? 'Đang sửa' : 'Chờ xử lý'}"`,
+        ];
+      });
+
+      const csvContent =
+        '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Bao_cao_chi_phi_bao_tri_${selectedYear}_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setOpenExport(false);
+      return;
+    }
+
+    // Xuất doanh thu giao dịch
+    const list = revenueData?.transactions || [];
+    if (list.length === 0) {
+      toast.warning('Không có dữ liệu giao dịch để xuất báo cáo.');
+      return;
+    }
+
+    const headers = [
+      'Mã đơn',
+      'Khách hàng',
+      'Số điện thoại',
+      'Sân bóng',
+      'Ngày thi đấu',
+      'Tổng tiền (VNĐ)',
+      'Giảm giá (VNĐ)',
+      'Phương thức thanh toán',
+      'Trạng thái',
+    ];
+
+    const rows = list.map((t) => [
+      `"${t.id}"`,
+      `"${t.name || ''}"`,
+      `"${t.phone || ''}"`,
+      `"${t.field || ''}"`,
+      `"${t.date || ''}"`,
+      t.price || 0,
+      t.discount || 0,
+      `"${t.payment_method || ''}"`,
+      `"${t.status_label || ''}"`,
+    ]);
+
+    const csvContent =
+      '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Bao_cao_doanh_thu_${selectedYear}_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setOpenExport(false);
+  };
+
+  const handlePrintPDF = () => {
+    setOpenExport(false);
+    window.print();
+  };
+
+  return (
+    <>
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
+      <AdminSidebar />
+      <TopHeader
+        onExport={() => setOpenExport((prev) => !prev)}
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        onRefresh={fetchRevenue}
+        loading={loading}
+      />
+
+      <main className="main-content admin-revenue-main">
+        <div className="content-inner">
+          {/* Page Heading matching Admin styling */}
+          <div className="page-header">
+            <div>
+              <span className="booking-admin-eyebrow">
+                VẬN HÀNH CƠ SỞ <span>›</span> TÀI CHÍNH &amp; DOANH THU
+              </span>
+              <h2>
+                Báo cáo doanh thu &amp; Tài chính
+              </h2>
+              <p>
+                Phân tích chi tiết hiệu quả hoạt động kinh doanh sân bóng và theo dõi chi phí bảo trì cơ sở vật chất.
+              </p>
+            </div>
+
+            <div className="dashboard-heading-actions">
+              {/* Lọc theo sân */}
+              <select
+                className="dashboard-select-field"
+                value={selectedField}
+                onChange={(e) => setSelectedField(e.target.value)}
+                title="Lọc theo sân bóng"
+              >
+                <option value="all">🏟️ Tất cả sân bóng</option>
+                {fieldsList.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.field_name}
+                  </option>
+                ))}
+              </select>
+
+              {/* Lọc theo năm */}
+              <select
+                className="dashboard-select-year"
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                title="Chọn năm tài chính"
+              >
+                {revenueData?.available_years?.map((y) => (
+                  <option key={y} value={y}>
+                    Năm {y}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                type="button"
+                className="btn-export-main"
+                onClick={() => setOpenExport((prev) => !prev)}
+              >
+                <span className="material-symbols-outlined">download</span>
+                Xuất file
+              </button>
+            </div>
+          </div>
+
+          {/* ── THANH CHUYỂN TAB DOANH THU & CHI PHÍ BẢO TRÌ (Tích hợp bộ lọc kỳ thời gian gọn gàng) ── */}
+          <div className="revenue-tabs-nav">
+            <div className="revenue-tabs-left">
+              <button
+                type="button"
+                className={`revenue-tab-btn ${activeTab === 'revenue' ? 'active' : ''}`}
+                onClick={() => setActiveTab('revenue')}
+              >
+                <span className="material-symbols-outlined">payments</span>
+                Tổng quan doanh thu
+                <span className="tab-badge">{revenueData?.transactions?.length || 0} đơn</span>
+              </button>
+
+              <button
+                type="button"
+                className={`revenue-tab-btn ${activeTab === 'maintenance' ? 'active' : ''}`}
+                onClick={() => setActiveTab('maintenance')}
+              >
+                <span className="material-symbols-outlined">construction</span>
+                Chi phí bảo trì
+                <span className="tab-badge">{filteredMaintenanceIssues.length} phiếu</span>
+              </button>
+            </div>
+
+            {activeTab === 'revenue' && (
+              <div className="revenue-tabs-period-filter">
+                <span className="revenue-period-label">
+                  <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#006b2c' }}>
+                    calendar_month
+                  </span>
+                  Kỳ báo cáo:
+                </span>
+                <div className="revenue-period-pills">
+                  {[
+                    { key: 'all', label: 'Tất cả' },
+                    { key: 'today', label: 'Hôm nay' },
+                    { key: 'week', label: 'Tuần này' },
+                    { key: 'month', label: 'Tháng này' },
+                    { key: 'year', label: 'Năm nay' },
+                  ].map((p) => (
+                    <button
+                      key={p.key}
+                      type="button"
+                      className={`revenue-period-pill ${selectedPeriod === p.key ? 'active' : ''}`}
+                      onClick={() => setSelectedPeriod(p.key)}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {loading && !revenueData ? (
+            <div className="loading-state">
+              <div
+                className="cd-spinner"
+                style={{ borderColor: '#16a34a', borderTopColor: 'transparent', margin: '0 auto 12px' }}
+              />
+              <p>Đang tải dữ liệu tài chính...</p>
+            </div>
+          ) : activeTab === 'revenue' ? (
+            /* ── TAB 1: TỔNG QUAN DOANH THU ── */
+            <>
+              {/* Summary Metrics */}
+              <SummaryCards summary={activeSummary || revenueData?.summary} selectedPeriod={selectedPeriod} />
+
+              {/* Charts Section */}
+              <div className="charts-grid">
+                <BarChart
+                  monthlyStats={revenueData?.monthly_stats}
+                  selectedYear={selectedYear}
+                  onYearChange={setSelectedYear}
+                  availableYears={revenueData?.available_years}
+                />
+                <DonutChart
+                  segments={revenueData?.donut_segments}
+                  totalRevenue={activeSummary?.total_revenue || revenueData?.summary?.total_revenue}
+                />
+              </div>
+
+              {/* Transactions Section */}
+              <TransactionTable
+                transactions={revenueData?.transactions || []}
+                searchTerm={searchTerm}
+                selectedPeriod={selectedPeriod}
+                onPeriodChange={setSelectedPeriod}
+              />
+            </>
+          ) : (
+            /* ── TAB 2: CHI PHÍ BẢO TRÌ ── */
+            <>
+              {/* KPI Thống kê chi phí bảo trì */}
+              <MaintenanceSummaryCards
+                issues={filteredMaintenanceIssues}
+                totalRevenue={revenueData?.summary?.total_revenue || 0}
+              />
+
+              {/* Biểu đồ phân bổ chi phí theo sân và theo hạng mục */}
+              <MaintenanceAnalytics
+                issues={filteredMaintenanceIssues}
+                fieldsList={fieldsList}
+              />
+
+              {/* Bảng chi tiết toàn bộ thông tin bảo trì và chi phí */}
+              <MaintenanceTable
+                issues={filteredMaintenanceIssues}
+                searchTerm={searchTerm}
+              />
+            </>
+          )}
+        </div>
+
+        {/* Modal / Popup Xuất báo cáo */}
+        {openExport && (
+          <div className="export-modal-backdrop" onClick={() => setOpenExport(false)}>
+            <div className="export-modal-card" onClick={(e) => e.stopPropagation()}>
+              <div className="export-modal-header">
+                <h3>
+                  <span className="material-symbols-outlined">file_download</span>
+                  Tùy chọn xuất báo cáo {activeTab === 'maintenance' ? 'chi phí bảo trì' : 'doanh thu'}
+                </h3>
+                <button
+                  type="button"
+                  className="close-btn"
+                  onClick={() => setOpenExport(false)}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="export-modal-body">
+                <p>
+                  Chọn định dạng báo cáo{' '}
+                  <strong>{activeTab === 'maintenance' ? 'Chi phí bảo trì' : 'Doanh thu'}</strong>{' '}
+                  bạn muốn tải về máy:
+                </p>
+                <div className="export-options-grid">
+                  <button
+                    type="button"
+                    className="export-opt-btn"
+                    onClick={handleExportCSV}
+                  >
+                    <div className="opt-icon excel-icon">
+                      <span className="material-symbols-outlined">table_view</span>
+                    </div>
+                    <div>
+                      <strong>Xuất Excel (.csv)</strong>
+                      <small>
+                        {activeTab === 'maintenance'
+                          ? 'Đầy đủ danh sách sự cố, chi phí dự kiến & thực tế'
+                          : 'Đầy đủ danh sách hóa đơn, tương thích Excel và Google Sheets'}
+                      </small>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="export-opt-btn"
+                    onClick={handlePrintPDF}
+                  >
+                    <div className="opt-icon pdf-icon">
+                      <span className="material-symbols-outlined">print</span>
+                    </div>
+                    <div>
+                      <strong>In / Xuất PDF (A4)</strong>
+                      <small>Bản in báo cáo tài chính trực quan, lưu dạng file PDF</small>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+    </>
   );
 }

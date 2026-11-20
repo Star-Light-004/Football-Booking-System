@@ -6,6 +6,7 @@ import FieldMap from '../../../components/FieldMap/FieldMap';
 import './fields.css';
 import { useToast, ToastContainer } from '../../../components/Toast/Toast';
 import AdminSidebar from '../../../components/AdminSidebar/AdminSidebar';
+import ConfirmModal from '../../../components/ConfirmModal/ConfirmModal';
 
 /* ── Sub-components ── */
 function TopHeader() {
@@ -120,8 +121,8 @@ function FieldsTable({ fields, onView, onEdit, onDelete }) {
                 <div className="info-item">
                   <span className="material-symbols-outlined">payments</span>
                   <div>
-                    <small>Giá/giờ</small>
-                    <strong>{f.price_per_hour?.toLocaleString()}đ</strong>
+                    <small>Giá chỉ từ</small>
+                    <strong>{Number(f.min_price || f.price_per_hour || 0).toLocaleString("vi-VN")}đ</strong>
                   </div>
                 </div>
                 <div className="info-item">
@@ -263,8 +264,15 @@ function FieldDetailModal({ initialField, onClose }) {
               <div className="field-detail-info">
                 <div className="field-detail-rating"><p>Đánh giá trung bình</p><strong>{averageRating}<small>/5</small></strong><RatingStars rating={averageRating} /><span>{reviews.length} đánh giá</span></div>
                 <div className="field-detail-meta">
-                  <p><span className="material-symbols-outlined">groups</span><b>Loại sân:</b> {field.field_type || "Chưa cập nhật"}</p>
-                  <p><span className="material-symbols-outlined">payments</span><b>Giá thuê:</b> {Number(field.price_per_hour || 0).toLocaleString("vi-VN")}đ/giờ</p>
+                  <p>
+                    <span className="material-symbols-outlined">payments</span>
+                    <b>Giá thuê khởi điểm:</b> {Number(field.price_per_hour || 0).toLocaleString("vi-VN")}đ/giờ
+                    {field.min_price && field.price_per_hour && Number(field.min_price) !== Number(field.price_per_hour) && (
+                      <span style={{ fontSize: "0.82rem", color: "#16a34a", marginLeft: "8px", fontWeight: "600" }}>
+                        (Khách đang thấy từ: {Number(field.min_price).toLocaleString("vi-VN")}đ)
+                      </span>
+                    )}
+                  </p>
                   <p><span className="material-symbols-outlined">event_available</span><b>Lượt đặt:</b> {field.booking_count || 0}</p>
                   <p><span className="material-symbols-outlined">phone</span><b>Liên hệ:</b> {field.phone || "Chưa cập nhật"}</p>
                   <p><span className="material-symbols-outlined">location_on</span><b>Địa chỉ:</b> {field.location}</p>
@@ -286,76 +294,247 @@ function FieldDetailModal({ initialField, onClose }) {
   );
 }
 
+function FieldImagesManager({
+  mainImage, setMainImage, existingMainImage,
+  sub1, setSub1, existingSub1,
+  sub2, setSub2, existingSub2,
+  sub3, setSub3, existingSub3,
+}) {
+  const mainRef = useRef(null);
+  const sub1Ref = useRef(null);
+  const sub2Ref = useRef(null);
+  const sub3Ref = useRef(null);
+
+  const mainPreview = mainImage ? URL.createObjectURL(mainImage) : existingMainImage;
+  const sub1Preview = sub1 ? URL.createObjectURL(sub1) : existingSub1;
+  const sub2Preview = sub2 ? URL.createObjectURL(sub2) : existingSub2;
+  const sub3Preview = sub3 ? URL.createObjectURL(sub3) : existingSub3;
+
+  return (
+    <div className="field-images-manager" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      {/* 1. Main image */}
+      <div>
+        <label className="form-label" style={{ marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#16a34a' }}>photo_camera</span>
+          Ảnh đại diện chính sân bóng
+        </label>
+        <div
+          className={`upload-zone ${mainPreview ? 'has-preview' : ''}`}
+          onClick={() => mainRef.current.click()}
+        >
+          <input
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            ref={mainRef}
+            onChange={(e) => {
+              if (e.target.files && e.target.files[0]) {
+                setMainImage(e.target.files[0]);
+              }
+            }}
+          />
+          {mainPreview ? (
+            <>
+              <img src={mainPreview} alt="Ảnh chính sân bóng" />
+              <div className="upload-zone-overlay">
+                <span className="material-symbols-outlined" style={{ fontSize: '2rem' }}>edit</span>
+                <span>Nhấn để thay đổi ảnh chính</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <span className="material-symbols-outlined">add_a_photo</span>
+              <p>Tải lên hình ảnh sân bóng chính</p>
+              <p className="upload-hint">JPG, PNG (Tối đa 5MB)</p>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* 2. Sub images */}
+      <div className="sub-images-section">
+        <div className="sub-images-header">
+          <div className="sub-images-title">
+            <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#16a34a' }}>collections</span>
+            3 Ảnh phụ chi tiết sân bóng
+          </div>
+          <p className="sub-images-subtitle">
+            Hiển thị cột dọc bên phải ở trang chi tiết sân (Khung thành, mặt cỏ, dàn đèn...)
+          </p>
+        </div>
+
+        <div className="sub-images-grid">
+          {/* Sub 1 */}
+          <div
+            className={`sub-upload-card ${sub1Preview ? 'has-image' : ''}`}
+            onClick={() => sub1Ref.current.click()}
+          >
+            <input
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              ref={sub1Ref}
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  setSub1(e.target.files[0]);
+                }
+              }}
+            />
+            {sub1Preview ? (
+              <>
+                <img src={sub1Preview} alt="Ảnh phụ 1" />
+                <div className="sub-card-overlay">
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>edit</span>
+                  <span>Đổi ảnh 1</span>
+                </div>
+              </>
+            ) : (
+              <div className="sub-empty-content">
+                <span className="material-symbols-outlined">add_photo_alternate</span>
+                <span className="sub-card-label">Ảnh phụ 1</span>
+                <span className="sub-card-hint">Khung thành & lưới</span>
+              </div>
+            )}
+          </div>
+
+          {/* Sub 2 */}
+          <div
+            className={`sub-upload-card ${sub2Preview ? 'has-image' : ''}`}
+            onClick={() => sub2Ref.current.click()}
+          >
+            <input
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              ref={sub2Ref}
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  setSub2(e.target.files[0]);
+                }
+              }}
+            />
+            {sub2Preview ? (
+              <>
+                <img src={sub2Preview} alt="Ảnh phụ 2" />
+                <div className="sub-card-overlay">
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>edit</span>
+                  <span>Đổi ảnh 2</span>
+                </div>
+              </>
+            ) : (
+              <div className="sub-empty-content">
+                <span className="material-symbols-outlined">add_photo_alternate</span>
+                <span className="sub-card-label">Ảnh phụ 2</span>
+                <span className="sub-card-hint">Mặt cỏ nhân tạo</span>
+              </div>
+            )}
+          </div>
+
+          {/* Sub 3 */}
+          <div
+            className={`sub-upload-card ${sub3Preview ? 'has-image' : ''}`}
+            onClick={() => sub3Ref.current.click()}
+          >
+            <input
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              ref={sub3Ref}
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  setSub3(e.target.files[0]);
+                }
+              }}
+            />
+            {sub3Preview ? (
+              <>
+                <img src={sub3Preview} alt="Ảnh phụ 3" />
+                <div className="sub-card-overlay">
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>edit</span>
+                  <span>Đổi ảnh 3</span>
+                </div>
+              </>
+            ) : (
+              <div className="sub-empty-content">
+                <span className="material-symbols-outlined">add_photo_alternate</span>
+                <span className="sub-card-label">Ảnh phụ 3</span>
+                <span className="sub-card-hint">Dàn đèn LED</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AddFieldModal({ onClose, onSuccess, showToast }) {
-const fileInputRef = useRef(null); 
-const [image, setImage] = useState(null);
-const [fieldName, setFieldName] = useState("");
-const [fieldType, setFieldType] = useState("5 vs 5");
-const [price, setPrice] = useState("");
-const [location, setLocation] = useState("");
-const [description, setDescription] = useState("");
-const [phone, setPhone] = useState("");
-const [latitude, setLatitude] = useState(null);
-const [longitude, setLongitude] = useState(null);
-const [loading, setLoading] = useState(false);
+  const [image, setImage] = useState(null);
+  const [subImage1, setSubImage1] = useState(null);
+  const [subImage2, setSubImage2] = useState(null);
+  const [subImage3, setSubImage3] = useState(null);
+  const [fieldName, setFieldName] = useState("");
+  const [fieldType, setFieldType] = useState("5 vs 5");
+  const [price, setPrice] = useState("");
+  const [location, setLocation] = useState("");
+  const [description, setDescription] = useState("");
+  const [phone, setPhone] = useState("");
+  const [latitude, setLatitude] = useState(null);
+  const [longitude, setLongitude] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-const [debouncedLocation, setDebouncedLocation] = useState("");
-const debounceRef = useRef(null);
+  const [debouncedLocation, setDebouncedLocation] = useState("");
+  const debounceRef = useRef(null);
 
-const handleLocationChange = (val) => {
-  setLocation(val);
-  setLatitude(null);
-  setLongitude(null);
-  clearTimeout(debounceRef.current);
-  debounceRef.current = setTimeout(() => {
-    setDebouncedLocation(val);
-  }, 700);
-};
+  const handleLocationChange = (val) => {
+    setLocation(val);
+    setLatitude(null);
+    setLongitude(null);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedLocation(val);
+    }, 700);
+  };
 
-const handleCoordsFound = (lat, lng) => {
-  setLatitude(lat);
-  setLongitude(lng);
-};
-const handleAddField = async () => {
+  const handleCoordsFound = (lat, lng) => {
+    setLatitude(lat);
+    setLongitude(lng);
+  };
 
-  if (!fieldName || !price || !location) {
-    showToast("Vui lòng nhập đầy đủ thông tin", "warning");
-    return;
-  }
+  const handleAddField = async () => {
+    if (!fieldName || !price || !location) {
+      showToast("Vui lòng nhập đầy đủ thông tin", "warning");
+      return;
+    }
 
-  try {
+    try {
+      setLoading(true);
+      const formData = new FormData();
+      formData.append("field_name", fieldName);
+      formData.append("field_type", fieldType);
+      formData.append("location", location);
+      formData.append("price_per_hour", price);
+      formData.append("description", description);
+      formData.append("phone", phone);
+      if (image) formData.append("image", image);
+      if (subImage1) formData.append("sub_image_1", subImage1);
+      if (subImage2) formData.append("sub_image_2", subImage2);
+      if (subImage3) formData.append("sub_image_3", subImage3);
+      if (latitude) formData.append("latitude", latitude);
+      if (longitude) formData.append("longitude", longitude);
 
-    setLoading(true);
+      await createField(formData);
+      showToast("Đã thêm sân thành công!", "success");
+      onSuccess();
+      onClose();
+    } catch (error) {
+      console.log(error);
+      showToast("Lỗi khi thêm sân", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const formData = new FormData();
-
-    formData.append("field_name", fieldName);
-    formData.append("field_type", fieldType);
-    formData.append("location", location);
-    formData.append("price_per_hour", price);
-    formData.append("description", description);
-    formData.append("phone", phone);
-    formData.append("image", image);
-    if (latitude) formData.append("latitude", latitude);
-    if (longitude) formData.append("longitude", longitude);
-
-    await createField(formData);
-
-    showToast("Đã thêm sân thành công!", "success");
-
-    onSuccess();
-    onClose();
-
-  } catch (error) {
-
-    console.log(error);
-    showToast("Ợi khi thêm sân", "error");
-
-  } finally {
-
-    setLoading(false);
-  }
-};
   return (
     <div className="modal-overlay">
       <div className="modal">
@@ -366,32 +545,26 @@ const handleAddField = async () => {
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
- 
+
         {/* Body */}
         <div className="modal-body">
-          {/* Image upload */}
-                                  <div className="upload-zone" onClick={() => fileInputRef.current.click()}>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    style={{ display: 'none' }}   // ẩn input đi
-                    ref={fileInputRef}            // dùng ref để trigger
-                    onChange={(e) => setImage(e.target.files[0])}
-                  />
+          {/* Main and sub images upload */}
+          <FieldImagesManager
+            mainImage={image}
+            setMainImage={setImage}
+            sub1={subImage1}
+            setSub1={setSubImage1}
+            sub2={subImage2}
+            setSub2={setSubImage2}
+            sub3={subImage3}
+            setSub3={setSubImage3}
+          />
 
-                  <span className="material-symbols-outlined">add_a_photo</span>
-
-                  <p>{image ? image.name : "Tải lên hình ảnh sân bóng"}</p>
-                  <p className="upload-hint">
-                    JPG, PNG (Tối đa 5MB)
-                  </p>
-                </div>
- 
           {/* Form */}
           <div className="form-grid">
             <div className="form-group full">
               <label className="form-label">Tên sân bóng</label>
-                            <input
+              <input
                 className="form-input"
                 type="text"
                 placeholder="Nhập tên sân (Ví dụ: Sân A2)"
@@ -399,10 +572,10 @@ const handleAddField = async () => {
                 onChange={(e) => setFieldName(e.target.value)}
               />
             </div>
- 
+
             <div className="form-group">
               <label className="form-label">Loại sân</label>
-                            <select
+              <select
                 className="form-select"
                 value={fieldType}
                 onChange={(e) => setFieldType(e.target.value)}
@@ -412,18 +585,21 @@ const handleAddField = async () => {
                 <option value="11 vs 11">Sân 11 người</option>
               </select>
             </div>
- 
+
             <div className="form-group">
-              <label className="form-label">Giá thuê (VNĐ/giờ)</label>
-                          <input
-              className="form-input"
-              type="number"
-              placeholder="500000"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-            />
+              <label className="form-label">Giá thuê khởi điểm (VNĐ/giờ)</label>
+              <input
+                className="form-input"
+                type="number"
+                placeholder="VD: 80000 hoặc 100000"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+              />
+              <span style={{ fontSize: "0.78rem", color: "#64748b", display: "block", marginTop: "4px" }}>
+                💡 Khi sân chưa có khung giờ riêng, mức giá này sẽ hiển thị là "Giá thuê chỉ từ..." cho khách hàng.
+              </span>
             </div>
- 
+
             <div className="form-group full">
               <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span className="material-symbols-outlined" style={{ fontSize: '17px', color: '#00b14f' }}>location_on</span>
@@ -467,16 +643,16 @@ const handleAddField = async () => {
 
             <div className="form-group full">
               <label className="form-label">Mô tả chi tiết sân bóng</label>
-                             <textarea
-                  className="form-textarea"
-                  rows={4}
-                  placeholder="Mô tả về chất lượng cỏ, đèn chiếu sáng, tiện ích đi kèm..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
+              <textarea
+                className="form-textarea"
+                rows={4}
+                placeholder="Mô tả về chất lượng cỏ, đèn chiếu sáng, tiện ích đi kèm..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
             </div>
           </div>
- 
+
           {/* Info banner */}
           <div className="info-banner">
             <span className="material-symbols-outlined">info</span>
@@ -486,7 +662,7 @@ const handleAddField = async () => {
             </p>
           </div>
         </div>
- 
+
         {/* Footer */}
         <div className="modal-footer">
           <button className="btn-cancel" onClick={onClose}>Hủy bỏ</button>
@@ -515,13 +691,23 @@ function EditFieldModal({ field, onClose, onSuccess, showToast }) {
   const [longitude, setLongitude] = useState(field.longitude || null);
   const [loading, setLoading] = useState(false);
 
+  // Images state
+  const [image, setImage] = useState(null);
+  const [subImage1, setSubImage1] = useState(null);
+  const [subImage2, setSubImage2] = useState(null);
+  const [subImage3, setSubImage3] = useState(null);
+
+  const existingMainImage = field.image_url || (field.image ? `${SERVER_URL}${field.image}` : null);
+  const existingSub1 = field.sub_image_1_url || (field.sub_image_1 ? `${SERVER_URL}${field.sub_image_1}` : null);
+  const existingSub2 = field.sub_image_2_url || (field.sub_image_2 ? `${SERVER_URL}${field.sub_image_2}` : null);
+  const existingSub3 = field.sub_image_3_url || (field.sub_image_3 ? `${SERVER_URL}${field.sub_image_3}` : null);
+
   // Debounced location: chờ 700ms sau khi gõ xong mới geocode
   const [debouncedLocation, setDebouncedLocation] = useState(field.location || "");
   const debounceRef = useRef(null);
 
   const handleLocationChange = (val) => {
     setLocation(val);
-    // Reset tọa độ khi địa chỉ thay đổi (bản đồ sẽ geocode lại)
     setLatitude(null);
     setLongitude(null);
     clearTimeout(debounceRef.current);
@@ -531,7 +717,6 @@ function EditFieldModal({ field, onClose, onSuccess, showToast }) {
   };
 
   const handleCoordsFound = (lat, lng) => {
-    // Tự động lưu tọa độ từ geocoding để gửi lên API
     setLatitude(lat);
     setLongitude(lng);
   };
@@ -544,25 +729,29 @@ function EditFieldModal({ field, onClose, onSuccess, showToast }) {
 
     try {
       setLoading(true);
-      const data = {
-        field_name: fieldName,
-        field_type: fieldType,
-        location: location,
-        price_per_hour: price,
-        description: description,
-        phone: phone,
-        is_available: isAvailable,
-        latitude: latitude || null,
-        longitude: longitude || null,
-      };
+      const formData = new FormData();
+      formData.append("field_name", fieldName);
+      formData.append("field_type", fieldType);
+      formData.append("location", location);
+      formData.append("price_per_hour", price);
+      formData.append("description", description);
+      formData.append("phone", phone);
+      formData.append("is_available", isAvailable);
+      if (latitude) formData.append("latitude", latitude);
+      if (longitude) formData.append("longitude", longitude);
 
-      await updateField(field.id, data);
+      if (image) formData.append("image", image);
+      if (subImage1) formData.append("sub_image_1", subImage1);
+      if (subImage2) formData.append("sub_image_2", subImage2);
+      if (subImage3) formData.append("sub_image_3", subImage3);
+
+      await updateField(field.id, formData);
       showToast("Cập nhật sân thành công!", "success");
       onSuccess();
       onClose();
     } catch (error) {
       console.log(error);
-      showToast("Ợi khi cập nhật sân", "error");
+      showToast("Lỗi khi cập nhật sân", "error");
     } finally {
       setLoading(false);
     }
@@ -578,6 +767,22 @@ function EditFieldModal({ field, onClose, onSuccess, showToast }) {
           </button>
         </div>
         <div className="modal-body">
+          {/* Main and sub images upload & preview */}
+          <FieldImagesManager
+            mainImage={image}
+            setMainImage={setImage}
+            existingMainImage={existingMainImage}
+            sub1={subImage1}
+            setSub1={setSubImage1}
+            existingSub1={existingSub1}
+            sub2={subImage2}
+            setSub2={setSubImage2}
+            existingSub2={existingSub2}
+            sub3={subImage3}
+            setSub3={setSubImage3}
+            existingSub3={existingSub3}
+          />
+
           <div className="form-grid">
             <div className="form-group full">
               <label className="form-label">Tên sân bóng</label>
@@ -602,14 +807,17 @@ function EditFieldModal({ field, onClose, onSuccess, showToast }) {
               </select>
             </div>
             <div className="form-group">
-              <label className="form-label">Giá thuê (VNĐ/giờ)</label>
+              <label className="form-label">Giá thuê khởi điểm (VNĐ/giờ)</label>
               <input
                 className="form-input"
                 type="number"
-                placeholder="500000"
+                placeholder="VD: 80000 hoặc 100000"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
               />
+              <span style={{ fontSize: "0.78rem", color: "#64748b", display: "block", marginTop: "4px" }}>
+                💡 Mức giá mặc định khi chưa có slot. Giá hiển thị thực tế ngoài trang khách hiện tại: <strong style={{ color: "#16a34a" }}>{Number(field.min_price || price || 0).toLocaleString("vi-VN")}đ/giờ</strong>
+              </span>
             </div>
 
             {/* Địa chỉ + live map preview */}
@@ -720,21 +928,37 @@ export default function Fields() {
 };
 
   // 🔹 gọi khi load trang
+  const [confirmModalConfig, setConfirmModalConfig] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    confirmText: "Xác nhận",
+    confirmType: "danger",
+    onConfirm: () => {},
+  });
+
   useEffect(() => {
     fetchFields();
   }, []);
   
-  const handleDelete = async (id) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa sân này không?")) {
-      try {
-        await deleteField(id);
-        toast.success("Xóa sân thành công!");
-        fetchFields();
-      } catch (error) {
-        console.log(error);
-        toast.error("Ợi khi xóa sân");
+  const handleDelete = (id) => {
+    setConfirmModalConfig({
+      isOpen: true,
+      title: "Xóa sân bóng",
+      message: "Bạn có chắc chắn muốn xóa sân này không? Hành động này không thể hoàn tác.",
+      confirmText: "Xóa sân",
+      confirmType: "danger",
+      onConfirm: async () => {
+        try {
+          await deleteField(id);
+          toast.success("Xóa sân thành công!");
+          fetchFields();
+        } catch (error) {
+          console.log(error);
+          toast.error("Lỗi khi xóa sân");
+        }
       }
-    }
+    });
   };
 
   return (
@@ -750,10 +974,10 @@ export default function Fields() {
             <h2>Đang tải danh sách sân...</h2>
           </div>
         ) : (
-          <>
+          <div className="content-inner">
             <div className="page-header">
               <div>
-                <span className="fields-eyebrow">CƠ SỞ HẠ TẦNG <span>›</span> ĐIỀU HÀNH</span>
+                <span className="fields-eyebrow">VẬN HÀNH CƠ SỞ <span>›</span> QUẢN LÝ SÂN BÓNG</span>
                 <h2>Quản lý sân bóng</h2>
                 <p>Theo dõi, điều chỉnh và cập nhật trạng thái hoạt động theo thời gian thực của toàn bộ cụm sân thể thao.</p>
               </div>
@@ -784,9 +1008,9 @@ export default function Fields() {
                 <p><span className="material-symbols-outlined">build</span>Chưa khả dụng</p>
               </article>
               <article className="fields-overview-card">
-                <div><span>GIÁ THUÊ TRUNG BÌNH</span><span className="material-symbols-outlined overview-icon blue">payments</span></div>
-                <strong>{fields.length ? Math.round(fields.reduce((sum, field) => sum + Number(field.price_per_hour || 0), 0) / fields.length).toLocaleString("vi-VN") : 0}<small>đ / giờ</small></strong>
-                <p><span className="material-symbols-outlined">insights</span>Trên danh sách sân hiện tại</p>
+                <div><span>GIÁ KHỞI ĐIỂM TRUNG BÌNH</span><span className="material-symbols-outlined overview-icon blue">payments</span></div>
+                <strong>{fields.length ? Math.round(fields.reduce((sum, field) => sum + Number(field.min_price || field.price_per_hour || 0), 0) / fields.length).toLocaleString("vi-VN") : 0}<small>đ / giờ</small></strong>
+                <p><span className="material-symbols-outlined">insights</span>Theo giá chỉ từ của danh sách sân</p>
               </article>
             </section>
 
@@ -798,7 +1022,7 @@ export default function Fields() {
             />
 
             <FieldsTable fields={filteredFields} onView={setViewingField} onEdit={setEditingField} onDelete={handleDelete} />
-          </>
+          </div>
         )}
       </main>
 
@@ -818,6 +1042,15 @@ export default function Fields() {
   />
 )}
       {viewingField && <FieldDetailModal initialField={viewingField} onClose={() => setViewingField(null)} />}
+      <ConfirmModal
+        isOpen={confirmModalConfig.isOpen}
+        title={confirmModalConfig.title}
+        message={confirmModalConfig.message}
+        confirmText={confirmModalConfig.confirmText}
+        confirmType={confirmModalConfig.confirmType}
+        onConfirm={confirmModalConfig.onConfirm}
+        onClose={() => setConfirmModalConfig((prev) => ({ ...prev, isOpen: false }))}
+      />
     </>
   );
 }

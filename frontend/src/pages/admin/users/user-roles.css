@@ -60,7 +60,7 @@ body {
   z-index: 50;
 }
 
-.sidebar-logo { padding: 0 1.5rem 2rem; }
+.sidebar-logo { padding: 0 1.25rem 0.75rem; }
 .sidebar-logo h1 {
   font-size: 1.5rem;
   font-weight: 800;
@@ -168,6 +168,7 @@ body {
   height: 4rem;
   padding: 0 2rem;
   margin-left: 16rem;
+  max-width: calc(100% - 16rem);
 }
 
 .search-box {
@@ -243,26 +244,37 @@ body {
 /* ─── Page Header ─── */
 .page-header {
   display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 1.35rem;
+  flex-wrap: wrap;
 }
-@media (min-width: 768px) {
-  .page-header { flex-direction: row; align-items: flex-end; justify-content: space-between; }
-}
+
 .page-header h2 {
-  font-size: 2.5rem; font-weight: 800;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 0.25rem 0;
   letter-spacing: -0.02em;
-  color: var(--color-on-surface);
+  line-height: 1.25;
 }
-.page-header p { color: var(--color-on-surface-variant); font-weight: 500; margin-top: 0.25rem; }
+
+.page-header p {
+  color: #64748b;
+  font-size: 0.82rem;
+  margin: 0;
+  line-height: 1.4;
+}
 
 .users-page-eyebrow {
   display: block;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.35rem;
   color: #047857;
   font-size: 0.63rem;
   font-weight: 800;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 .users-page-eyebrow span { padding: 0 0.25rem; color: #94a3b8; }
 
@@ -670,44 +682,35 @@ body {
   }
 }
 
-/* ─── Users Admin Layout Override ─── */
-.user-roles-page .sidebar {
-  width: 14rem;
-  padding: 1.1rem 0 0.75rem;
-  box-shadow: 2px 0 16px rgba(15, 23, 42, 0.045);
-}
-
-.user-roles-page .sidebar-logo { padding: 0 1.15rem 1.3rem; }
-.user-roles-page .sidebar-logo h1 { font-size: 1.18rem; letter-spacing: 0; }
-.user-roles-page .sidebar-logo p { margin-top: 2px; font-size: 0.65rem; letter-spacing: 0.06em; }
-.user-roles-page .sidebar-nav { gap: 0.15rem; }
-.user-roles-page .nav-link { gap: 0.65rem; margin: 0 0.55rem; padding: 0.62rem 0.72rem; border-radius: 0.55rem; font-size: 0.79rem; }
-.user-roles-page .nav-link.active { border-right: 0; }
-.user-roles-page .sidebar-profile { margin: auto 0.65rem 0; padding: 0.75rem 0.55rem; border: 0; border-radius: 0.65rem; background: #f1f5ff; }
-.user-roles-page .sidebar-profile img { width: 2rem; height: 2rem; }
-
+/* ─── Users Admin Layout matching Tournaments standard ─── */
 .user-roles-page .top-header {
-  height: 3.7rem;
-  margin-left: 14rem;
-  padding: 0 1.5rem;
-  border-bottom: 1px solid #e8ebf1;
-  box-shadow: none;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.06);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 4rem;
+  padding: 0 2rem;
+  margin-left: 16rem;
+  max-width: calc(100% - 16rem);
 }
-
-.user-roles-page .top-header .search-box { max-width: 34rem; }
-.user-roles-page .top-header .search-box input { min-height: 2.25rem; border-radius: 0.5rem; font-size: 0.78rem; }
-.user-roles-page .top-header .header-actions { gap: 0.65rem; }
-.user-roles-page .top-header .header-divider { display: none; }
-.user-roles-page .top-header .btn-new-booking { border-radius: 0.5rem; padding: 0.48rem 0.85rem; font-size: 0.75rem; }
 
 .user-roles-page .main-content.users-admin-main {
-  min-height: calc(100vh - 3.7rem);
-  margin-left: 14rem;
-  padding: 1.3rem 1.5rem 1.5rem;
+  min-height: calc(100vh - 4rem);
+  margin-left: 16rem;
+  padding: 1.35rem 1.75rem 2.5rem;
   background: #f7f8fc;
+  box-sizing: border-box;
 }
 
-.user-roles-page .content-inner { max-width: none; gap: 0.85rem; }
+.user-roles-page .content-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+}
 .user-roles-page .page-header { align-items: flex-end; gap: 1rem; margin-bottom: 0; }
 .user-roles-page .page-header h2 { margin: 0; font-size: 1.45rem; line-height: 1.25; letter-spacing: 0; }
 .user-roles-page .page-header p { margin-top: 0.25rem; color: #64748b; font-size: 0.76rem; }
@@ -727,28 +730,29 @@ body {
 
 .user-roles-page .role-card {
   border: 1px solid #e8eaf2;
-  border-radius: 0.7rem;
+  border-radius: 0.85rem;
   box-shadow: 0 2px 7px rgba(15, 23, 42, 0.035);
+  overflow: hidden;
 }
 
-.user-roles-page .role-card-header { padding: 0.85rem 0.95rem; }
-.user-roles-page .role-icon { width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; }
+.user-roles-page .role-card-header { padding: 1.1rem 1.25rem; }
+.user-roles-page .role-icon { width: 2.75rem; height: 2.75rem; border-radius: 0.65rem; }
 .user-roles-page .role-icon .material-symbols-outlined { font-size: 1.5rem; }
-.user-roles-page .role-info h3 { font-size: 0.95rem; }
-.user-roles-page .role-info p { font-size: 0.7rem; }
+.user-roles-page .role-info h3 { font-size: 1.05rem; font-weight: 750; color: #0f172a; }
+.user-roles-page .role-info p { font-size: 0.8rem; color: #64748b; }
 
-.user-roles-page .role-permissions { padding: 0.85rem 0.95rem; }
-.user-roles-page .permissions-label { font-size: 0.59rem; margin-bottom: 0.65rem; }
-.user-roles-page .permissions-grid { gap: 0.5rem; }
+.user-roles-page .role-permissions { padding: 1.1rem 1.25rem; }
+.user-roles-page .permissions-label { font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #64748b; margin-bottom: 0.75rem; }
+.user-roles-page .permissions-grid { gap: 0.65rem; }
 
-.user-roles-page .permission-checkbox { padding: 0.5rem 0.65rem; border-radius: 0.45rem; }
-.user-roles-page .checkbox-custom { width: 1rem; height: 1rem; }
-.user-roles-page .checkbox-custom .check { font-size: 0.8rem; }
-.user-roles-page .permission-label { font-size: 0.68rem; }
-.user-roles-page .permission-label .material-symbols-outlined { font-size: 0.95rem; }
+.user-roles-page .permission-checkbox { padding: 0.65rem 0.85rem; border-radius: 0.55rem; }
+.user-roles-page .checkbox-custom { width: 1.15rem; height: 1.15rem; border-radius: 0.35rem; }
+.user-roles-page .checkbox-custom .check { font-size: 0.9rem; }
+.user-roles-page .permission-label { font-size: 0.82rem; font-weight: 600; color: #334155; }
+.user-roles-page .permission-label .material-symbols-outlined { font-size: 1.1rem; }
 
-.user-roles-page .info-card { padding: 0.85rem 0.95rem; border-radius: 0.7rem; }
-.user-roles-page .info-icon { width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; }
-.user-roles-page .info-icon .material-symbols-outlined { font-size: 1.25rem; }
-.user-roles-page .info-content h4 { font-size: 0.85rem; margin-bottom: 0.35rem; }
-.user-roles-page .info-content p { font-size: 0.7rem; line-height: 1.6; }
+.user-roles-page .info-card { padding: 1.1rem 1.25rem; border-radius: 0.85rem; }
+.user-roles-page .info-icon { width: 2.75rem; height: 2.75rem; border-radius: 0.65rem; }
+.user-roles-page .info-icon .material-symbols-outlined { font-size: 1.35rem; }
+.user-roles-page .info-content h4 { font-size: 0.95rem; font-weight: 750; margin-bottom: 0.35rem; color: #0f172a; }
+.user-roles-page .info-content p { font-size: 0.82rem; line-height: 1.5; color: #475569; }

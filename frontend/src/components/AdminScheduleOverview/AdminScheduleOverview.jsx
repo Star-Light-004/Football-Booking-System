@@ -162,7 +162,29 @@ export default function AdminScheduleOverview({ bookings, onAddBooking, onEditBo
       <div className="aso-gallery">
         {sortedFields.map((field, idx) => {
           const items = schedules[field.field_name] || [];
-          const totalCount = totalSchedules[field.field_name] || 0;
+          
+          const isMatchField = (b) => {
+            if (!b || !field) return false;
+            const bName = String(b.field || b.fieldName || '').trim().toLowerCase();
+            const fName = String(field.field_name || '').trim().toLowerCase();
+            if (bName && fName && bName === fName) return true;
+            if (b.field_id && field.id && String(b.field_id) === String(field.id)) return true;
+            return false;
+          };
+
+          const todayStr = currentDate();
+          const todayCount = (bookings || []).filter(b => {
+            const bDate = String(b.date || b.bookingDate || '').slice(0, 10);
+            const isNotCancelled = String(b.status || '').toLowerCase() !== 'cancelled';
+            return isNotCancelled && bDate === todayStr && isMatchField(b);
+          }).length;
+
+          const allTimeBookings = (bookings || []).filter(b => {
+            const isNotCancelled = String(b.status || '').toLowerCase() !== 'cancelled';
+            return isNotCancelled && isMatchField(b);
+          }).length;
+          const allTimeCount = Math.max(allTimeBookings, Number(field.booking_count || 0));
+
           const isTop = items.length > 0 && idx === 0;
           return (
             <article className={`aso-field-card ${isTop ? 'top-booked' : ''}`} key={field.id}>
@@ -174,8 +196,18 @@ export default function AdminScheduleOverview({ bookings, onAddBooking, onEditBo
               <div className="aso-field-info">
                 <h3>{field.field_name || 'Sân chưa đặt tên'}</h3>
                 <p><span className="material-symbols-outlined">location_on</span>{field.location || 'Chưa cập nhật địa điểm'}</p>
-                <small><span className="material-symbols-outlined">group</span>{items.length ? `${items.length} lượt khách trong ngày` : 'Chưa có lượt đặt'}</small>
-                <small className="aso-total-count"><span className="material-symbols-outlined">event_note</span>Tổng lượt đặt hôm nay: <strong>{totalCount}</strong></small>
+                <div className="aso-booking-stats">
+                  <div className="aso-stat-row today">
+                    <span className="material-symbols-outlined">calendar_today</span>
+                    <span className="aso-stat-label">Số lượt đặt hôm nay:</span>
+                    <strong className="aso-stat-value">{todayCount}</strong>
+                  </div>
+                  <div className="aso-stat-row total">
+                    <span className="material-symbols-outlined">history</span>
+                    <span className="aso-stat-label">Tổng số lượt đã đặt:</span>
+                    <strong className="aso-stat-value">{allTimeCount}</strong>
+                  </div>
+                </div>
                 <div className="aso-card-actions">
                   <button className="secondary" type="button" onClick={() => onAddBooking?.(field)}>Thêm lịch</button>
                   <button type="button" onClick={() => setSelected(field)}>Xem lịch <span className="material-symbols-outlined">arrow_forward</span></button>

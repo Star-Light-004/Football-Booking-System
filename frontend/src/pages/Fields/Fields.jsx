@@ -85,8 +85,10 @@ const Fields = () => {
 
   // Sort
   const sorted = [...filtered].sort((a, b) => {
-    if (sortBy === "price_asc") return (a.price_per_hour || 0) - (b.price_per_hour || 0);
-    if (sortBy === "price_desc") return (b.price_per_hour || 0) - (a.price_per_hour || 0);
+    const priceA = Number(a.min_price || a.price_per_hour || 0);
+    const priceB = Number(b.min_price || b.price_per_hour || 0);
+    if (sortBy === "price_asc") return priceA - priceB;
+    if (sortBy === "price_desc") return priceB - priceA;
     if (sortBy === "booking") return (b.booking_count || 0) - (a.booking_count || 0);
     // default: rating desc
     return (b.rating_avg || 0) - (a.rating_avg || 0);
@@ -282,6 +284,7 @@ const Fields = () => {
                     name={field.field_name}
                     location={field.location}
                     price={field.price_per_hour}
+                    minPrice={field.min_price}
                     bookingCount={field.booking_count}
                     rating={field.rating_avg}
                   />

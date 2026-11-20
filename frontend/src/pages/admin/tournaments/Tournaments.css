@@ -1,0 +1,1882 @@
+/* ═══════════════════════════════════════════════════════════
+   ─── Admin Tournaments Management Styling ───
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Tournaments Admin Page Layout ── */
+.tournaments-admin-page {
+  min-height: 100vh;
+  background-color: #f7f8fc;
+  font-family: var(--font-main, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+}
+
+/* ─── Top Header ─── */
+.tournaments-admin-page .top-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.06);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 4rem;
+  padding: 0 2rem;
+  margin-left: 16rem;
+  max-width: calc(100% - 16rem);
+}
+
+.tournaments-admin-page .search-box {
+  position: relative;
+  width: 100%;
+  max-width: 28rem;
+}
+
+.tournaments-admin-page .search-box .search-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #a1a1aa;
+  font-size: 1.25rem;
+}
+
+.tournaments-admin-page .search-box input {
+  width: 100%;
+  padding: 0.5rem 1rem 0.5rem 3rem;
+  background: #f0f4f0;
+  border: none;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  outline: none;
+  transition: box-shadow 0.2s;
+}
+
+.tournaments-admin-page .search-box input:focus {
+  box-shadow: 0 0 0 2px #10b981;
+}
+
+.tournaments-admin-page .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.tournaments-admin-page .icon-btn {
+  padding: 0.5rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #71717a;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.tournaments-admin-page .icon-btn:hover {
+  color: #10b981;
+}
+
+.tournaments-admin-page .header-divider {
+  height: 1.5rem;
+  width: 1px;
+  background: #e4e4e7;
+  margin: 0 0.5rem;
+}
+
+.tournaments-admin-page .btn-new-booking {
+  padding: 0.5rem 1.5rem;
+  background: #059669;
+  color: #fff;
+  border: none;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2);
+  transition: box-shadow 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tournaments-admin-page .btn-new-booking:hover {
+  box-shadow: 0 6px 20px rgba(5, 150, 105, 0.3);
+}
+
+.main-content.tournaments-admin-main {
+  margin-left: 16rem;
+  padding: 1.35rem 1.75rem 2.5rem;
+  min-height: calc(100vh - 4rem);
+  box-sizing: border-box;
+  background-color: #f7f8fc;
+}
+
+.tournaments-admin-main .content-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+/* ── Page Header ── */
+.tournaments-admin-main .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 1.35rem;
+  gap: 1rem;
+}
+
+.booking-admin-eyebrow {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: #047857;
+  font-size: 0.63rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.booking-admin-eyebrow span {
+  padding: 0 0.25rem;
+  color: #94a3b8;
+}
+
+.tournaments-admin-main .page-header h2 {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 0.25rem 0;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.tournaments-admin-main .page-header p {
+  color: #64748b;
+  font-size: 0.82rem;
+  margin: 0;
+}
+
+.header-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.tournaments-admin-main .btn-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1.05rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.65rem;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  white-space: nowrap;
+}
+
+.tournaments-admin-main .btn-export:hover:not(:disabled) {
+  background: #f0fdf4;
+  border-color: #059669;
+  color: #059669;
+}
+
+.tournaments-admin-main .btn-export:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.tournaments-admin-main .btn-export .material-symbols-outlined {
+  font-size: 1.1rem;
+}
+
+/* Nút Thêm giải đấu nổi bật */
+.btn-add-tour {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1.15rem;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 0.65rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.28);
+  white-space: nowrap;
+}
+
+.btn-add-tour:hover {
+  background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.38);
+  transform: translateY(-1px);
+}
+
+.btn-add-tour .material-symbols-outlined {
+  font-size: 1.15rem;
+}
+
+/* ── KPI Cards ── */
+.adm-tour-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.35rem;
+}
+
+.adm-tour-kpi-card {
+  background: #ffffff;
+  border-radius: 0.85rem;
+  padding: 1.05rem 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  border: 1px solid #ebedf2;
+  box-shadow: 0 2px 7px rgba(15, 23, 42, 0.035);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.adm-tour-kpi-card:hover {
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+
+.kpi-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.kpi-icon-wrap .material-symbols-outlined {
+  font-size: 1.5rem;
+}
+
+.kpi-val {
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.1;
+}
+
+.kpi-label {
+  font-size: 0.76rem;
+  color: #64748b;
+  font-weight: 600;
+  margin-top: 0.2rem;
+}
+
+/* ── Controls (Search & Tabs) ── */
+.adm-tour-controls {
+  background: #ffffff;
+  border-radius: 0.85rem;
+  padding: 0.75rem 1.15rem;
+  margin-bottom: 1.35rem;
+  border: 1px solid #ebedf2;
+  box-shadow: 0 2px 7px rgba(15, 23, 42, 0.035);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.15rem;
+  flex-wrap: wrap;
+}
+
+.adm-tour-search {
+  position: relative;
+  flex: 1;
+  min-width: 260px;
+  max-width: 380px;
+}
+
+.adm-tour-search .material-symbols-outlined {
+  position: absolute;
+  left: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 1.1rem;
+}
+
+.adm-tour-search input {
+  width: 100%;
+  padding: 0.55rem 2.2rem 0.55rem 2.35rem;
+  border-radius: 0.6rem;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 0.82rem;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.adm-tour-search input:focus {
+  outline: none;
+  border-color: #059669;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.12);
+}
+
+.adm-tour-search .clear-btn {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+/* Tabs */
+.adm-tour-tabs {
+  display: flex;
+  gap: 0.3rem;
+  background: #f1f5f9;
+  padding: 0.28rem;
+  border-radius: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.5rem;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tab-btn:hover {
+  color: #0f172a;
+}
+
+.tab-btn.active {
+  background: #ffffff;
+  color: #059669;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.tab-badge {
+  background: #e2e8f0;
+  color: #475569;
+  padding: 0.08rem 0.42rem;
+  border-radius: 9999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.tab-btn.active .tab-badge {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.tab-badge.urgent {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+  font-weight: 900;
+}
+
+/* ── Table Card - Vừa Vặn 1 Màn Hình, Không Kéo Ngang ── */
+.adm-tour-card {
+  background: #ffffff;
+  border-radius: 0.85rem;
+  border: 1px solid #ebedf2;
+  box-shadow: 0 2px 7px rgba(15, 23, 42, 0.035);
+  overflow: hidden;
+}
+
+.adm-tour-table-wrap {
+  overflow-x: hidden;
+  width: 100%;
+}
+
+.adm-tour-table-wrap::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.adm-tour-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  text-align: left;
+}
+
+.adm-tour-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.85rem 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.adm-tour-table th.center { text-align: center; }
+.adm-tour-table th.right { text-align: right; }
+
+.adm-tour-table td {
+  padding: 0.9rem 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+  word-break: break-word;
+}
+
+.adm-tour-table td.center { text-align: center; }
+.adm-tour-table td.right { text-align: right; }
+
+.adm-tour-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+/* Cell Elements */
+.tour-name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tour-code {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #059669;
+  background: #ecfdf5;
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 4px;
+  width: fit-content;
+  font-family: monospace;
+}
+
+.tour-title {
+  color: #0f172a;
+  font-size: 0.88rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.25;
+}
+
+.tour-org {
+  color: #64748b;
+  font-size: 0.74rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tour-contact-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.8rem;
+}
+
+.tour-contact-cell .material-symbols-outlined {
+  font-size: 0.9rem;
+  color: #94a3b8;
+  vertical-align: middle;
+  margin-right: 3px;
+}
+
+.contact-name strong { color: #0f172a; }
+
+.contact-phone a {
+  color: #059669;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.contact-phone a:hover { text-decoration: underline; }
+
+.contact-email span {
+  color: #64748b;
+  font-size: 0.74rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  max-width: 150px;
+}
+
+.tour-schedule-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.78rem;
+}
+
+.tour-schedule-cell .material-symbols-outlined {
+  font-size: 0.9rem;
+  color: #94a3b8;
+  vertical-align: middle;
+  margin-right: 3px;
+}
+
+.schedule-dates {
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
+}
+
+.schedule-slots {
+  color: #64748b;
+  font-size: 0.72rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tour-fields-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.teams-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #2563eb;
+  background: #eff6ff;
+  padding: 1px 6px;
+  border-radius: 4px;
+  width: fit-content;
+}
+
+.teams-badge .material-symbols-outlined { font-size: 0.9rem; }
+
+.fields-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.field-tag {
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.field-tag.more {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.tour-budget-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.tour-budget-cell strong,
+.tour-budget-amount {
+  color: #047857;
+  font-size: 0.92rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.text-muted {
+  color: #94a3b8;
+  font-style: italic;
+  font-size: 0.76rem;
+}
+
+.tour-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+/* ── Thao tác (3 Nút Icon Gọn Gàng, Không Tràn) ── */
+.tour-actions-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+
+.btn-tour-icon {
+  width: 29px;
+  height: 29px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  padding: 0;
+  flex-shrink: 0;
+  background: #fff;
+}
+
+.btn-tour-icon .material-symbols-outlined {
+  font-size: 1.05rem;
+}
+
+/* 1. View icon button */
+.btn-tour-icon.btn-view {
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #bfdbfe;
+}
+.btn-tour-icon.btn-view:hover {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+  transform: scale(1.08);
+}
+
+/* 2. Edit icon button */
+.btn-tour-icon.btn-edit {
+  background: #ecfdf5;
+  color: #059669;
+  border-color: #a7f3d0;
+}
+.btn-tour-icon.btn-edit:hover {
+  background: #059669;
+  color: #ffffff;
+  border-color: #059669;
+  transform: scale(1.08);
+}
+
+/* 3. Delete icon button */
+.btn-tour-icon.btn-delete {
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+.btn-tour-icon.btn-delete:hover {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: #dc2626;
+  transform: scale(1.08);
+}
+
+/* Loading & Empty State */
+.adm-tour-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1.5rem;
+  color: #64748b;
+  gap: 0.75rem;
+}
+
+.adm-tour-loading .spin {
+  font-size: 2.2rem;
+  color: #059669;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.adm-tour-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4.5rem 1.5rem;
+  text-align: center;
+  color: #64748b;
+}
+
+.adm-tour-empty .material-symbols-outlined {
+  font-size: 3.5rem;
+  color: #cbd5e1;
+  margin-bottom: 0.75rem;
+}
+
+.adm-tour-empty h4 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 0.35rem 0;
+}
+
+.adm-tour-empty p {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ─── MODALS STYLING (CREATE - VIEW - EDIT - DELETE) ───
+   ═══════════════════════════════════════════════════════════ */
+
+.modal-tour-create,
+.modal-tour-edit {
+  width: min(880px, 95vw) !important;
+  max-width: 880px !important;
+}
+
+.modal-tour-view {
+  width: min(920px, 95vw) !important;
+  max-width: 920px !important;
+}
+
+.modal-tour-delete {
+  width: min(480px, 95vw) !important;
+  max-width: 480px !important;
+}
+
+.material-symbols-outlined.modal-title-icon {
+  font-family: 'Material Symbols Outlined' !important;
+  font-size: 1.45rem !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 10px !important;
+  flex-shrink: 0 !important;
+}
+
+.tour-modal-body {
+  padding: 1.35rem !important;
+  overflow-y: auto !important;
+  max-height: calc(88vh - 130px) !important;
+}
+
+/* View Modal Layout */
+.tour-view-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.15rem;
+}
+
+.tour-view-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.85rem;
+  padding: 1.15rem 1.25rem;
+}
+
+.tour-view-card.full-width {
+  grid-column: 1 / -1;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #eef2f6;
+}
+
+.card-head .material-symbols-outlined {
+  color: #059669;
+  font-size: 1.25rem;
+}
+
+.card-head h4 {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.view-field {
+  margin-bottom: 0.65rem;
+}
+
+.view-field:last-child {
+  margin-bottom: 0;
+}
+
+.view-field label {
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.2rem;
+}
+
+.view-field p,
+.view-field span {
+  font-size: 0.85rem;
+  color: #1e293b;
+  margin: 0;
+}
+
+.view-field .highlight-text {
+  font-weight: 800;
+  color: #0f172a;
+  font-size: 0.95rem;
+}
+
+.view-field .fw-700 { font-weight: 700; }
+.view-field .text-emerald { color: #047857; }
+
+.field-with-action {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.phone-link {
+  color: #059669;
+  font-weight: 700;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.phone-link:hover { text-decoration: underline; }
+
+.btn-tiny-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-tiny-copy:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+.btn-tiny-copy .material-symbols-outlined {
+  font-size: 0.85rem;
+}
+
+.tags-flex-left {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.services-chips-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.serv-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.serv-chip .material-symbols-outlined {
+  font-size: 0.9rem;
+  color: #059669;
+}
+
+.progress-summary-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.65rem;
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.summary-col label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  margin-bottom: 0.3rem;
+}
+
+.summary-col .budget-val {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #047857;
+  margin: 0;
+}
+
+.customer-note-box {
+  margin-bottom: 0.75rem;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.customer-note-box small {
+  color: #b45309;
+  font-weight: 700;
+  display: block;
+}
+
+.customer-note-box p {
+  margin: 3px 0 0;
+  font-size: 0.82rem;
+  color: #78350f;
+  line-height: 1.45;
+}
+
+.admin-notes-box {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.admin-notes-box small {
+  color: #047857;
+  font-weight: 700;
+  display: block;
+}
+
+.admin-notes-box p {
+  margin: 3px 0 0;
+  font-size: 0.82rem;
+  color: #064e3b;
+  line-height: 1.45;
+}
+
+/* Edit & Create Modal Form */
+.edit-form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.form-row-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
+}
+
+.form-group-adm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.form-group-adm label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.form-group-adm .req {
+  color: #dc2626;
+  font-weight: 800;
+}
+
+.adm-select,
+.adm-input,
+.adm-textarea {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.6rem;
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 0.82rem;
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.adm-select:focus,
+.adm-input:focus,
+.adm-textarea:focus {
+  outline: none;
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.12);
+}
+
+.checkbox-chips-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.checkbox-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.checkbox-chip:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.checkbox-chip.active {
+  background: #ecfdf5;
+  border-color: #059669;
+  color: #059669;
+  font-weight: 700;
+}
+
+.checkbox-chip input[type="checkbox"] {
+  accent-color: #059669;
+  cursor: pointer;
+}
+
+.highlight-adm-notes {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 0.65rem;
+  padding: 0.75rem;
+}
+
+.highlight-adm-notes label {
+  color: #047857;
+}
+
+.highlight-adm-notes label .material-symbols-outlined {
+  font-size: 0.95rem;
+}
+
+.budget-hint {
+  font-size: 0.72rem;
+  color: #059669;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.code-badge {
+  color: #059669;
+  font-weight: 800;
+  font-family: monospace;
+}
+
+/* Delete Modal Layout */
+.delete-info-summary {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.65rem;
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.delete-summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.82rem;
+  margin-bottom: 0.35rem;
+}
+
+.delete-summary-row:last-child {
+  margin-bottom: 0;
+}
+
+.delete-summary-row span:first-child {
+  color: #64748b;
+}
+
+.delete-summary-row strong,
+.delete-summary-row span:last-child {
+  color: #0f172a;
+  text-align: right;
+}
+
+.delete-warning-text {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 10px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  color: #991b1b;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.delete-warning-text .material-symbols-outlined {
+  font-size: 1rem;
+  color: #dc2626;
+  flex-shrink: 0;
+}
+
+/* Modal Actions */
+.btn-modal-action.btn-delete-alt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #fff;
+  border: 1.5px solid #fecaca;
+  color: #dc2626;
+  padding: 0.55rem 1rem;
+  border-radius: 0.6rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-modal-action.btn-delete-alt:hover {
+  background: #fef2f2;
+  border-color: #dc2626;
+}
+
+.btn-danger-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #dc2626;
+  border: 1.5px solid #dc2626;
+  color: #ffffff;
+  padding: 0.6rem 1.25rem;
+  border-radius: 0.65rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+}
+
+.btn-danger-confirm:hover:not(:disabled) {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
+.btn-danger-confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .adm-tour-kpis {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 1024px) {
+  .main-content.tournaments-admin-main {
+    margin-left: 4.5rem;
+    padding: 1.15rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .adm-tour-kpis {
+    grid-template-columns: 1fr;
+  }
+  .adm-tour-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .adm-tour-search {
+    max-width: 100%;
+  }
+  .tour-view-grid {
+    grid-template-columns: 1fr;
+  }
+  .form-row-2,
+  .form-row-3 {
+    grid-template-columns: 1fr;
+  }
+  .progress-summary-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ADMIN TOURNAMENT PAYMENT DISPLAY STYLES
+   ═══════════════════════════════════════════════════════════════ */
+
+.tour-payment-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.tour-pay-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.tour-pay-badge .material-symbols-outlined {
+  font-size: 14px;
+}
+
+.tour-pay-full {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.tour-pay-deposit-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tour-pay-deposit {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.tour-pay-rem {
+  font-size: 0.7rem;
+  color: #d97706;
+  font-weight: 600;
+  padding-left: 2px;
+}
+
+.tour-pay-unpaid {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+/* Modal View: Payment Information Card */
+.admin-tour-pay-card {
+  margin-top: 1rem;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+}
+
+.admin-tour-pay-card.status-paid {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.admin-tour-pay-card.status-deposit {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.admin-tour-pay-card .pay-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding-bottom: 8px;
+}
+
+.admin-tour-pay-card .pay-card-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.admin-tour-pay-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.admin-tour-pay-item .lbl {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.admin-tour-pay-item .val {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.admin-tour-pay-item .val.paid-amt {
+  color: #16a34a;
+}
+
+.admin-tour-pay-item .val.rem-amt {
+  color: #d97706;
+}
+
+
+/* ─── Admin Modal Supplies & Inventory Styles ─── */
+.adm-supplies-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.adm-supply-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.adm-supply-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.adm-supply-card.has-qty {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+
+.adm-supply-card.out-of-stock {
+  opacity: 0.65;
+  background: #f8fafc;
+}
+
+.adm-supply-img-wrap {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+  background: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e2e8f0;
+}
+
+.adm-supply-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.adm-supply-placeholder {
+  font-size: 26px;
+  color: #94a3b8;
+}
+
+.adm-supply-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: #059669;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.adm-supply-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.adm-supply-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
+.adm-supply-price {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #059669;
+}
+
+.adm-supply-size-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.adm-supply-size-select {
+  padding: 1px 6px;
+  border: 1px solid #94a3b8;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.adm-supply-action-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.adm-supply-stepper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.adm-stepper-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: #ffffff;
+  color: #1e293b;
+  font-weight: 800;
+  font-size: 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.15s ease;
+}
+
+.adm-stepper-btn:hover:not(:disabled) {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.adm-stepper-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.adm-stepper-qty {
+  min-width: 20px;
+  text-align: center;
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.adm-supply-stock {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #10b981;
+  background: #ecfdf5;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #a7f3d0;
+}
+
+.adm-supply-stock.out {
+  color: #ef4444;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+
+/* ─── Modal Chọn Khung Giờ Thi Đấu ─── */
+.adm-slot-picker-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 999999 !important;
+  background: rgba(15, 23, 42, 0.75) !important;
+  backdrop-filter: blur(6px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 1.25rem !important;
+}
+
+.adm-slot-picker-modal {
+  background: #ffffff !important;
+  border-radius: 16px !important;
+  width: 100% !important;
+  max-width: 640px !important;
+  max-height: 90vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 0, 0, 0.08) !important;
+  border: 1.5px solid #cbd5e1 !important;
+  overflow: hidden !important;
+  position: relative !important;
+  z-index: 1000000 !important;
+  animation: admModalPopIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@keyframes admModalPopIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.adm-slot-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.adm-slot-picker-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.adm-slot-picker-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #ecfdf5;
+  color: #059669;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+.adm-slot-picker-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.adm-slot-picker-desc {
+  margin: 2px 0 0 0;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.adm-slot-picker-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.adm-slot-picker-close:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.adm-slot-picker-body {
+  padding: 1.25rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.adm-slot-mode-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 10px;
+  margin-bottom: 1rem;
+}
+
+.adm-slot-mode-btn {
+  padding: 8px 6px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.adm-slot-mode-btn.active {
+  background: #ffffff;
+  color: #059669;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.adm-slot-days-scroller {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 1rem;
+}
+
+.adm-slot-day-pill {
+  min-width: 80px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.adm-slot-day-pill.active {
+  border-color: #059669;
+  background: #ecfdf5;
+}
+
+.adm-slot-day-pill .day-w {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.adm-slot-day-pill .day-d {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.adm-slot-day-pill .day-count {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #059669;
+  margin-top: 2px;
+}
+
+.adm-slot-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #334155;
+  margin: 10px 0 6px 0;
+}
+
+.adm-slot-chips-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.adm-slot-chip {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1.5px solid #e2e8f0;
+  background: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #334155;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.adm-slot-chip:hover {
+  border-color: #10b981;
+  color: #059669;
+}
+
+.adm-slot-chip.selected {
+  background: #ecfdf5;
+  border-color: #059669;
+  color: #047857;
+  font-weight: 800;
+  box-shadow: 0 1px 3px rgba(5, 150, 105, 0.15);
+}
+
+.adm-slot-quick-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.adm-slot-quick-btn {
+  padding: 4px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.adm-slot-quick-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.adm-slot-preview-box {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-top: 10px;
+  font-size: 0.8rem;
+  color: #065f46;
+  font-weight: 700;
+}
+
+.adm-slot-picker-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0.85rem 1.25rem;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+
+/* ─── Clickable Slot Input Styling ─── */
+.adm-clickable-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  width: 100%;
+}
+
+.adm-clickable-input-wrap:hover .adm-slot-input {
+  border-color: #10b981;
+  background-color: #f0fdf4;
+}
+
+.adm-clickable-input-wrap:hover .adm-slot-icon {
+  color: #059669;
+}
+
+.adm-slot-input {
+  cursor: pointer !important;
+  background: #f8fafc;
+  padding-right: 2.75rem !important;
+  font-weight: 600;
+  color: #065f46;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.adm-slot-icon {
+  position: absolute;
+  right: 12px;
+  color: #059669;
+  font-size: 20px;
+  pointer-events: none;
+  transition: all 0.2s ease;
+}

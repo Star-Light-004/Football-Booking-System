@@ -8,6 +8,7 @@ import {
   adminDeleteVoucher,
   adminGetCustomerVouchersHistory,
 } from "../../../api/vouchersApi";
+import { broadcastSyncEvent, onSyncEvent } from "../../../utils/realtimeSync";
 import { useToast, ToastContainer } from "../../../components/Toast/Toast";
 import "./vouchers.css";
 
@@ -19,6 +20,7 @@ const INITIAL_FORM = {
   discount_value: 10,
   max_discount: 50000,
   min_booking_price: 100000,
+  applicable_to: "all",
   expiry_days: 30,
   usage_limit: 100,
   is_system_reward: false,
@@ -92,9 +94,9 @@ export default function AdminVouchers() {
 
   const { toasts, removeToast, toast } = useToast();
 
-  const fetchVouchers = async () => {
+  const fetchVouchers = async (isSilent = false) => {
     try {
-      setLoading(true);
+      if (!isSilent) setLoading(true);
       const res = await adminGetVouchers();
       if (res.data) {
         setVouchers(res.data.vouchers || []);
@@ -102,14 +104,31 @@ export default function AdminVouchers() {
       }
     } catch (err) {
       console.error("Lỗi tải danh sách voucher:", err);
-      toast.error("Không thể tải danh sách voucher từ hệ thống!");
+      if (!isSilent) toast.error("Không thể tải danh sách voucher từ hệ thống!");
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchVouchers();
+    fetchVouchers(false);
+
+    // Smart polling định kỳ mỗi 3.5s để cập nhật voucher tự động
+    const timer = setInterval(() => {
+      fetchVouchers(true);
+    }, 3500);
+
+    // Lắng nghe sự kiện realtime khi App hoặc tab khác thay đổi voucher
+    const unsub = onSyncEvent((event) => {
+      if (event?.type?.startsWith("voucher_")) {
+        fetchVouchers(true);
+      }
+    });
+
+    return () => {
+      clearInterval(timer);
+      unsub();
+    };
   }, []);
 
   const fetchIssuedVouchers = async () => {
@@ -178,6 +197,104 @@ export default function AdminVouchers() {
     expired: issuedVouchers.filter((iv) => !iv.is_used && iv.is_expired).length,
   };
 
+  const handleExportCSV = () => {
+    if (currentTab === "vouchers") {
+      if (!filteredVouchers || filteredVouchers.length === 0) {
+        toast.warning("Không có dữ liệu voucher để xuất");
+        return;
+      }
+
+      const headers = [
+        "Mã voucher",
+        "Tiêu đề",
+        "Mô tả",
+        "Loại giảm giá",
+        "Giá trị giảm",
+        "Đơn tối thiểu (VNĐ)",
+        "Giảm tối đa (VNĐ)",
+        "Ngày bắt đầu",
+        "Ngày hết hạn",
+        "Trạng thái",
+        "Lượt dùng tối đa",
+        "Đã dùng",
+        "Quà tặng tự động",
+      ];
+
+      const rows = filteredVouchers.map((v) => [
+        `"${v.code || ""}"`,
+        `"${(v.title || "").replace(/"/g, '""')}"`,
+        `"${(v.description || "").replace(/"/g, '""')}"`,
+        v.discount_type === "percent" ? "Phần trăm (%)" : "Tiền mặt (VNĐ)",
+        v.discount_type === "percent" ? `${v.discount_value}%` : v.discount_value,
+        v.min_booking_value || 0,
+        v.max_discount || 0,
+        v.start_date ? new Date(v.start_date).toLocaleDateString("vi-VN") : "",
+        v.end_date ? new Date(v.end_date).toLocaleDateString("vi-VN") : "",
+        v.is_active ? "Đang chạy" : "Tạm ngưng",
+        v.usage_limit || "Không giới hạn",
+        v.used_count || 0,
+        v.is_system_reward ? "Có" : "Không",
+      ]);
+
+      const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((row) => row.join(","))].join("\r\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Danh_Sach_Voucher_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("Xuất danh sách voucher thành công!");
+    } else {
+      if (!filteredIssuedVouchers || filteredIssuedVouchers.length === 0) {
+        toast.warning("Không có lịch sử phát voucher để xuất");
+        return;
+      }
+
+      const headers = [
+        "Mã phát voucher",
+        "Mã voucher chính sách",
+        "Tiêu đề voucher",
+        "Khách hàng nhận",
+        "Số điện thoại",
+        "Email",
+        "Đơn nguồn tích điểm",
+        "Trạng thái sử dụng",
+        "Mã đơn đã dùng",
+        "Ngày phát hành",
+        "Ngày hết hạn",
+      ];
+
+      const rows = filteredIssuedVouchers.map((iv) => [
+        `"${iv.code || ""}"`,
+        `"${iv.voucher_code || ""}"`,
+        `"${(iv.voucher_title || "").replace(/"/g, '""')}"`,
+        `"${(iv.customer_name || "").replace(/"/g, '""')}"`,
+        `"${iv.customer_phone || ""}"`,
+        `"${iv.customer_email || ""}"`,
+        `"${iv.source_booking_code || ""}"`,
+        iv.is_used ? "Đã dùng" : iv.is_expired ? "Hết hạn" : "Còn hiệu lực",
+        `"${iv.used_booking_code || ""}"`,
+        iv.created_at ? new Date(iv.created_at).toLocaleDateString("vi-VN") : "",
+        iv.expires_at ? new Date(iv.expires_at).toLocaleDateString("vi-VN") : "",
+      ]);
+
+      const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((row) => row.join(","))].join("\r\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Lich_Su_Phat_Voucher_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("Xuất lịch sử phát voucher thành công!");
+    }
+  };
+
   // Open Create Modal
   const handleOpenCreate = () => {
     setEditingVoucher(null);
@@ -196,6 +313,7 @@ export default function AdminVouchers() {
       discount_value: v.discount_value || 0,
       max_discount: v.max_discount || "",
       min_booking_price: v.min_booking_price || 0,
+      applicable_to: v.applicable_to || "all",
       expiry_days: v.expiry_days || 30,
       usage_limit: v.usage_limit !== undefined && v.usage_limit !== null ? v.usage_limit : "",
       is_system_reward: Boolean(v.is_system_reward),
@@ -242,6 +360,7 @@ export default function AdminVouchers() {
         await adminCreateVoucher(payload);
         toast.success("Tạo voucher mới thành công!");
       }
+      broadcastSyncEvent("voucher_updated");
       setShowModal(false);
       fetchVouchers();
     } catch (err) {
@@ -256,6 +375,7 @@ export default function AdminVouchers() {
   const handleToggleStatus = async (v) => {
     try {
       await adminUpdateVoucher(v.id, { is_active: !v.is_active });
+      broadcastSyncEvent("voucher_updated");
       toast.success(
         !v.is_active
           ? `Đã kích hoạt voucher ${v.code}`
@@ -273,6 +393,7 @@ export default function AdminVouchers() {
     if (!deletingVoucher) return;
     try {
       const res = await adminDeleteVoucher(deletingVoucher.id);
+      broadcastSyncEvent("voucher_updated");
       toast.success(res.data?.message || "Đã xóa voucher thành công!");
       setDeletingVoucher(null);
       fetchVouchers();
@@ -283,19 +404,68 @@ export default function AdminVouchers() {
   };
 
   return (
-    <div className="vouchers-page-layout">
+    <div className="vouchers-admin-page">
       <AdminSidebar />
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
-      <div className="vouchers-page-container">
-        <TopHeader
-          onAdd={handleOpenCreate}
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-        />
+      <TopHeader
+        onAdd={handleOpenCreate}
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+      />
 
-        <main className="vouchers-main-content">
-          {/* Main Sub Tabs Switcher */}
+      <main className="main-content vouchers-admin-main">
+        <div className="content-inner">
+          {/* Header */}
+          <div className="page-header">
+            <div>
+              <span className="booking-admin-eyebrow">
+                {currentTab === "vouchers" ? (
+                  <>VẬN HÀNH CƠ SỞ <span>›</span> ƯU ĐÃI &amp; KHUYẾN MÃI</>
+                ) : (
+                  <>VẬN HÀNH CƠ SỞ <span>›</span> LỊCH SỬ PHÁT VOUCHER</>
+                )}
+              </span>
+              <h2>
+                {currentTab === "vouchers"
+                  ? "Hệ thống Voucher & Khuyến mãi"
+                  : "Lịch sử Phát Voucher cho Khách hàng"}
+              </h2>
+              <p>
+                {currentTab === "vouchers"
+                  ? "Quản lý các mã giảm giá, voucher tri ân tự động tặng khi khách hoàn thành đặt sân. Cập nhật biến động theo thời gian thực."
+                  : "Theo dõi tất cả các mã voucher cá nhân (FB-XXXXXX) được hệ thống tự động sinh và tặng khách hàng sau khi hoàn tất đơn đặt sân hoặc qua các chương trình tri ân."}
+              </p>
+            </div>
+            <div className="header-actions-group" style={{ display: "flex", gap: "0.65rem", alignItems: "center" }}>
+              <button
+                type="button"
+                className="btn-export"
+                onClick={handleExportCSV}
+                title="Xuất file CSV / Excel"
+              >
+                <span className="material-symbols-outlined">download</span>
+                Xuất CSV
+              </button>
+              {currentTab === "vouchers" ? (
+                <button className="btn-add-tour" onClick={handleOpenCreate}>
+                  <span className="material-symbols-outlined">add</span>
+                  Thêm voucher mới
+                </button>
+              ) : (
+                <button
+                  className="btn-export"
+                  onClick={fetchIssuedVouchers}
+                  title="Làm mới dữ liệu"
+                >
+                  <span className="material-symbols-outlined">refresh</span>
+                  Làm mới dữ liệu
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Main Sub Tabs Switcher - Đặt xuống dưới dòng chữ giới thiệu trang */}
           <div className="v-main-nav-tabs">
             <button
               className={`v-main-nav-btn ${currentTab === "vouchers" ? "active" : ""}`}
@@ -315,22 +485,6 @@ export default function AdminVouchers() {
 
           {currentTab === "vouchers" ? (
             <>
-          {/* Header */}
-          <div className="page-header-alt">
-            <div className="header-text">
-              <span className="admin-page-eyebrow">
-                PITCH &amp; PULSE OPERATIONS <span>›</span> ƯU ĐÃI &amp; KHUYẾN MÃI
-              </span>
-              <h2>Hệ thống Voucher &amp; Khuyến mãi</h2>
-              <p>
-                Quản lý các mã giảm giá, voucher tri ân tự động tặng khi khách hoàn thành đặt sân. Cập nhật biến động theo thời gian thực.
-              </p>
-            </div>
-            <button className="btn-primary-gradient" onClick={handleOpenCreate}>
-              <span className="material-symbols-outlined">add</span>
-              Thêm voucher mới
-            </button>
-          </div>
 
         {/* Stats Cards Grid */}
         <div className="vouchers-stats-grid">
@@ -480,6 +634,23 @@ export default function AdminVouchers() {
                             {Number(v.min_booking_price || 0).toLocaleString("vi-VN")}đ
                           </strong>
                         </div>
+                        <div>
+                          {v.applicable_to === "field_only" ? (
+                            <span className="v-scope-tag field-only" title="Chỉ giảm tiền thuê sân bóng, không giảm dịch vụ">
+                              <span className="material-symbols-outlined" style={{ fontSize: "0.82rem" }}>
+                                sports_soccer
+                              </span>
+                              Chỉ giờ sân
+                            </span>
+                          ) : (
+                            <span className="v-scope-tag all" title="Giảm cả tiền thuê sân và dịch vụ đi kèm">
+                              <span className="material-symbols-outlined" style={{ fontSize: "0.82rem" }}>
+                                all_inclusive
+                              </span>
+                              Sân + Dịch vụ
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       <td>
@@ -577,26 +748,6 @@ export default function AdminVouchers() {
           ) : (
             <>
               {/* ═══ TAB LỊCH SỬ PHÁT VOUCHER CHO KHÁCH ═══ */}
-              <div className="page-header-alt">
-                <div className="header-text">
-                  <span className="admin-page-eyebrow">
-                    PITCH &amp; PULSE OPERATIONS <span>›</span> LỊCH SỬ PHÁT VOUCHER
-                  </span>
-                  <h2>Lịch sử Phát Voucher cho Khách hàng</h2>
-                  <p>
-                    Theo dõi tất cả các mã voucher cá nhân (FB-XXXXXX) được hệ thống tự động sinh và tặng khách hàng sau khi hoàn tất đơn đặt sân hoặc qua các chương trình tri ân.
-                  </p>
-                </div>
-                <button
-                  className="btn-primary-gradient"
-                  style={{ background: "#ffffff", color: "#0f172a", border: "1px solid #cbd5e1", boxShadow: "none" }}
-                  onClick={fetchIssuedVouchers}
-                >
-                  <span className="material-symbols-outlined">refresh</span>
-                  Làm mới dữ liệu
-                </button>
-              </div>
-
               {/* Stats Cards Grid for Issued Vouchers */}
               <div className="vouchers-stats-grid">
                 <div className="v-stat-card">
@@ -830,6 +981,7 @@ export default function AdminVouchers() {
               </div>
             </>
           )}
+        </div>
 
         {/* ═══ CREATE / EDIT MODAL ═══ */}
         {showModal && (
@@ -969,6 +1121,51 @@ export default function AdminVouchers() {
                     />
                   </div>
 
+                  {/* 🔹 Mục tick chọn phạm vi áp dụng */}
+                  <div className="v-form-group col-span-2">
+                    <label style={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 6, color: "#1e293b" }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: "1.1rem", color: "#16a34a" }}>
+                        tune
+                      </span>
+                      Phạm vi áp dụng giảm giá *
+                    </label>
+                    <div className="v-scope-radio-group">
+                      <label className={`v-scope-card ${formData.applicable_to === "field_only" ? "active" : ""}`}>
+                        <input
+                          type="radio"
+                          name="applicable_to"
+                          value="field_only"
+                          checked={formData.applicable_to === "field_only"}
+                          onChange={() => setFormData({ ...formData, applicable_to: "field_only" })}
+                        />
+                        <div className="v-scope-content">
+                          <div className="v-scope-title">
+                            <span className="material-symbols-outlined">sports_soccer</span>
+                            <strong>Chỉ giảm giá giờ sân</strong>
+                          </div>
+                          <small>Chỉ áp dụng giảm trừ vào tiền thuê sân bóng, không trừ vào tiền các dịch vụ phụ trợ đi kèm.</small>
+                        </div>
+                      </label>
+
+                      <label className={`v-scope-card ${formData.applicable_to === "all" ? "active" : ""}`}>
+                        <input
+                          type="radio"
+                          name="applicable_to"
+                          value="all"
+                          checked={formData.applicable_to === "all"}
+                          onChange={() => setFormData({ ...formData, applicable_to: "all" })}
+                        />
+                        <div className="v-scope-content">
+                          <div className="v-scope-title">
+                            <span className="material-symbols-outlined">all_inclusive</span>
+                            <strong>Giảm cả giờ sân + dịch vụ đi kèm</strong>
+                          </div>
+                          <small>Áp dụng giảm trừ cho toàn bộ tổng chi phí đơn đặt (bao gồm tiền thuê sân và dịch vụ).</small>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
                   <div className="v-form-group col-span-2" style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 6 }}>
                     <label className="v-checkbox-label">
                       <input
@@ -1068,6 +1265,5 @@ export default function AdminVouchers() {
         )}
       </main>
     </div>
-  </div>
-);
+  );
 }

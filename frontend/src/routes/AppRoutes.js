@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "../components/ProtectedRoute/ProtectedRoute";
 
 import Home from "../pages/Home/Home";
@@ -14,6 +14,7 @@ import BookingDetail from "../pages/BookingDetail/BookingDetail";
 import Login from "../pages/Login/Login";
 import Register from "../pages/Register/Register";
 import Profile from "../pages/Profile/Profile";
+import TournamentRequest from "../pages/TournamentRequest/TournamentRequest";
 
 /* ADMIN */
 import Dashboard from "../pages/admin/dashboard/dashboard";
@@ -26,7 +27,10 @@ import Revenue from "../pages/admin/revenue/revenue";
 import Timeslots from "../pages/admin/timeslots/timeslots";
 import AdminServices from "../pages/admin/services/services";
 import AdminVouchers from "../pages/admin/vouchers/vouchers";
-import AdminSettings from "../pages/admin/settings/settings";
+
+import Tournaments from "../pages/admin/tournaments/Tournaments";
+import Cleaning from "../pages/admin/cleaning/Cleaning";
+import Maintenance from "../pages/admin/maintenance/Maintenance";
 
 // ── Role Groups ────────────────────────────────────────────────────────────
 // Admin + tất cả nhân viên có quyền truy cập khu vực quản trị
@@ -55,6 +59,7 @@ const AppRoutes = () => (
     <Route path="/booking" element={<Booking />} />
     <Route path="/booking/success" element={<BookingSuccess />} />
     <Route path="/lookup" element={<Lookup />} />
+    <Route path="/tournaments" element={<TournamentRequest />} />
     <Route path="/contact" element={<Contact />} />
     <Route path="/login" element={<Login />} />
     <Route path="/register" element={<Register />} />
@@ -107,6 +112,14 @@ const AppRoutes = () => (
       element={
         <ProtectedRoute requireAuth roles={ADMIN_ROLES} permission="bookings">
           <Bookings />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/admin/tournaments"
+      element={
+        <ProtectedRoute requireAuth roles={ADMIN_ROLES} permission="bookings">
+          <Tournaments />
         </ProtectedRoute>
       }
     />
@@ -169,14 +182,28 @@ const AppRoutes = () => (
         </ProtectedRoute>
       }
     />
-    {/* Cài đặt hệ thống – chỉ super admin */}
+    {/* Vệ sinh sân bãi */}
     <Route
-      path="/admin/settings"
+      path="/admin/cleaning"
       element={
-        <ProtectedRoute requireAuth roles={["admin"]}>
-          <AdminSettings />
+        <ProtectedRoute requireAuth roles={ADMIN_ROLES} permission="cleaning">
+          <Cleaning />
         </ProtectedRoute>
       }
+    />
+    {/* Bảo trì & Kỹ thuật sân */}
+    <Route
+      path="/admin/maintenance"
+      element={
+        <ProtectedRoute requireAuth roles={ADMIN_ROLES} permission="maintenance">
+          <Maintenance />
+        </ProtectedRoute>
+      }
+    />
+    {/* Cài đặt hệ thống – chuyển hướng về dashboard */}
+    <Route
+      path="/admin/settings"
+      element={<Navigate to="/admin/dashboard" replace />}
     />
 
   </Routes>

@@ -35,9 +35,19 @@ ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
     "football-booking-system-8m77.onrender.com",
-    ".onrender.com"
+    ".onrender.com",
+    ".ngrok-free.app",
+    ".ngrok.io",
+    "*"
 ]
 CORS_ALLOW_ALL_ORIGINS = True
+
+from corsheaders.defaults import default_headers
+
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'x-user-role',
+    'x-user-id',
+]
 
 # Application definition
 
@@ -54,8 +64,8 @@ INSTALLED_APPS = [
     'apps.reviews',
     'apps.timeslots',
     'apps.servicesadd',
-    'apps.notifications',
     'apps.vouchers',
+    'apps.facility',
     'corsheaders',
     'rest_framework',
 ]

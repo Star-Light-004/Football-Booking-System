@@ -8,6 +8,7 @@ export const ADMIN_NAV_LINKS = [
   { icon: "dashboard",       label: "Tổng quan",         path: "/admin/dashboard", permission: "dashboard" },
   { icon: "stadium",         label: "Quản lý sân bóng", path: "/admin/fields",    permission: "fields" },
   { icon: "event_available", label: "Quản lý đặt sân",  path: "/admin/bookings",  permission: "bookings" },
+  { icon: "emoji_events",    label: "Yêu cầu giải đấu", path: "/admin/tournaments", permission: "bookings" },
   {
     icon: "group",
     label: "Người dùng",
@@ -32,7 +33,8 @@ export const ADMIN_NAV_LINKS = [
       { label: "Lịch sử phát voucher", path: "/admin/vouchers?tab=history" },
     ],
   },
-  { icon: "settings",              label: "Cài đặt",          path: "/admin/settings",  permission: "settings" },
+  { icon: "cleaning_services",     label: "Vệ sinh sân",       path: "/admin/cleaning",    permission: "cleaning" },
+  { icon: "construction",          label: "Bảo trì sân & thiết bị",  path: "/admin/maintenance", permission: "maintenance" },
 ];
 
 const ROLE_LABELS = {
@@ -91,8 +93,8 @@ function AdminSidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">
-        <h1>Pitch &amp; Pulse</h1>
-        <p>QUẢN TRỊ SÂN CỎ</p>
+        <h1>Sân Bóng Hải Châu</h1>
+        <p>HẢI CHÂU • ĐÀ NẴNG</p>
       </div>
 
       <nav className="sidebar-nav">

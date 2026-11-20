@@ -1,9 +1,12 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import "./timeslots.css";
 import timeslotsApi from "../../../api/timeslotsApi";
 import { getFields } from "../../../api/fieldsApi";
 import { useToast, ToastContainer } from "../../../components/Toast/Toast";
 import AdminSidebar from "../../../components/AdminSidebar/AdminSidebar";
+import ConfirmModal from "../../../components/ConfirmModal/ConfirmModal";
+import { broadcastSyncEvent, onSyncEvent } from "../../../utils/realtimeSync";
+import { getLocalDateString, isSlotExpired } from "../../../utils/timeslotUtils";
 
 /* ── Sidebar ── dùng AdminSidebar component chung */
 
@@ -57,11 +60,35 @@ const DEFAULT_SLOT_TEMPLATES = [
   { hour: 21, start_time: '21:00', end_time: '22:00', label: '21:00 – 22:00', price: 250000, enabled: true,  session: 'peak',      sessionLabel: 'Cao điểm' },
 ];
 
+// Helper định dạng số với dấu chấm phân cách hàng nghìn (vd: 250000 -> "250.000")
+const formatNumberWithDot = (val) => {
+  if (val === null || val === undefined || val === "") return "";
+  const num = typeof val === "number" ? val : parseInt(String(val).replace(/\D/g, ""), 10);
+  if (isNaN(num)) return "";
+  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+};
+
+const parseNumberFromDot = (str) => {
+  if (!str) return 0;
+  const clean = String(str).replace(/\D/g, "");
+  return parseInt(clean, 10) || 0;
+};
+
 /* ── Generate Modal ── */
 function GenerateModal({ fields = [], onClose, onSuccess, showToast }) {
   const [selectedField, setSelectedField] = useState("all");
   const [days, setDays] = useState(30);
-  const [slotConfigs, setSlotConfigs] = useState(DEFAULT_SLOT_TEMPLATES);
+  const currentHour = new Date().getHours();
+
+  // Lọc chỉ hiển thị các khung giờ chưa qua hôm nay (hour > currentHour)
+  const [slotConfigs, setSlotConfigs] = useState(() => {
+    const upcoming = DEFAULT_SLOT_TEMPLATES.filter((s) => s.hour > currentHour);
+    const templates = upcoming.length > 0 ? upcoming : DEFAULT_SLOT_TEMPLATES;
+    return templates.map((s) => ({
+      ...s,
+      enabled: s.session !== "midday", // Mặc định bật các khung giờ phổ thông, bỏ ca trưa
+    }));
+  });
   const [quickPrice, setQuickPrice] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -75,13 +102,23 @@ function GenerateModal({ fields = [], onClose, onSuccess, showToast }) {
     return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
   };
 
-  const handleToggleSlot = (index) => {
-    setSlotConfigs(prev => prev.map((s, idx) => idx === index ? { ...s, enabled: !s.enabled } : s));
+  const handleToggleSlot = (startTime) => {
+    setSlotConfigs(prev => prev.map(s => s.start_time === startTime ? { ...s, enabled: !s.enabled } : s));
   };
 
-  const handlePriceChange = (index, val) => {
-    const num = Math.max(0, parseInt(val, 10) || 0);
-    setSlotConfigs(prev => prev.map((s, idx) => idx === index ? { ...s, price: num } : s));
+  const handlePriceChange = (startTime, val) => {
+    const num = Math.max(0, parseNumberFromDot(val));
+    setSlotConfigs(prev => prev.map(s => s.start_time === startTime ? { ...s, price: num } : s));
+  };
+
+  const handleStepPrice = (startTime, delta) => {
+    setSlotConfigs(prev => prev.map(s => {
+      if (s.start_time === startTime) {
+        const nextPrice = Math.max(0, (Number(s.price) || 0) + delta);
+        return { ...s, price: nextPrice };
+      }
+      return s;
+    }));
   };
 
   const handleSelectAllSlots = (enableAll = true) => {
@@ -89,15 +126,22 @@ function GenerateModal({ fields = [], onClose, onSuccess, showToast }) {
   };
 
   const handleSelectStandardSlots = () => {
-    setSlotConfigs(DEFAULT_SLOT_TEMPLATES);
+    const upcoming = DEFAULT_SLOT_TEMPLATES.filter((s) => s.hour > currentHour);
+    const templates = upcoming.length > 0 ? upcoming : DEFAULT_SLOT_TEMPLATES;
+    setSlotConfigs(templates.map((s) => ({
+      ...s,
+      enabled: s.session !== "midday",
+    })));
+    showToast("Đã khôi phục khung giờ mẫu (bỏ trưa)", "info");
   };
 
-  const handleApplyBulkPrice = () => {
-    const p = parseInt(quickPrice, 10);
+  const handleApplyBulkPrice = (customVal) => {
+    const valToApply = customVal !== undefined ? customVal : quickPrice;
+    const p = typeof valToApply === "number" ? valToApply : parseNumberFromDot(valToApply);
     if (!p || p <= 0) return;
-    setSlotConfigs(prev => prev.map(s => s.enabled ? { ...s, price: p } : s));
-    showToast(`Đã áp dụng giá ${p.toLocaleString()}đ cho tất cả khung giờ đang bật`, "success");
-    setQuickPrice("");
+    setSlotConfigs(prev => prev.map(s => (s.enabled ? { ...s, price: p } : s)));
+    showToast(`Đã áp dụng giá ${formatNumberWithDot(p)}đ cho tất cả khung giờ đang bật`, "success");
+    if (customVal === undefined) setQuickPrice("");
   };
 
   const handleGenerate = async () => {
@@ -122,6 +166,7 @@ function GenerateModal({ fields = [], onClose, onSuccess, showToast }) {
 
       const res = await timeslotsApi.generateSlots(payload);
       setResult(res.data);
+      broadcastSyncEvent("timeslot_updated", { count: res.data?.created });
     } catch (err) {
       showToast("Lỗi: " + (err.response?.data?.error || err.message), "error");
     } finally {
@@ -185,14 +230,14 @@ function GenerateModal({ fields = [], onClose, onSuccess, showToast }) {
               Tạo cho bao nhiêu ngày tới?
             </label>
             <div className="days-input-row">
-              {[7, 14, 30, 60, 90].map((d) => (
+              {[1, 7, 14, 30, 60, 90].map((d) => (
                 <button
                   key={d}
                   type="button"
                   className={`days-chip ${days === d ? "active" : ""}`}
                   onClick={() => setDays(d)}
                 >
-                  {d} ngày
+                  {d === 1 ? "1 ngày (Hôm nay)" : `${d} ngày`}
                 </button>
               ))}
               <div className="days-custom-box">
@@ -213,6 +258,10 @@ function GenerateModal({ fields = [], onClose, onSuccess, showToast }) {
                 Khoảng thời gian: Từ <strong>{formatDateStr(today)}</strong> đến <strong>{formatDateStr(endDate)}</strong> ({days} ngày)
               </span>
             </div>
+            <div style={{ marginTop: "8px", fontSize: "0.78rem", color: "#0369a1", background: "#f0f9ff", border: "1px solid #bae6fd", padding: "6px 10px", borderRadius: "6px", display: "flex", alignItems: "center", gap: "6px" }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "1rem" }}>info</span>
+              <span>Hệ thống tự động bỏ qua các khung giờ trước thời điểm hiện tại của hôm nay để tránh tạo dữ liệu thừa.</span>
+            </div>
           </div>
 
           {/* ── 3. Điều chỉnh khung giờ & Bảng giá ── */}
@@ -224,79 +273,124 @@ function GenerateModal({ fields = [], onClose, onSuccess, showToast }) {
                   Bảng giá &amp; Khung giờ áp dụng
                 </label>
                 <p className="gen-slots-hint">
-                  Đang bật <strong>{enabledCount}</strong> / {slotConfigs.length} khung giờ. Bấm checkbox để bật/tắt hoặc nhập lại giá theo ý muốn.
+                  Đang bật <strong>{enabledCount}</strong> / {slotConfigs.length} khung giờ. Bấm checkbox để bật/tắt hoặc điều chỉnh giá bên dưới.
                 </p>
               </div>
               <div className="gen-slots-quick-actions">
-                <button type="button" className="btn-text-action" onClick={() => handleSelectAllSlots(true)}>Bật hết</button>
-                <span className="sep">•</span>
-                <button type="button" className="btn-text-action" onClick={() => handleSelectAllSlots(false)}>Tắt hết</button>
-                <span className="sep">•</span>
-                <button type="button" className="btn-text-action" onClick={handleSelectStandardSlots}>Mặc định (bỏ trưa)</button>
-              </div>
-            </div>
-
-            {/* Thanh gán giá nhanh */}
-            <div className="bulk-price-bar">
-              <span className="bulk-price-label">
-                <span className="material-symbols-outlined">tune</span>
-                Đặt giá nhanh cho các giờ đang bật:
-              </span>
-              <div className="bulk-price-inputs">
-                <input
-                  type="number"
-                  step="10000"
-                  min="0"
-                  placeholder="Ví dụ: 150000"
-                  value={quickPrice}
-                  onChange={(e) => setQuickPrice(e.target.value)}
-                  className="ts-input bulk-price-input"
-                />
                 <button
                   type="button"
-                  className="btn-apply-bulk-price"
-                  onClick={handleApplyBulkPrice}
-                  disabled={!quickPrice || Number(quickPrice) <= 0}
+                  className="btn-quick-toggle btn-select-all"
+                  onClick={() => handleSelectAllSlots(true)}
+                  title="Bật tất cả khung giờ"
                 >
-                  Áp dụng giá
+                  <span className="material-symbols-outlined toggle-icon">check_circle</span>
+                  Bật tất cả
+                </button>
+                <button
+                  type="button"
+                  className="btn-quick-toggle btn-deselect-all"
+                  onClick={() => handleSelectAllSlots(false)}
+                  title="Tắt tất cả khung giờ"
+                >
+                  <span className="material-symbols-outlined toggle-icon">cancel</span>
+                  Tắt tất cả
+                </button>
+                <button
+                  type="button"
+                  className="btn-quick-toggle btn-default-slots"
+                  onClick={handleSelectStandardSlots}
+                  title="Khôi phục khung giờ mặc định phổ thông (bỏ ca trưa)"
+                >
+                  <span className="material-symbols-outlined toggle-icon">restart_alt</span>
+                  Mặc định (bỏ trưa)
                 </button>
               </div>
             </div>
 
-            {/* Lưới danh sách các khung giờ */}
-            <div className="gen-slots-grid">
-              {slotConfigs.map((slot, index) => (
-                <div
-                  key={slot.start_time}
-                  className={`gen-slot-card ${slot.enabled ? "is-enabled" : "is-disabled"} ${slot.session}`}
-                >
-                  <div className="gen-slot-meta">
-                    <label className="gen-slot-label">
-                      <input
-                        type="checkbox"
-                        checked={slot.enabled}
-                        onChange={() => handleToggleSlot(index)}
-                        className="gen-slot-checkbox"
-                      />
-                      <span className="gen-slot-time-text">{slot.label}</span>
-                    </label>
-                    <span className={`price-tag ${slot.session}`}>{slot.sessionLabel}</span>
-                  </div>
-                  <div className="gen-slot-price-field">
-                    <span className="price-prefix">Giá:</span>
-                    <input
-                      type="number"
-                      step="5000"
-                      min="0"
-                      disabled={!slot.enabled}
-                      value={slot.price}
-                      onChange={(e) => handlePriceChange(index, e.target.value)}
-                      className="ts-input gen-slot-price-input"
-                    />
-                    <span className="currency-unit">đ</span>
-                  </div>
+            {/* Giao diện Đặt giá nhanh mới: Dễ nhìn, dễ thao tác, có định dạng số */}
+            <div className="bulk-price-box">
+              <div className="bulk-price-header">
+                <span className="material-symbols-outlined bulk-icon">payments</span>
+                <span className="bulk-title">Đặt giá nhanh đồng loạt:</span>
+                <span className="bulk-hint">Bấm mức giá mẫu hoặc nhập giá tùy chỉnh để áp dụng cho tất cả khung giờ đang chọn</span>
+              </div>
+              <div className="bulk-price-content">
+                <div className="quick-price-chips">
+                  {[80000, 100000, 120000, 150000, 180000, 200000, 250000, 270000].map(p => (
+                    <button
+                      key={p}
+                      type="button"
+                      className="quick-price-pill"
+                      onClick={() => handleApplyBulkPrice(p)}
+                      title={`Áp dụng ${formatNumberWithDot(p)}đ cho tất cả khung giờ đang bật`}
+                    >
+                      {formatNumberWithDot(p)}đ
+                    </button>
+                  ))}
                 </div>
-              ))}
+                <div className="bulk-custom-row">
+                  <div className="bulk-input-wrapper">
+                    <input
+                      type="text"
+                      placeholder="Nhập giá khác..."
+                      value={quickPrice ? formatNumberWithDot(quickPrice) : ""}
+                      onChange={(e) => {
+                        const raw = parseNumberFromDot(e.target.value);
+                        setQuickPrice(raw > 0 ? raw : "");
+                      }}
+                      className="bulk-price-input"
+                    />
+                    <span className="bulk-input-unit">VNĐ</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-apply-bulk"
+                    onClick={() => handleApplyBulkPrice()}
+                    disabled={!quickPrice || Number(quickPrice) <= 0}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>done_all</span>
+                    Áp dụng tất cả
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Lưới danh sách các khung giờ: Gọn gàng, không bị dài lê thê, định dạng dấu chấm phân cách hàng nghìn/triệu, hiển thị VNĐ */}
+            <div className="gen-slots-grid">
+              {slotConfigs.map((slot) => {
+                return (
+                  <div
+                    key={slot.start_time}
+                    className={`gen-slot-card ${slot.enabled ? "is-enabled" : "is-disabled"} ${slot.session}`}
+                  >
+                    <div className="gen-slot-meta">
+                      <label className="gen-slot-label">
+                        <input
+                          type="checkbox"
+                          checked={slot.enabled}
+                          onChange={() => handleToggleSlot(slot.start_time)}
+                          className="gen-slot-checkbox"
+                        />
+                        <span className="gen-slot-time-text">{slot.label}</span>
+                      </label>
+                      <span className={`price-tag ${slot.session}`}>{slot.sessionLabel}</span>
+                    </div>
+                    <div className="gen-slot-price-field">
+                      <span className="price-prefix">Giá:</span>
+                      <div className="gen-slot-price-box">
+                        <input
+                          type="text"
+                          disabled={!slot.enabled}
+                          value={formatNumberWithDot(slot.price)}
+                          onChange={(e) => handlePriceChange(slot.start_time, e.target.value)}
+                          className="gen-slot-price-input"
+                        />
+                        <span className="currency-unit">VNĐ</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -374,6 +468,7 @@ function EditModal({ slot, fields, onClose, onSuccess, showToast }) {
     try {
       await timeslotsApi.update(slot.id, formData);
       showToast("Lưu thành công", "success");
+      broadcastSyncEvent("timeslot_updated", { id: slot.id });
       onSuccess();
       onClose();
     } catch (err) {
@@ -481,18 +576,21 @@ const Timeslots = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterField, setFilterField] = useState('');
-  const [filterDate, setFilterDate] = useState('');
+  const [filterDate, setFilterDate] = useState(() => getLocalDateString());
   const [filterStatus, setFilterStatus] = useState('');
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const modalOpenRef = useRef(false);
+  modalOpenRef.current = Boolean(showGenModal || editingSlot);
+
+  const fetchData = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
       const res = await timeslotsApi.getAll();
-      setTimeslots(res.data);
+      setTimeslots(res.data || []);
     } catch (err) {
-      console.error("Lỗi fetch timeslots:", err);
+      if (!isSilent) console.error("Lỗi fetch timeslots:", err);
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   }, []);
 
@@ -501,16 +599,61 @@ const Timeslots = () => {
     getFields().then(res => setFields(res.data.fields || [])).catch(console.error);
   }, [fetchData]);
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa khung giờ này?")) {
-      try {
-        await timeslotsApi.delete(id);
-        toast.success("Xóa khung giờ thành công!");
-        fetchData();
-      } catch {
-        toast.error("Lỗi khi xóa");
+  // Realtime Smart Polling & Cross-tab Sync
+  useEffect(() => {
+    const unsub = onSyncEvent((event) => {
+      if (event?.type?.startsWith("booking_") || event?.type?.startsWith("timeslot_")) {
+        fetchData(true);
       }
-    }
+    });
+
+    const pollTimer = setInterval(() => {
+      if (document.visibilityState === "visible" && !modalOpenRef.current) {
+        fetchData(true);
+      }
+    }, 4000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" && !modalOpenRef.current) {
+        fetchData(true);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      unsub();
+      clearInterval(pollTimer);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [fetchData]);
+
+  const [confirmModalConfig, setConfirmModalConfig] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    confirmText: "Xác nhận",
+    confirmType: "danger",
+    onConfirm: () => {},
+  });
+
+  const handleDelete = (id) => {
+    setConfirmModalConfig({
+      isOpen: true,
+      title: "Xóa khung giờ",
+      message: "Bạn có chắc chắn muốn xóa khung giờ này không? Hành động này không thể hoàn tác.",
+      confirmText: "Xóa ca",
+      confirmType: "danger",
+      onConfirm: async () => {
+        try {
+          await timeslotsApi.delete(id);
+          toast.success("Xóa khung giờ thành công!");
+          broadcastSyncEvent("timeslot_updated", { id });
+          fetchData();
+        } catch {
+          toast.error("Lỗi khi xóa");
+        }
+      }
+    });
   };
 
   const handleToggleStatus = async (slot) => {
@@ -518,21 +661,31 @@ const Timeslots = () => {
     try {
       await timeslotsApi.update(slot.id, { ...slot, status: newStatus });
       toast.success(`Đã cập nhật trạng thái sang ${newStatus === 'blocked' ? 'Đã khóa' : 'Trống'}`);
+      broadcastSyncEvent("timeslot_updated", { id: slot.id, status: newStatus });
       fetchData();
     } catch {
       toast.error("Lỗi khi cập nhật trạng thái");
     }
   };
 
-  const handleDeleteAll = async () => {
-    if (!window.confirm("⚠️ Bạn có chắc muốn XÓA TOÀN BỘ slot không?\nHành động này không thể hoàn tác!")) return;
-    try {
-      const res = await timeslotsApi.deleteAll();
-      toast.success(res.data.message || "Đã xóa toàn bộ slot");
-      fetchData();
-    } catch {
-      toast.error('Lỗi khi xóa toàn bộ slot');
-    }
+  const handleDeleteAll = () => {
+    setConfirmModalConfig({
+      isOpen: true,
+      title: "Xác nhận xóa toàn bộ ca",
+      message: "Bạn có chắc muốn XÓA TOÀN BỘ slot không? Hành động này không thể hoàn tác!",
+      confirmText: "Xóa tất cả",
+      confirmType: "danger",
+      onConfirm: async () => {
+        try {
+          const res = await timeslotsApi.deleteAll();
+          toast.success(res.data.message || "Đã xóa toàn bộ slot");
+          broadcastSyncEvent("timeslot_updated", { action: "delete_all" });
+          fetchData();
+        } catch {
+          toast.error('Lỗi khi xóa toàn bộ slot');
+        }
+      }
+    });
   };
 
   // Lọc dữ liệu
@@ -561,38 +714,37 @@ const Timeslots = () => {
   };
 
   return (
-    <div className="timeslots-page-layout">
+    <div className="timeslots-admin-page">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       <AdminSidebar />
-      <div className="timeslots-page-container">
-        <TopHeader
-          onGenerate={() => setShowGenModal(true)}
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-        />
-        <main className="main-content timeslots-main-content">
-          <div className="content-inner">
+      <TopHeader
+        onGenerate={() => setShowGenModal(true)}
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+      />
+      <main className="main-content timeslots-main-content">
+        <div className="content-inner">
 
-            {/* ── Page Header ── */}
-            <div className="page-header-alt">
-              <div className="header-text">
-                <span className="admin-page-eyebrow">
-                  PITCH &amp; PULSE OPERATIONS <span>›</span> LỊCH TRÌNH SÂN
-                </span>
-                <h2>Quản lý Khung giờ</h2>
-                <p>Xem, chỉnh sửa giá, vô hiệu hoá hoặc xoá các slot giờ thi đấu theo thời gian thực.</p>
-              </div>
-              <div className="ts-header-btns">
-                <button className="btn-delete-all" onClick={handleDeleteAll}>
-                  <span className="material-symbols-outlined">delete_sweep</span>
-                  Xóa tất cả
-                </button>
-                <button className="btn-primary-gradient" onClick={() => setShowGenModal(true)}>
-                  <span className="material-symbols-outlined">auto_awesome</span>
-                  Tạo slot tự động
-                </button>
-              </div>
+          {/* ── Page Header ── */}
+          <div className="page-header">
+            <div>
+              <span className="booking-admin-eyebrow">
+                VẬN HÀNH CƠ SỞ <span>›</span> LỊCH TRÌNH KHUNG GIỜ
+              </span>
+              <h2>Quản lý Khung giờ</h2>
+              <p>Xem, chỉnh sửa giá, vô hiệu hoá hoặc xoá các slot giờ thi đấu theo thời gian thực.</p>
             </div>
+            <div className="ts-header-btns">
+              <button className="btn-export" onClick={handleDeleteAll}>
+                <span className="material-symbols-outlined">delete_sweep</span>
+                Xóa tất cả
+              </button>
+              <button className="btn-add-tour" onClick={() => setShowGenModal(true)}>
+                <span className="material-symbols-outlined">auto_awesome</span>
+                Tạo slot tự động
+              </button>
+            </div>
+          </div>
 
           {/* ── Stats Cards ── */}
           <div className="ts-stats-grid">
@@ -636,13 +788,38 @@ const Timeslots = () => {
               </select>
             </div>
             <div className="ts-filter-group">
-              <label className="ts-label">Ngày</label>
-              <input
-                type="date"
-                className="ts-input"
-                value={filterDate}
-                onChange={e => setFilterDate(e.target.value)}
-              />
+              <label className="ts-label">
+                Ngày {filterDate === getLocalDateString() && <span style={{ color: "#16a34a", fontSize: "0.75rem", fontWeight: "600" }}>(Hôm nay)</span>}
+              </label>
+              <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                <input
+                  type="date"
+                  className="ts-input"
+                  value={filterDate}
+                  onChange={e => setFilterDate(e.target.value)}
+                />
+                {filterDate !== getLocalDateString() && (
+                  <button
+                    type="button"
+                    className="btn-today-shortcut"
+                    onClick={() => setFilterDate(getLocalDateString())}
+                    title="Về ngày hôm nay"
+                    style={{
+                      padding: "6px 10px",
+                      background: "#e0f2fe",
+                      color: "#0369a1",
+                      border: "1px solid #bae6fd",
+                      borderRadius: "6px",
+                      fontSize: "0.78rem",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap"
+                    }}
+                  >
+                    Hôm nay
+                  </button>
+                )}
+              </div>
             </div>
             <div className="ts-filter-group">
               <label className="ts-label">Trạng thái</label>
@@ -655,7 +832,7 @@ const Timeslots = () => {
             </div>
             <button
               className="btn-clear-filter"
-              onClick={() => { setFilterField(''); setFilterDate(''); setFilterStatus(''); }}
+              onClick={() => { setFilterField(''); setFilterDate(getLocalDateString()); setFilterStatus(''); setSearchTerm(''); }}
             >
               <span className="material-symbols-outlined">filter_alt_off</span>
               Xóa lọc
@@ -746,7 +923,6 @@ const Timeslots = () => {
           </div>
         </div>
       </main>
-    </div>
 
       {showGenModal && (
         <GenerateModal
@@ -765,6 +941,16 @@ const Timeslots = () => {
           showToast={(msg, type) => toast[type || 'info'](msg)}
         />
       )}
+
+      <ConfirmModal
+        isOpen={confirmModalConfig.isOpen}
+        title={confirmModalConfig.title}
+        message={confirmModalConfig.message}
+        confirmText={confirmModalConfig.confirmText}
+        confirmType={confirmModalConfig.confirmType}
+        onConfirm={confirmModalConfig.onConfirm}
+        onClose={() => setConfirmModalConfig((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

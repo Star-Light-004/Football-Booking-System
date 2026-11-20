@@ -38,6 +38,11 @@ const ProtectedRoute = ({ children, requireAuth = false, roles = [], permission 
   // Kiểm tra quyền (permission) cụ thể
   if (permission && user) {
     if (!hasPermission(permission, user)) {
+      // Chống lỗi lặp chuyển hướng vô tận (Infinite Redirect Loop) gây trắng màn hình:
+      // Nếu đang ở /admin/dashboard mà kiểm tra quyền dashboard thất bại, vẫn cho phép render
+      if (location.pathname === "/admin/dashboard") {
+        return children;
+      }
       return <Navigate to={user.role === 'customer' ? "/" : "/admin/dashboard"} replace />;
     }
   }

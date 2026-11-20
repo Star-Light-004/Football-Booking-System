@@ -8,10 +8,43 @@ import {
 } from "../../../api/usersApi";
 import './user-roles.css';
 import { useToast, ToastContainer } from "../../../components/Toast/Toast";
+import ConfirmModal from "../../../components/ConfirmModal/ConfirmModal";
 import { DEFAULT_PERMISSIONS, ALL_PERMISSION_KEYS } from "../../../utils/permissionUtils";
 import AdminSidebar from "../../../components/AdminSidebar/AdminSidebar";
 
 /* ── Constants: 9 Roles ── */
+function TopHeader({ searchQuery, onSearchChange, onAdd }) {
+  return (
+    <header className="top-header">
+      <div className="search-box">
+        <span className="material-symbols-outlined search-icon">search</span>
+        <input
+          type="text"
+          placeholder="Tìm kiếm vai trò, quyền hạn..."
+          value={searchQuery || ""}
+          onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
+        />
+      </div>
+
+      <div className="header-actions">
+        <div className="icon-group">
+          <button className="icon-btn" type="button" title="Thông báo">
+            <span className="material-symbols-outlined">notifications</span>
+          </button>
+          <button className="icon-btn" type="button" title="Trợ giúp">
+            <span className="material-symbols-outlined">help_outline</span>
+          </button>
+        </div>
+        <div className="header-divider" />
+        <Link to="/admin/bookings" className="btn-new-booking">
+          <span className="material-symbols-outlined">add</span>
+          Đặt sân mới
+        </Link>
+      </div>
+    </header>
+  );
+}
+
 const ROLES = [
   { value: 'customer',      label: 'Người dùng',            icon: 'person',               color: 'gray'   },
   { value: 'field_owner',   label: 'Chủ sân',               icon: 'business_center',      color: 'amber'  },
@@ -120,33 +153,6 @@ const PERMISSION_MODULES = [
     ]
   },
 ];
-
-
-
-function TopHeader() {
-  return (
-    <header className="top-header">
-      <div className="search-box">
-        <span className="material-symbols-outlined search-icon">search</span>
-        <input type="text" placeholder="Tìm kiếm vai trò hoặc quyền..." />
-      </div>
-
-      <div className="header-actions">
-        <div className="icon-group">
-          <button className="icon-btn">
-            <span className="material-symbols-outlined">notifications</span>
-            <span className="notif-dot" />
-          </button>
-          <button className="icon-btn">
-            <span className="material-symbols-outlined">help_outline</span>
-          </button>
-        </div>
-        <div className="header-divider" />
-        <button className="btn-new-booking">Hải Châu Arena</button>
-      </div>
-    </header>
-  );
-}
 
 /* ── Role Card with Modular CRUD Matrix ── */
 function RoleCard({
@@ -298,6 +304,16 @@ export default function UserRoles() {
   const [activeRoleFilter, setActiveRoleFilter] = useState('all');
   const { toasts, removeToast, toast } = useToast();
 
+  const [confirmConfig, setConfirmConfig] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    confirmText: "Xác nhận",
+    cancelText: "Hủy bỏ",
+    type: "danger",
+    onConfirm: () => {},
+  });
+
   useEffect(() => {
     loadUsers();
     loadPermissions();
@@ -381,18 +397,27 @@ export default function UserRoles() {
     }
   };
 
-  const handleReset = async () => {
-    if (!window.confirm('Bạn có chắc chắn muốn đặt lại toàn bộ phân quyền về chuẩn mặc định?')) return;
-    try {
-      setRolePermissions(DEFAULT_PERMISSIONS);
-      localStorage.removeItem('rolePermissions');
-      await resetRolePermissions();
-      toast.success('Đã đặt lại toàn bộ phân quyền về mặc định');
-    } catch (err) {
-      setRolePermissions(DEFAULT_PERMISSIONS);
-      localStorage.removeItem('rolePermissions');
-      toast.success('Đã đặt lại toàn bộ phân quyền về mặc định');
-    }
+  const handleReset = () => {
+    setConfirmConfig({
+      isOpen: true,
+      title: "Xác nhận đặt lại phân quyền",
+      message: "Bạn có chắc chắn muốn đặt lại toàn bộ phân quyền của các vai trò về chuẩn mặc định ban đầu?",
+      confirmText: "Đặt lại mặc định",
+      cancelText: "Hủy bỏ",
+      type: "danger",
+      onConfirm: async () => {
+        try {
+          setRolePermissions(DEFAULT_PERMISSIONS);
+          localStorage.removeItem('rolePermissions');
+          await resetRolePermissions();
+          toast.success('Đã đặt lại toàn bộ phân quyền về mặc định');
+        } catch (err) {
+          setRolePermissions(DEFAULT_PERMISSIONS);
+          localStorage.removeItem('rolePermissions');
+          toast.success('Đã đặt lại toàn bộ phân quyền về mặc định');
+        }
+      },
+    });
   };
 
   const userCounts = UserCountByRole({ users });
@@ -404,13 +429,13 @@ export default function UserRoles() {
   return (
     <div className="user-roles-page">
       <AdminSidebar />
-      <div className="main-content users-admin-main">
-        <TopHeader />
+      <TopHeader />
+      <main className="main-content users-admin-main">
         <div className="content-inner">
           <div className="page-header">
             <div>
               <span className="users-page-eyebrow">
-                NGƯỜI DÙNG <span>/</span> PHÂN QUYỀN CRUD CHI TIẾT
+                VẬN HÀNH CƠ SỞ <span>›</span> PHÂN QUYỀN CRUD CHI TIẾT
               </span>
               <h2>Phân quyền hệ thống</h2>
               <p>Cấu hình quyền Tạo (C), Xem (R), Sửa (U), Xóa/Hủy (D) riêng biệt cho từng vai trò</p>
@@ -482,8 +507,20 @@ export default function UserRoles() {
             </div>
           </div>
         </div>
-      </div>
+      </main>
       <ToastContainer toasts={toasts} removeToast={removeToast} onRemove={removeToast} />
+
+      {/* MODAL XÁC NHẬN IN-SCREEN */}
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        cancelText={confirmConfig.cancelText}
+        type={confirmConfig.type}
+        onConfirm={confirmConfig.onConfirm}
+        onClose={() => setConfirmConfig((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

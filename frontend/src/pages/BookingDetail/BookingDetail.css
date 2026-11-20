@@ -1,1 +1,924 @@
-/* BookingDetail.css */
+/* ═══════════════════════════════════════════════════════════════
+   BOOKING DETAIL PAGE STYLES - HỆ THỐNG SÂN BÓNG HẢI CHÂU
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  --bkd-primary: #059669;
+  --bkd-primary-hover: #047857;
+  --bkd-primary-light: #ecfdf5;
+  --bkd-text-main: #0f172a;
+  --bkd-text-muted: #64748b;
+  --bkd-border: #e2e8f0;
+  --bkd-card-bg: #ffffff;
+  --bkd-radius: 1.15rem;
+  --bkd-shadow: 0 4px 18px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+}
+
+.bkd-page-wrapper {
+  min-height: 100vh;
+  background-color: #f8fafc;
+  padding: 0 0 4rem;
+  overflow-x: hidden;
+  color: var(--bkd-text-main);
+}
+
+.bkd-container {
+  max-width: 1140px;
+  margin: 1.75rem auto 0;
+  padding: 0 1.5rem;
+}
+
+/* ── Hero Actions ── */
+.bkd-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.bkd-hero-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.15rem;
+  border-radius: 9999px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.bkd-hero-btn--back {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(4px);
+}
+
+.bkd-hero-btn--back:hover {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.45);
+  transform: translateY(-1px);
+}
+
+.bkd-hero-btn--new {
+  background: #10b981;
+  color: #ffffff;
+  border: 1px solid #10b981;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+}
+
+.bkd-hero-btn--new:hover {
+  background: #059669;
+  color: #ffffff;
+  border-color: #059669;
+  transform: translateY(-1px);
+}
+
+/* ── Legacy Navigation & Breadcrumbs ── */
+.bkd-nav-bar {
+  display: none;
+}
+
+.bkd-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--bkd-primary);
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-decoration: none;
+  padding: 0.5rem 0.9rem;
+  border-radius: 0.65rem;
+  background: #ffffff;
+  border: 1.5px solid #d1fae5;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(5, 150, 105, 0.06);
+}
+
+.bkd-back-link:hover {
+  background: var(--bkd-primary-light);
+  border-color: var(--bkd-primary);
+  color: var(--bkd-primary-hover);
+  transform: translateX(-3px);
+}
+
+.bkd-breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--bkd-text-muted);
+}
+
+.bkd-breadcrumbs a {
+  color: var(--bkd-text-muted);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.15s;
+}
+
+.bkd-breadcrumbs a:hover {
+  color: var(--bkd-primary);
+}
+
+.bkd-bc-sep {
+  font-size: 1rem;
+  color: #94a3b8;
+}
+
+.bkd-bc-current {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+/* ── Status Banner ── */
+.bkd-status-banner {
+  border-radius: var(--bkd-radius);
+  border: 1.5px solid;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
+  flex-wrap: wrap;
+}
+
+.bkd-status-banner__icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.bkd-status-banner__icon .material-symbols-outlined {
+  font-size: 32px;
+}
+
+.bkd-status-banner__content {
+  flex: 1;
+  min-width: 250px;
+}
+
+.bkd-status-banner__badge {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin-bottom: 0.25rem;
+}
+
+.bkd-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.bkd-id-tag {
+  font-size: 0.82rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 0.2rem 0.55rem;
+  border-radius: 0.4rem;
+  border: 1px solid currentColor;
+  opacity: 0.9;
+}
+
+.bkd-status-banner__desc {
+  font-size: 0.9rem;
+  margin: 0;
+  opacity: 0.9;
+  line-height: 1.45;
+}
+
+.bkd-status-banner__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-shrink: 0;
+}
+
+.bkd-btn-copy,
+.bkd-btn-print {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1rem;
+  border-radius: 0.65rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border: 1.5px solid currentColor;
+  background: rgba(255, 255, 255, 0.85);
+  color: inherit;
+  transition: all 0.2s ease;
+}
+
+.bkd-btn-copy:hover,
+.bkd-btn-print:hover {
+  background: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+/* ── Main 2-Column Grid ── */
+.bkd-main-grid {
+  display: grid;
+  grid-template-columns: 1.7fr 1fr;
+  gap: 1.75rem;
+  align-items: start;
+}
+
+/* ── Generic Card ── */
+.bkd-card {
+  background: var(--bkd-card-bg);
+  border-radius: var(--bkd-radius);
+  border: 1px solid var(--bkd-border);
+  box-shadow: var(--bkd-shadow);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.bkd-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px dashed var(--bkd-border);
+}
+
+.bkd-card-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.bkd-header-icon {
+  font-size: 24px;
+  color: var(--bkd-primary);
+}
+
+/* ── Field Hero Card ── */
+.bkd-field-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.bkd-field-media {
+  position: relative;
+  width: 100%;
+  height: 230px;
+  background: #cbd5e1;
+}
+
+.bkd-field-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bkd-field-fallback {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+}
+
+.bkd-field-fallback .material-symbols-outlined {
+  font-size: 64px;
+  opacity: 0.7;
+}
+
+.bkd-field-badge {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(6px);
+  color: #ffffff;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.bkd-field-badge .material-symbols-outlined {
+  font-size: 16px;
+  color: #4ade80;
+}
+
+.bkd-field-info {
+  padding: 1.5rem;
+}
+
+.bkd-field-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.65rem;
+}
+
+.bkd-section-kicker {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--bkd-primary);
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+.bkd-field-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.bkd-tag-grass {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #065f46;
+  background: #d1fae5;
+  border: 1px solid #a7f3d0;
+  padding: 0.3rem 0.65rem;
+  border-radius: 0.5rem;
+}
+
+.bkd-field-address {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--bkd-text-muted);
+  font-size: 0.9rem;
+}
+
+.bkd-field-address .material-symbols-outlined {
+  font-size: 18px;
+  color: #e11d48;
+}
+
+/* ── Info Grid (Date, Slot, User, Phone) ── */
+.bkd-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+.bkd-info-item {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.85rem;
+  padding: 1rem 1.15rem;
+}
+
+.bkd-info-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--bkd-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.bkd-info-value {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.98rem;
+  color: #1e293b;
+}
+
+.bkd-info-value .material-symbols-outlined {
+  font-size: 20px;
+  color: #64748b;
+}
+
+.bkd-highlight {
+  color: #0f172a;
+}
+
+.bkd-highlight strong {
+  font-size: 1.05rem;
+}
+
+.bkd-highlight .material-symbols-outlined {
+  color: var(--bkd-primary);
+}
+
+.bkd-highlight-time {
+  color: #047857;
+}
+
+.bkd-highlight-time strong {
+  font-size: 1.15rem;
+  color: #065f46;
+}
+
+.bkd-highlight-time .material-symbols-outlined {
+  color: #059669;
+}
+
+/* ── Services Section ── */
+.bkd-services-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.bkd-service-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  transition: border-color 0.15s;
+}
+
+.bkd-service-row:hover {
+  border-color: #cbd5e1;
+}
+
+.bkd-service-main {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.bkd-service-icon-box {
+  width: 40px;
+  height: 40px;
+  border-radius: 0.6rem;
+  background: #ecfdf5;
+  color: var(--bkd-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bkd-service-icon-box .material-symbols-outlined {
+  font-size: 22px;
+}
+
+.bkd-service-name {
+  font-size: 0.95rem;
+  color: #1e293b;
+}
+
+.bkd-service-sub {
+  font-size: 0.8rem;
+  color: var(--bkd-text-muted);
+  margin-top: 0.15rem;
+}
+
+.bkd-service-total {
+  font-weight: 800;
+  font-size: 0.98rem;
+  color: var(--bkd-primary);
+}
+
+.bkd-services-empty {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--bkd-text-muted);
+}
+
+.bkd-services-empty .material-symbols-outlined {
+  font-size: 36px;
+  color: #cbd5e1;
+  margin-bottom: 0.5rem;
+}
+
+.bkd-services-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 2rem;
+  color: var(--bkd-text-muted);
+}
+
+/* ── Invoice Card ── */
+.bkd-invoice-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.bkd-invoice-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.95rem;
+}
+
+.bkd-invoice-label {
+  color: var(--bkd-text-muted);
+}
+
+.bkd-invoice-val {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.bkd-discount-row .bkd-invoice-label,
+.bkd-discount-row .bkd-invoice-val {
+  color: #e11d48;
+  font-weight: 700;
+}
+
+.bkd-invoice-divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 0.5rem 0;
+}
+
+.bkd-invoice-row--total {
+  padding-top: 0.5rem;
+  align-items: flex-end;
+}
+
+.bkd-total-label {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0f172a;
+  display: block;
+}
+
+.bkd-vat-note {
+  font-size: 0.78rem;
+  color: var(--bkd-text-muted);
+  display: block;
+}
+
+.bkd-total-amount {
+  font-size: 1.45rem;
+  font-weight: 900;
+  color: var(--bkd-primary);
+}
+
+/* ── Right Column: Electronic Ticket (Boarding Pass) ── */
+.bkd-ticket-card {
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 1.25rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+  position: relative;
+}
+
+.bkd-ticket-header {
+  background: linear-gradient(135deg, #064e3b 0%, #047857 50%, #059669 100%);
+  color: #ffffff;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bkd-ticket-header-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.bkd-ticket-stadium {
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  letter-spacing: 0.03em;
+}
+
+.bkd-ticket-body {
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.bkd-qr-image-wrapper {
+  background: #f8fafc;
+  border: 2px dashed #cbd5e1;
+  border-radius: 1rem;
+  padding: 1.25rem;
+  display: inline-block;
+  margin-bottom: 1.25rem;
+}
+
+.bkd-qr-image {
+  width: 175px;
+  height: 175px;
+  display: block;
+  margin: 0 auto;
+}
+
+.bkd-qr-code-txt {
+  margin-top: 0.65rem;
+  font-family: monospace;
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: 0.08em;
+}
+
+.bkd-ticket-details {
+  border-top: 1px dashed #e2e8f0;
+  border-bottom: 1px dashed #e2e8f0;
+  padding: 1rem 0;
+  margin-bottom: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: left;
+}
+
+.bkd-ticket-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.88rem;
+}
+
+.bkd-tk-lbl {
+  color: var(--bkd-text-muted);
+}
+
+.bkd-tk-val {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.bkd-ticket-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.75rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  text-align: left;
+  margin-bottom: 1.25rem;
+}
+
+.bkd-ticket-hint .material-symbols-outlined {
+  font-size: 18px;
+  color: #16a34a;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.bkd-btn-download-qr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: #f1f5f9;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 0.75rem;
+  color: #334155;
+  font-weight: 700;
+  font-size: 0.88rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.bkd-btn-download-qr:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+/* ── Actions Card ── */
+.bkd-actions-card {
+  padding: 1.5rem;
+}
+
+.bkd-action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.bkd-btn-cancel-order {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.8rem 1rem;
+  background: #fef2f2;
+  border: 1.5px solid #fecaca;
+  color: #dc2626;
+  border-radius: 0.75rem;
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bkd-btn-cancel-order:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+.bkd-btn-rebook {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.8rem 1rem;
+  background: var(--bkd-primary);
+  border: none;
+  color: #ffffff;
+  border-radius: 0.75rem;
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2);
+}
+
+.bkd-btn-rebook:hover {
+  background: var(--bkd-primary-hover);
+  transform: translateY(-1px);
+}
+
+/* ── Support Hotline Box ── */
+.bkd-support-box {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 0.85rem;
+  padding: 1rem 1.15rem;
+}
+
+.bkd-support-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+  color: #1e293b;
+  margin-bottom: 0.35rem;
+}
+
+.bkd-support-title .material-symbols-outlined {
+  color: var(--bkd-primary);
+  font-size: 20px;
+}
+
+.bkd-support-box p {
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
+  color: var(--bkd-text-muted);
+}
+
+.bkd-support-box a {
+  color: var(--bkd-primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.bkd-support-box small {
+  display: block;
+  font-size: 0.76rem;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+
+/* ── States ── */
+.bkd-loading-state,
+.bkd-empty-state {
+  max-width: 600px;
+  margin: 4rem auto;
+  text-align: center;
+  background: #ffffff;
+  border-radius: var(--bkd-radius);
+  padding: 3rem 2rem;
+  border: 1px solid var(--bkd-border);
+  box-shadow: var(--bkd-shadow);
+}
+
+.bkd-spin-icon {
+  animation: bkd-spin 1s linear infinite;
+  font-size: 36px;
+  color: var(--bkd-primary);
+}
+
+@keyframes bkd-spin {
+  100% { transform: rotate(360deg); }
+}
+
+.bkd-empty-state .material-symbols-outlined {
+  font-size: 64px;
+  color: #cbd5e1;
+  margin-bottom: 1rem;
+}
+
+.bkd-empty-state h2 {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin-bottom: 0.5rem;
+}
+
+.bkd-empty-state p {
+  color: var(--bkd-text-muted);
+  font-size: 0.95rem;
+  margin-bottom: 1.75rem;
+}
+
+.bkd-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bkd-primary);
+  color: #ffffff;
+  padding: 0.75rem 1.4rem;
+  border-radius: 0.75rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.bkd-btn-primary:hover {
+  background: var(--bkd-primary-hover);
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .bkd-main-grid {
+    grid-template-columns: 1fr;
+  }
+  .bkd-status-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .bkd-status-banner__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 600px) {
+  .bkd-page-wrapper {
+    padding: 1rem 0.85rem 3rem;
+  }
+  .bkd-info-grid {
+    grid-template-columns: 1fr;
+  }
+  .bkd-field-media {
+    height: 180px;
+  }
+}
+
+/* ── Print Media Optimization ── */
+@media print {
+  .bkd-nav-bar,
+  .bkd-status-banner__actions,
+  .bkd-actions-card,
+  .bkd-back-link,
+  .bkd-btn-download-qr {
+    display: none !important;
+  }
+  .bkd-page-wrapper {
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+  .bkd-card,
+  .bkd-ticket-card {
+    box-shadow: none !important;
+    border: 1px solid #94a3b8 !important;
+  }
+}

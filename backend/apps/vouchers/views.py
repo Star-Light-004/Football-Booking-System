@@ -55,11 +55,19 @@ def validate_voucher(request):
     code = data.get('code')
     customer_id = data.get('customer_id')
     total_price = data.get('total_price', 0)
+    field_price = data.get('field_price')
+    service_price = data.get('service_price', 0)
 
     if not code:
         return Response({'error': 'Vui lòng cung cấp mã giảm giá'}, status=status.HTTP_400_BAD_REQUEST)
 
-    result = validate_voucher_for_customer(code=code, customer_id=customer_id, total_price=total_price)
+    result = validate_voucher_for_customer(
+        code=code,
+        customer_id=customer_id,
+        total_price=total_price,
+        field_price=field_price,
+        service_price=service_price
+    )
     
     if not result.get('valid'):
         return Response({'error': result.get('error', 'Mã giảm giá không hợp lệ')}, status=status.HTTP_400_BAD_REQUEST)
@@ -158,6 +166,9 @@ def admin_create_voucher(request):
 
         is_system_reward = bool(data.get('is_system_reward', False))
         is_active = bool(data.get('is_active', True))
+        applicable_to = data.get('applicable_to', 'all')
+        if applicable_to not in ('field_only', 'all'):
+            applicable_to = 'all'
         description = data.get('description', '')
 
         voucher = Voucher.objects.create(
@@ -168,6 +179,7 @@ def admin_create_voucher(request):
             discount_value=discount_value,
             max_discount=max_discount_val,
             min_booking_price=min_booking_price_val,
+            applicable_to=applicable_to,
             expiry_days=expiry_days,
             usage_limit=usage_limit_val,
             is_system_reward=is_system_reward,
@@ -222,6 +234,9 @@ def admin_update_voucher(request, voucher_id):
     if 'usage_limit' in data:
         val = data['usage_limit']
         voucher.usage_limit = int(val) if val not in (None, '', 'null') else None
+    if 'applicable_to' in data:
+        val = data['applicable_to']
+        voucher.applicable_to = val if val in ('field_only', 'all') else 'all'
     if 'is_system_reward' in data:
         voucher.is_system_reward = bool(data['is_system_reward'])
     if 'is_active' in data:

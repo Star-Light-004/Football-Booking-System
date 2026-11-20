@@ -1,0 +1,1770 @@
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { getFields, updateField } from "../../../api/fieldsApi";
+import {
+  getMaintenanceIssues,
+  createMaintenanceIssue,
+  updateMaintenanceIssue,
+  updateMaintenanceStatus,
+  deleteMaintenanceIssue,
+} from "../../../api/facilityApi";
+import AdminSidebar from "../../../components/AdminSidebar/AdminSidebar";
+import ConfirmModal from "../../../components/ConfirmModal/ConfirmModal";
+import { useToast, ToastContainer } from "../../../components/Toast/Toast";
+import { broadcastSyncEvent, onSyncEvent } from "../../../utils/realtimeSync";
+import "../dashboard/dashboard.css";
+import "./Maintenance.css";
+import { MaintenanceStatsPanel } from "./MaintenanceStatsPanel";
+
+// Định dạng hiển thị tiền tệ chuẩn tiếng Việt (dấu chấm phân tách)
+const formatCurrency = (val) => {
+  return Number(val || 0).toLocaleString("vi-VN");
+};
+
+// Định dạng số có dấu chấm phân cách hàng nghìn khi nhập liệu
+const formatDotNumber = (val) => {
+  if (val === null || val === undefined || val === "") return "";
+  const cleaned = String(val).replace(/\D/g, "");
+  if (!cleaned) return "";
+  return Number(cleaned).toLocaleString("vi-VN");
+};
+
+// Chuyển chuỗi có dấu chấm về dạng số thực
+const parseDotNumber = (val) => {
+  if (!val) return 0;
+  const cleaned = String(val).replace(/\D/g, "");
+  return parseFloat(cleaned) || 0;
+};
+
+// Định dạng ngày giờ chuẩn tiếng Việt gọn đẹp
+const formatDateTime = (val) => {
+  if (!val) return "";
+  if (typeof val !== "string") {
+    if (val instanceof Date) {
+      return val.toLocaleString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+    return String(val);
+  }
+  // Nếu đã ở dạng dd/mm/yyyy hoặc văn bản thân thiện
+  if (!val.includes("T") && !val.includes("-") && (val.includes("/") || val.includes("Vừa") || val.includes("Hôm"))) {
+    return val;
+  }
+  try {
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return val;
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    return `${day}/${month}/${year}, ${hours}:${minutes}`;
+  } catch {
+    return val;
+  }
+};
+
+function TopHeader({ searchQuery, onSearchChange, onAddIssue, onRefresh, loading }) {
+  return (
+    <header className="top-header">
+      <div className="search-wrapper">
+        <div className="search-box">
+          <span className="material-symbols-outlined search-icon">search</span>
+          <input
+            type="text"
+            placeholder="Tìm kiếm thiết bị, sân bóng, sự cố..."
+            value={searchQuery || ""}
+            onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="header-actions">
+        <button
+          className="icon-btn"
+          type="button"
+          title="Làm mới dữ liệu"
+          onClick={onRefresh}
+          disabled={loading}
+        >
+          <span className={`material-symbols-outlined ${loading ? "spin-icon" : ""}`}>
+            sync
+          </span>
+        </button>
+        <button className="icon-btn" type="button" title="Thông báo">
+          <span className="material-symbols-outlined">notifications</span>
+        </button>
+        <button className="icon-btn" type="button" title="Trợ giúp">
+          <span className="material-symbols-outlined">help_outline</span>
+        </button>
+        <div className="header-divider" />
+        <button className="btn-new-booking" type="button" onClick={onAddIssue}>
+          <span className="material-symbols-outlined">build</span>
+          Báo sự cố mới
+        </button>
+      </div>
+    </header>
+  );
+}
+
+export default function Maintenance() {
+  const [fields, setFields] = useState([]);
+  const [issues, setIssues] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const { toasts, removeToast, showToast } = useToast();
+
+  const ISSUES_STORAGE_KEY = "pitch_maintenance_issues";
+
+  // Modal tạo phiếu mới
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newIssue, setNewIssue] = useState({
+    fieldName: "",
+    category: "Đèn chiếu sáng cao áp",
+    priority: "Khẩn cấp",
+    description: "",
+    estimatedCost: "",
+    reportedBy: "Bộ phận kỹ thuật",
+  });
+
+  // Modal sửa phiếu
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingIssue, setEditingIssue] = useState(null);
+
+  // Modal xem chi tiết sân
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedPitch, setSelectedPitch] = useState(null);
+
+  // Modal xác nhận sửa xong
+  const [showRepairModal, setShowRepairModal] = useState(false);
+  const [repairingField, setRepairingField] = useState(null);
+  const [repairingIssue, setRepairingIssue] = useState(null);
+  const [actualCostInput, setActualCostInput] = useState("");
+
+  // Tab chính: "board" (Quản lý bảo trì sân & thiết bị) | "stats" (Thống kê ca bảo trì)
+  const [activeMainTab, setActiveMainTab] = useState("board");
+  const [statsRange, setStatsRange] = useState("day"); // "day" | "week" | "month" | "all"
+  const [statsFieldFilter, setStatsFieldFilter] = useState("all");
+
+  // In-screen dialog confirm
+  const [confirmConfig, setConfirmConfig] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    confirmText: "Xác nhận",
+    cancelText: "Hủy bỏ",
+    type: "danger",
+    onConfirm: () => {},
+  });
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const res = await getFields({ params: { show_all: "true" } });
+      const fieldList = res.data.fields || res.data || [];
+      setFields(fieldList);
+
+      if (fieldList.length > 0 && !newIssue.fieldName) {
+        setNewIssue((prev) => ({ ...prev, fieldName: fieldList[0].field_name }));
+      }
+
+      try {
+        const issuesRes = await getMaintenanceIssues();
+        const serverIssues = issuesRes.data?.results || issuesRes.data || [];
+        if (Array.isArray(serverIssues)) {
+          setIssues(serverIssues);
+          localStorage.setItem(ISSUES_STORAGE_KEY, JSON.stringify(serverIssues));
+        } else {
+          setIssues([]);
+          localStorage.removeItem(ISSUES_STORAGE_KEY);
+        }
+      } catch {
+        // Chỉ khi mất mạng hoàn toàn mới dùng tạm cache
+        const saved = localStorage.getItem(ISSUES_STORAGE_KEY);
+        if (saved) {
+          try {
+            setIssues(JSON.parse(saved));
+          } catch {
+            setIssues([]);
+          }
+        } else {
+          setIssues([]);
+        }
+      }
+    } catch (error) {
+      showToast("Không thể tải thông tin sân bóng", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+
+    // Tiếp nhận báo hỏng thời gian thực từ Vệ sinh sân hoặc nơi khác gửi xuống
+    const cleanupSync = onSyncEvent((event) => {
+      if (event?.type === "maintenance_issue_reported") {
+        fetchData();
+        const rep = event.reportedBy || "Quản lý đặt sân";
+        showToast(
+          `🔔 Có phiếu báo sự cố mới tại ${event.fieldName || "sân bóng"} (${event.category || "Cơ sở vật chất"}) do ${rep} gửi sang!`,
+          "warning"
+        );
+      } else if (event?.type === "field_maintenance_resolved") {
+        fetchData();
+      }
+    });
+
+    return () => cleanupSync();
+  }, []);
+
+  // Khóa cuộn trang nền khi có bất kỳ modal nào đang mở (chỉ form cuộn chuột, trang ngoài không cuộn)
+  useEffect(() => {
+    const hasOpenModal = showCreateModal || showEditModal || showDetailModal || showRepairModal;
+    if (hasOpenModal) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showCreateModal, showEditModal, showDetailModal, showRepairModal]);
+
+  // Lấy danh sách phiếu của sân bóng
+  const getPitchIssues = (pitch) => {
+    if (!pitch) return [];
+    const pName = (pitch.field_name || "").trim().toLowerCase();
+    const pId = String(pitch.id || "");
+    return issues.filter((i) => {
+      const matchId = i.field && String(i.field) === pId;
+      const matchName = i.fieldName && (i.fieldName || "").trim().toLowerCase() === pName;
+      return matchId || matchName;
+    });
+  };
+
+  // Lấy các phiếu đang hỏng / cần sửa của sân bóng
+  const getPitchActiveIssues = (pitch) => {
+    return getPitchIssues(pitch).filter(
+      (i) => i.status !== "done" && i.status !== "resolved"
+    );
+  };
+
+  // Tính tổng chi phí bảo trì dự kiến của sân
+  const getPitchEstimatedCost = (pitch) => {
+    const active = getPitchActiveIssues(pitch);
+    return active.reduce(
+      (sum, i) => sum + (parseFloat(i.estimatedCost || i.estimated_cost) || 0),
+      0
+    );
+  };
+
+  // Khóa / Mở sân đón khách
+  const handleToggleMaintenance = async (field) => {
+    const isNowAvailable = field.is_available === false;
+    try {
+      await updateField(field.id, { is_available: isNowAvailable });
+      setFields((prev) =>
+        prev.map((f) => (f.id === field.id ? { ...f, is_available: isNowAvailable } : f))
+      );
+      broadcastSyncEvent("field_updated", { fieldId: field.id, is_available: isNowAvailable });
+      showToast(
+        isNowAvailable
+          ? `Đã mở khóa ${field.field_name} đón khách bình thường`
+          : `Đã đưa ${field.field_name} vào trạng thái BẢO TRÌ (Khóa đặt sân)`,
+        "success"
+      );
+    } catch (error) {
+      showToast("Lỗi cập nhật trạng thái bảo trì của sân", "error");
+    }
+  };
+
+  // Cập nhật tiến độ đơn lẻ (Chuyển sang "Đang sửa")
+  const handleUpdateIssueStatus = (issueId, newStatus) => {
+    const updated = issues.map((item) =>
+      item.id === issueId ? { ...item, status: newStatus } : item
+    );
+    setIssues(updated);
+    localStorage.setItem(ISSUES_STORAGE_KEY, JSON.stringify(updated));
+
+    try {
+      updateMaintenanceStatus(issueId, newStatus).catch(() => {});
+    } catch {}
+
+    if (newStatus === "done") {
+      broadcastSyncEvent("field_maintenance_resolved", { issueId });
+    }
+
+    showToast(
+      newStatus === "done" ? "Đã sửa xong phiếu bảo trì" : "Đã cập nhật tiến độ bảo trì",
+      "success"
+    );
+  };
+
+  // Mở modal xác nhận sửa xong: hiển thị thông báo xác nhận và chi phí dự kiến để nhập
+  const openRepairModal = (field, specificIssue = null) => {
+    setRepairingField(field);
+    setRepairingIssue(specificIssue);
+
+    let defaultCost = 0;
+    if (specificIssue) {
+      defaultCost = parseFloat(specificIssue.estimatedCost || specificIssue.estimated_cost) || 0;
+    } else {
+      defaultCost = getPitchEstimatedCost(field);
+    }
+
+    // Tự động điền chi phí dự kiến đã định dạng với dấu chấm để người dùng dễ kiểm tra/sửa đổi
+    setActualCostInput(defaultCost > 0 ? formatDotNumber(defaultCost) : "");
+    setShowRepairModal(true);
+  };
+
+  // Xác nhận sửa xong -> Đổi trạng thái 'done', lưu chi phí thực tế, hết chấm đỏ
+  const handleConfirmRepairDone = async () => {
+    const actualCost = parseDotNumber(actualCostInput);
+    const nowTimeStr = new Date().toLocaleString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    if (repairingIssue) {
+      // Sửa xong một phiếu cụ thể
+      const updated = issues.map((item) => {
+        if (item.id === repairingIssue.id) {
+          return {
+            ...item,
+            status: "done",
+            cost: actualCost,
+            resolvedAt: nowTimeStr,
+            resolved_at: new Date().toISOString(),
+          };
+        }
+        return item;
+      });
+      setIssues(updated);
+      localStorage.setItem(ISSUES_STORAGE_KEY, JSON.stringify(updated));
+
+      try {
+        await updateMaintenanceStatus(repairingIssue.id, "done", actualCost);
+      } catch {}
+
+      broadcastSyncEvent("field_maintenance_resolved", {
+        issueId: repairingIssue.id,
+        fieldName: repairingIssue.fieldName || repairingIssue.field_name,
+      });
+
+      showToast(`Đã xác nhận sửa xong phiếu sự cố "${repairingIssue.category}"!`, "success");
+    } else if (repairingField) {
+      // Sửa xong tất cả các phiếu đang hỏng của sân này
+      const targetIssues = getPitchActiveIssues(repairingField);
+      if (targetIssues.length === 0) {
+        showToast("Sân này hiện không có phiếu bảo trì nào cần sửa", "info");
+        setShowRepairModal(false);
+        return;
+      }
+
+      const costPerIssue = actualCost > 0 ? actualCost / targetIssues.length : 0;
+      const targetIds = new Set(targetIssues.map((i) => i.id));
+
+      const updated = issues.map((item) => {
+        if (targetIds.has(item.id)) {
+          return {
+            ...item,
+            status: "done",
+            cost: costPerIssue,
+            resolvedAt: nowTimeStr,
+            resolved_at: new Date().toISOString(),
+          };
+        }
+        return item;
+      });
+      setIssues(updated);
+      localStorage.setItem(ISSUES_STORAGE_KEY, JSON.stringify(updated));
+
+      // Cập nhật backend API cho từng issue
+      for (const t of targetIssues) {
+        try {
+          updateMaintenanceStatus(t.id, "done", costPerIssue).catch(() => {});
+        } catch {}
+      }
+
+      broadcastSyncEvent("field_maintenance_resolved", {
+        fieldId: repairingField.id,
+        fieldName: repairingField.field_name,
+      });
+
+      showToast(
+        `Đã sửa xong toàn bộ sự cố tại ${repairingField.field_name}! Chấm đỏ cảnh báo đã được gỡ bỏ.`,
+        "success"
+      );
+    }
+
+    setShowRepairModal(false);
+    setRepairingField(null);
+    setRepairingIssue(null);
+  };
+
+  // Tự tạo phiếu bảo trì mới (chỉ thực hiện ở trang bảo trì)
+  const handleCreateIssue = (e) => {
+    e.preventDefault();
+    if (!newIssue.description.trim()) {
+      showToast("Vui lòng nhập mô tả sự cố", "error");
+      return;
+    }
+
+    const matchedField = fields.find(
+      (f) => (f.field_name || "").toLowerCase() === (newIssue.fieldName || "").toLowerCase()
+    );
+
+    const estCost = parseDotNumber(newIssue.estimatedCost);
+
+    const item = {
+      id: Date.now(),
+      field: matchedField?.id || null,
+      fieldName: newIssue.fieldName,
+      category: newIssue.category,
+      description: newIssue.description,
+      priority: newIssue.priority,
+      estimatedCost: estCost,
+      cost: 0,
+      reportedBy: newIssue.reportedBy || "Bộ phận kỹ thuật",
+      status: "pending",
+      createdAt: "Vừa xong",
+    };
+
+    const updated = [item, ...issues];
+    setIssues(updated);
+    localStorage.setItem(ISSUES_STORAGE_KEY, JSON.stringify(updated));
+
+    try {
+      createMaintenanceIssue({
+        field: matchedField?.id || null,
+        field_name: newIssue.fieldName,
+        category: newIssue.category,
+        description: newIssue.description,
+        priority: newIssue.priority,
+        estimated_cost: estCost,
+        status: "pending",
+        reported_by_name: item.reportedBy,
+      })
+        .then((res) => {
+          if (res.data?.id) {
+            item.id = res.data.id;
+            const synced = [item, ...issues];
+            localStorage.setItem(ISSUES_STORAGE_KEY, JSON.stringify(synced));
+          }
+        })
+        .catch(() => {});
+    } catch {}
+
+    broadcastSyncEvent("maintenance_issue_reported", item);
+
+    setShowCreateModal(false);
+    setNewIssue((prev) => ({ ...prev, description: "", estimatedCost: "" }));
+    showToast("Đã tạo phiếu bảo trì sân thành công", "success");
+  };
+
+  // Mở modal sửa phiếu
+  const openEditModal = (issue) => {
+    const rawEst = issue.estimatedCost || issue.estimated_cost || 0;
+    const rawAct = issue.cost || 0;
+
+    setEditingIssue({
+      ...issue,
+      fieldName: issue.fieldName || issue.field_name || "",
+      category: issue.category || "Đèn chiếu sáng cao áp",
+      priority: issue.priority || "Khẩn cấp",
+      description: issue.description || "",
+      estimatedCost: rawEst > 0 ? formatDotNumber(rawEst) : "",
+      cost: rawAct > 0 ? formatDotNumber(rawAct) : "",
+      status: issue.status || "pending",
+    });
+    setShowEditModal(true);
+  };
+
+  // Lưu sửa phiếu bảo trì
+  const handleSaveEditIssue = (e) => {
+    e.preventDefault();
+    if (!editingIssue || !editingIssue.description.trim()) {
+      showToast("Vui lòng nhập mô tả sự cố", "error");
+      return;
+    }
+
+    const estCost = parseDotNumber(editingIssue.estimatedCost);
+    const actCost = parseDotNumber(editingIssue.cost);
+
+    const updated = issues.map((item) => {
+      if (item.id === editingIssue.id) {
+        return {
+          ...item,
+          fieldName: editingIssue.fieldName,
+          category: editingIssue.category,
+          priority: editingIssue.priority,
+          description: editingIssue.description,
+          estimatedCost: estCost,
+          cost: actCost,
+          status: editingIssue.status,
+        };
+      }
+      return item;
+    });
+
+    setIssues(updated);
+    localStorage.setItem(ISSUES_STORAGE_KEY, JSON.stringify(updated));
+
+    try {
+      updateMaintenanceIssue(editingIssue.id, {
+        field_name: editingIssue.fieldName,
+        category: editingIssue.category,
+        priority: editingIssue.priority,
+        description: editingIssue.description,
+        estimated_cost: estCost,
+        cost: actCost,
+        status: editingIssue.status,
+      }).catch(() => {});
+    } catch {}
+
+    setShowEditModal(false);
+    setEditingIssue(null);
+    showToast("Đã cập nhật thông tin phiếu bảo trì", "success");
+  };
+
+  // Tự xóa phiếu bảo trì
+  const handleDeleteIssue = (issueId) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: "Xác nhận xóa phiếu bảo trì",
+      message: "Bạn có chắc chắn muốn xóa phiếu bảo trì này không? Dữ liệu sự cố sẽ bị xóa hoàn toàn.",
+      confirmText: "Xóa phiếu",
+      cancelText: "Hủy bỏ",
+      type: "danger",
+      onConfirm: () => {
+        const updated = issues.filter((i) => i.id !== issueId);
+        setIssues(updated);
+        localStorage.setItem(ISSUES_STORAGE_KEY, JSON.stringify(updated));
+
+        try {
+          deleteMaintenanceIssue(issueId).catch(() => {});
+        } catch {}
+
+        showToast("Đã xóa phiếu bảo trì sân", "success");
+      },
+    });
+  };
+
+  // Mở modal xem chi tiết sân
+  const openPitchDetailModal = (field) => {
+    setSelectedPitch(field);
+    setShowDetailModal(true);
+  };
+
+  const maintenanceFields = fields.filter((f) => f.is_available === false);
+  const fixingIssues = issues.filter((i) => i.status !== "done" && i.status !== "resolved");
+  const totalAllEstCost = issues.reduce(
+    (sum, i) => sum + (parseFloat(i.estimatedCost || i.estimated_cost) || 0),
+    0
+  );
+
+  const filteredIssues = issues.filter(
+    (i) =>
+      (i.fieldName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (i.category || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (i.description || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (i.reportedBy || i.reported_by_name || "").toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Xuất file CSV thống kê bảo trì
+  const handleExportStatsCSV = (statsList, rangeLabel) => {
+    const headers = [
+      "Mã phiếu",
+      "Sân bóng",
+      "Ca đặt sân",
+      "Hạng mục",
+      "Mô tả sự cố",
+      "Mức độ",
+      "Nguồn báo",
+      "Người báo",
+      "Thời gian tiếp nhận",
+      "Thời gian sửa xong",
+      "Chi phí thực tế (VNĐ)",
+      "Trạng thái",
+    ];
+    const rows = statsList.map((item) => [
+      item.id,
+      `"${item.fieldName || item.field_name || ""}"`,
+      `"${item.bookingTime || "Bảo trì định kỳ"}"`,
+      `"${item.category || ""}"`,
+      `"${(item.description || "").replace(/"/g, '""')}"`,
+      `"${item.priority || ""}"`,
+      `"${(item.reportedBy || "").toLowerCase().includes("vệ sinh") ? "Từ vệ sinh sân" : (item.reportedBy || "").toLowerCase().includes("đặt sân") ? "Quản lý đặt sân" : "Kỹ thuật viên"}"`,
+      `"${item.reportedBy || item.reported_by_name || ""}"`,
+      `"${formatDateTime(item.createdAt || item.created_at)}"`,
+      `"${item.resolvedAt || item.resolved_at ? formatDateTime(item.resolvedAt || item.resolved_at) : "Chưa hoàn tất"}"`,
+      item.cost || 0,
+      `"${item.status === "done" || item.status === "resolved" ? "Đã sửa xong" : item.status === "fixing" ? "Đang sửa" : "Chờ xử lý"}"`,
+    ]);
+
+    const csvContent =
+      "\uFEFF" +
+      [headers.join(","), ...rows.map((r) => r.join(","))].join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Thong_Ke_Bao_Tri_${rangeLabel}_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast("Đã tải xuống file thống kê ca bảo trì!", "success");
+  };
+
+  return (
+    <>
+      <AdminSidebar />
+      <TopHeader
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onAddIssue={() => {
+          setNewIssue((prev) => ({
+            ...prev,
+            fieldName: fields[0]?.field_name || "",
+            description: "",
+            estimatedCost: "",
+          }));
+          setShowCreateModal(true);
+        }}
+        onRefresh={fetchData}
+        loading={loading}
+      />
+
+      <main className="main-content admin-dashboard-main">
+        <ToastContainer toasts={toasts} onRemove={removeToast} />
+
+        <div className="content-area">
+          {/* Header Trang */}
+          <div className="page-heading">
+            <div className="page-heading-copy">
+              <span className="dashboard-eyebrow">
+                QUẢN TRỊ KỸ THUẬT <span>›</span> BẢO TRÌ &amp; CƠ SỞ VẬT CHẤT
+              </span>
+              <h2>Bảo trì &amp; Quản lý Thiết bị Sân</h2>
+              <p>
+                Tiếp nhận báo hỏng từ vệ sinh sân, theo dõi chi phí dự kiến, quản lý phiếu bảo trì và trạng thái từng sân bóng.
+              </p>
+            </div>
+            <div className="dashboard-heading-actions">
+              <button
+                type="button"
+                className="btn-new-booking"
+                onClick={() => {
+                  setNewIssue((prev) => ({
+                    ...prev,
+                    fieldName: fields[0]?.field_name || "",
+                    description: "",
+                    estimatedCost: "",
+                  }));
+                  setShowCreateModal(true);
+                }}
+              >
+                <span className="material-symbols-outlined">add_alert</span>
+                Tạo phiếu bảo trì
+              </button>
+            </div>
+          </div>
+
+          {/* Thẻ KPI Thống kê Bảo trì - Nằm trên 2 tab theo yêu cầu của user */}
+          <div className="stats-grid">
+            <div className="stat-card">
+              <div className="stat-card-header">
+                <div className="stat-icon amber">
+                  <span className="material-symbols-outlined">construction</span>
+                </div>
+                <span className="stat-badge badge-amber">{maintenanceFields.length} sân tạm khóa</span>
+              </div>
+              <p className="stat-label">Sân đang khóa bảo trì</p>
+              <p className="stat-value">
+                {maintenanceFields.length}{" "}
+                <span style={{ fontSize: "0.9rem", color: "#64748b" }}>/ {fields.length} sân</span>
+              </p>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-card-header">
+                <div className="stat-icon red">
+                  <span className="material-symbols-outlined">warning</span>
+                </div>
+                <span className="stat-badge badge-red">Chờ xử lý / Đang sửa</span>
+              </div>
+              <p className="stat-label">Sự cố đang xử lý</p>
+              <p className="stat-value">
+                {fixingIssues.length}{" "}
+                <span style={{ fontSize: "0.9rem", color: "#64748b" }}>phiếu</span>
+              </p>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-card-header">
+                <div className="stat-icon green">
+                  <span className="material-symbols-outlined">payments</span>
+                </div>
+                <span className="stat-badge badge-green">Dự kiến chi phí</span>
+              </div>
+              <p className="stat-label">Tổng chi phí bảo trì dự kiến</p>
+              <p className="stat-value">
+                {formatCurrency(totalAllEstCost)}{" "}
+                <span style={{ fontSize: "0.9rem", color: "#64748b" }}>đ</span>
+              </p>
+            </div>
+          </div>
+
+          {/* Tabs chuyển đổi giữa Quản lý bảo trì sân và Thống kê bảo trì - Nằm dưới 3 ô thông tin */}
+          <div className="maintenance-tabs-bar">
+            <button
+              type="button"
+              className={`maintenance-tab-item ${activeMainTab === "board" ? "active" : ""}`}
+              onClick={() => setActiveMainTab("board")}
+            >
+              <span className="material-symbols-outlined">handyman</span>
+              Quản lý bảo trì sân &amp; Thiết bị
+            </button>
+            <button
+              type="button"
+              className={`maintenance-tab-item ${activeMainTab === "stats" ? "active" : ""}`}
+              onClick={() => setActiveMainTab("stats")}
+            >
+              <span className="material-symbols-outlined">insights</span>
+              Thống kê ca bảo trì
+              <span className="tab-pill-badge">{issues.length}</span>
+            </button>
+          </div>
+
+          {activeMainTab === "stats" ? (
+            <MaintenanceStatsPanel
+              fields={fields}
+              issues={issues}
+              statsRange={statsRange}
+              setStatsRange={setStatsRange}
+              statsFieldFilter={statsFieldFilter}
+              setStatsFieldFilter={setStatsFieldFilter}
+              onExportCSV={handleExportStatsCSV}
+            />
+          ) : (
+            <>
+
+          {/* Bảng Quản lý Trạng thái & Thông tin từng sân */}
+          <div className="maintenance-board-card">
+            <div className="board-header">
+              <div>
+                <h3 className="chart-title">Thông tin bảo trì &amp; Trạng thái từng sân</h3>
+                <p className="chart-subtitle">
+                  Sân có sự cố / phiếu bảo trì sẽ hiển thị <strong>chấm đỏ</strong>. Bấm "Sửa xong" để gỡ chấm đỏ và hoàn tất.
+                </p>
+              </div>
+              <span className="count-pill">{fields.length} sân cơ sở</span>
+            </div>
+
+            <div className="fields-maintenance-grid">
+              {fields.map((f) => {
+                const isUnderMaintenance = f.is_available === false;
+                const pitchIssues = getPitchIssues(f);
+                const activePitchIssues = getPitchActiveIssues(f);
+                const hasActiveIssue = activePitchIssues.length > 0;
+                const estCost = getPitchEstimatedCost(f);
+
+                return (
+                  <div
+                    key={f.id}
+                    className={`field-toggle-card ${
+                      hasActiveIssue ? "has-issues" : isUnderMaintenance ? "under-maintenance" : "available"
+                    }`}
+                  >
+                    <div style={{ width: "100%" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div className="toggle-card-info">
+                          <span className="material-symbols-outlined toggle-card-icon">
+                            {hasActiveIssue ? "report" : isUnderMaintenance ? "engineering" : "sports_soccer"}
+                          </span>
+                          <div>
+                            <h4 className="toggle-card-name">
+                              {f.field_name}
+                              {/* Chấm đỏ hiển thị khi sân có phiếu báo trì */}
+                              {hasActiveIssue && (
+                                <span
+                                  className="red-dot-indicator pulse"
+                                  title={`${activePitchIssues.length} phiếu báo hỏng đang chờ sửa!`}
+                                />
+                              )}
+                            </h4>
+                            <span className="toggle-card-type">{f.field_type || "Sân cỏ nhân tạo"}</span>
+                          </div>
+                        </div>
+
+                        <div className="toggle-action-box">
+                          {hasActiveIssue ? (
+                            <span className="issue-count-badge red">
+                              <span className="material-symbols-outlined" style={{ fontSize: "0.85rem" }}>
+                                warning
+                              </span>
+                              {activePitchIssues.length} sự cố cần sửa
+                            </span>
+                          ) : (
+                            <span className="issue-count-badge green">
+                              <span className="material-symbols-outlined" style={{ fontSize: "0.85rem" }}>
+                                verified
+                              </span>
+                              Hoạt động tốt
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Tình trạng kỹ thuật thiết bị */}
+                      <div className="pitch-facility-status-box">
+                        <div className="status-box-main">
+                          <span className="facility-status-lbl">
+                            <span className="material-symbols-outlined" style={{ fontSize: "0.95rem" }}>
+                              {hasActiveIssue ? "construction" : "verified"}
+                            </span>
+                            {hasActiveIssue ? "Cần khắc phục:" : "Tình trạng kỹ thuật:"}
+                          </span>
+                          <span className={`facility-status-tag ${hasActiveIssue ? "is-issue" : "is-good"}`}>
+                            {hasActiveIssue ? (activePitchIssues[0]?.category || "Có sự cố đang hỏng") : "Đạt chuẩn phục vụ ca đá"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Các nút thao tác Xem chi tiết và Sửa xong */}
+                      <div className="pitch-actions-toolbar">
+                        {/* Không hiển thị (0) khi không có phiếu nào và giữ trên 1 hàng */}
+                        <button
+                          type="button"
+                          className="btn-pitch-action btn-pitch-detail"
+                          onClick={() => openPitchDetailModal(f)}
+                          title="Xem chi tiết các phiếu bảo trì của sân này"
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: "1rem" }}>visibility</span>
+                          <span style={{ whiteSpace: "nowrap" }}>
+                            Xem chi tiết{pitchIssues.length > 0 ? ` (${pitchIssues.length})` : ""}
+                          </span>
+                        </button>
+
+                        {/* Nếu sân nào có báo bảo trì mới hiển thị nút sửa xong */}
+                        {hasActiveIssue && (
+                          <button
+                            type="button"
+                            className="btn-pitch-action btn-pitch-done"
+                            onClick={() => openRepairModal(f)}
+                            title="Xác nhận đã sửa xong tất cả sự cố của sân này"
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: "1rem" }}>check_circle</span>
+                            <span style={{ whiteSpace: "nowrap" }}>Sửa xong</span>
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          className={`btn-toggle-switch ${isUnderMaintenance ? "btn-resume" : "btn-stop"}`}
+                          onClick={() => handleToggleMaintenance(f)}
+                          title={isUnderMaintenance ? "Mở khóa cho khách đặt" : "Khóa sân bảo trì"}
+                        >
+                          <span className="material-symbols-outlined">
+                            {isUnderMaintenance ? "lock_open" : "lock"}
+                          </span>
+                          <span style={{ whiteSpace: "nowrap" }}>{isUnderMaintenance ? "Mở khóa" : "Khóa"}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Danh sách Sự cố Kỹ thuật & Phiếu bảo trì */}
+          <div className="bookings-card" style={{ marginTop: "1.75rem" }}>
+            <div className="bookings-header">
+              <div>
+                <h3>Danh sách phiếu sự cố &amp; Bảo trì thiết bị ({filteredIssues.length})</h3>
+                <p style={{ margin: "2px 0 0", fontSize: "0.8rem", color: "#64748b" }}>
+                  Bao gồm các sự cố báo từ Vệ sinh sân sau ca đá và do Kỹ thuật viên tự lập.
+                </p>
+              </div>
+
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button
+                  type="button"
+                  className="btn-new-booking"
+                  style={{ padding: "0.4rem 0.85rem", fontSize: "0.8rem" }}
+                  onClick={() => {
+                    setNewIssue((prev) => ({
+                      ...prev,
+                      fieldName: fields[0]?.field_name || "",
+                      description: "",
+                      estimatedCost: "",
+                    }));
+                    setShowCreateModal(true);
+                  }}
+                >
+                  <span className="material-symbols-outlined">add</span> Tạo phiếu mới
+                </button>
+              </div>
+            </div>
+
+            <div className="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th style={{ minWidth: 140 }}>Sân bóng</th>
+                    <th style={{ minWidth: 160 }}>Hạng mục</th>
+                    <th style={{ minWidth: 140 }}>Nguồn &amp; Người báo</th>
+                    <th style={{ minWidth: 200 }}>Mô tả chi tiết</th>
+                    <th style={{ minWidth: 100 }}>Mức độ</th>
+                    <th style={{ minWidth: 130 }}>Chi phí dự kiến</th>
+                    <th style={{ minWidth: 130 }}>Chi phí thực tế</th>
+                    <th style={{ minWidth: 130 }}>Thời gian</th>
+                    <th className="text-right" style={{ minWidth: 170 }}>Tiến độ &amp; Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredIssues.map((item) => {
+                    const isDone = item.status === "done" || item.status === "resolved";
+                    const isFixing = item.status === "fixing";
+                    const reporter = item.reportedBy || item.reported_by_name || "Kỹ thuật";
+                    const isFromCleaning =
+                      reporter.toLowerCase().includes("vệ sinh") ||
+                      reporter.toLowerCase().includes("dọn dẹp");
+                    const isFromBooking =
+                      reporter.toLowerCase().includes("đặt sân") ||
+                      Boolean(item.bookingId);
+
+                    const estCost = parseFloat(item.estimatedCost || item.estimated_cost) || 0;
+                    const actCost = parseFloat(item.cost) || 0;
+
+                    return (
+                      <tr key={item.id}>
+                        <td>
+                          <strong className="field-name">{item.fieldName || item.field_name || "Sân"}</strong>
+                        </td>
+                        <td>
+                          <span className="category-pill">
+                            <span className="material-symbols-outlined">hardware</span>
+                            {item.category}
+                          </span>
+                        </td>
+                        <td>
+                          {isFromCleaning ? (
+                            <span className="source-tag cleaning-source" title="Báo hỏng từ bộ phận vệ sinh sau ca đá">
+                              <span className="material-symbols-outlined">cleaning_services</span>
+                              Từ vệ sinh sân
+                            </span>
+                          ) : isFromBooking ? (
+                            <span className="source-tag booking-source" style={{ background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a" }} title="Báo sự cố khẩn cấp từ Quản lý đặt sân">
+                              <span className="material-symbols-outlined" style={{ color: "#d97706" }}>stadium</span>
+                              Quản lý đặt sân
+                            </span>
+                          ) : (
+                            <span className="source-tag tech-source" title="Do bộ phận kỹ thuật lập">
+                              <span className="material-symbols-outlined">build</span>
+                              {reporter}
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ maxWidth: 280 }}>
+                          <span className="issue-desc" title={item.description}>
+                            {item.description}
+                          </span>
+                        </td>
+                        <td>
+                          <span
+                            className={`priority-badge priority-${
+                              item.priority === "Khẩn cấp" || item.priority === "Cao" ? "high" : "normal"
+                            }`}
+                          >
+                            {item.priority}
+                          </span>
+                        </td>
+                        <td>
+                          <strong style={{ color: estCost > 0 ? "#e11d48" : "#64748b" }}>
+                            {formatCurrency(estCost)} đ
+                          </strong>
+                        </td>
+                        <td>
+                          <span style={{ color: actCost > 0 ? "#059669" : "#94a3b8", fontWeight: 600 }}>
+                            {actCost > 0 ? `${formatCurrency(actCost)} đ` : "—"}
+                          </span>
+                        </td>
+                        <td>
+                          <span className="booking-time">
+                            {item.createdAt || item.created_at || "Vừa xong"}
+                          </span>
+                        </td>
+                        <td className="text-right">
+                          <div className="table-actions-cell">
+                            {isDone ? (
+                              <span className="badge confirmed" style={{ marginRight: 6 }}>
+                                <span className="badge-dot" /> Đã sửa xong
+                              </span>
+                            ) : (
+                              <>
+                                {!isFixing && (
+                                  <button
+                                    type="button"
+                                    className="btn-tbl-action btn-start-fix"
+                                    onClick={() => handleUpdateIssueStatus(item.id, "fixing")}
+                                    title="Chuyển sang trạng thái đang sửa"
+                                  >
+                                    Đang sửa
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  className="btn-tbl-action btn-complete-fix"
+                                  onClick={() => {
+                                    const matchedF = fields.find(
+                                      (f) =>
+                                        (f.field_name || "").toLowerCase() ===
+                                        (item.fieldName || item.field_name || "").toLowerCase()
+                                    );
+                                    openRepairModal(matchedF || { field_name: item.fieldName }, item);
+                                  }}
+                                  title="Xác nhận sửa xong và ghi nhận chi phí"
+                                >
+                                  Sửa xong
+                                </button>
+                              </>
+                            )}
+
+                            {/* Nút sửa phiếu */}
+                            <button
+                              type="button"
+                              className="btn-tbl-action btn-edit"
+                              onClick={() => openEditModal(item)}
+                              title="Chỉnh sửa thông tin phiếu bảo trì"
+                            >
+                              <span className="material-symbols-outlined" style={{ fontSize: "0.9rem" }}>
+                                edit
+                              </span>
+                            </button>
+
+                            {/* Nút xóa phiếu */}
+                            <button
+                              type="button"
+                              className="btn-tbl-action btn-delete"
+                              onClick={() => handleDeleteIssue(item.id)}
+                              title="Xóa phiếu bảo trì"
+                            >
+                              <span className="material-symbols-outlined" style={{ fontSize: "0.9rem" }}>
+                                delete
+                              </span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {!filteredIssues.length && (
+                    <tr>
+                      <td colSpan="9" style={{ textAlign: "center", padding: "2.5rem", color: "#64748b" }}>
+                        Hiện không có sự cố kỹ thuật nào phù hợp với bộ lọc tìm kiếm.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+        </div>
+      </main>
+
+      {/* ── Modal Tạo phiếu sự cố / bảo trì mới (Ngoài trang) ── */}
+      {showCreateModal && (
+        <div className="modal-overlay modal-top-layer" style={{ zIndex: 1100 }} onClick={() => setShowCreateModal(false)}>
+          <div
+            className="modal-content-box modal-issue-form"
+            style={{ maxHeight: "88vh", display: "flex", flexDirection: "column", overflow: "hidden" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header" style={{ flexShrink: 0 }}>
+              <h3>Tạo phiếu bảo trì / Báo sự cố mới</h3>
+              <button
+                type="button"
+                className="btn-modal-close"
+                onClick={() => setShowCreateModal(false)}
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <form
+              onSubmit={handleCreateIssue}
+              style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden", minHeight: 0 }}
+            >
+              <div
+                className="modal-body-form"
+                style={{ flex: 1, overflowY: "auto", overscrollBehavior: "contain" }}
+              >
+                <div className="modal-form-grid">
+                  <div className="form-group">
+                    <label>Sân bóng xảy ra sự cố</label>
+                    <select
+                      className="form-input"
+                      value={newIssue.fieldName}
+                      onChange={(e) => setNewIssue({ ...newIssue, fieldName: e.target.value })}
+                    >
+                      {fields.map((f) => (
+                        <option key={f.id} value={f.field_name}>
+                          {f.field_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Hạng mục hư hỏng</label>
+                    <select
+                      className="form-input"
+                      value={newIssue.category}
+                      onChange={(e) => setNewIssue({ ...newIssue, category: e.target.value })}
+                    >
+                      <option value="Đèn chiếu sáng cao áp">Đèn chiếu sáng cao áp</option>
+                      <option value="Mặt cỏ nhân tạo">Mặt cỏ nhân tạo</option>
+                      <option value="Lưới khung thành & Cột">Lưới khung thành &amp; Cột</option>
+                      <option value="Hệ thống thoát nước">Hệ thống thoát nước</option>
+                      <option value="Hàng rào & Khán đài">Hàng rào &amp; Khán đài</option>
+                      <option value="Khác (Ghế chờ, bảng tỷ số)">Khác (Ghế chờ, bảng tỷ số)</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Mức độ ưu tiên</label>
+                    <select
+                      className="form-input"
+                      value={newIssue.priority}
+                      onChange={(e) => setNewIssue({ ...newIssue, priority: e.target.value })}
+                    >
+                      <option value="Khẩn cấp">Khẩn cấp (Cần xử lý ngay trước ca đá)</option>
+                      <option value="Cao">Cao (Xử lý trong ngày)</option>
+                      <option value="Bình thường">Bình thường (Trong 2-3 ngày)</option>
+                      <option value="Thấp">Thấp (Định kỳ cuối tuần)</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Người báo cáo / Đơn vị tạo</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="VD: Bộ phận kỹ thuật"
+                      value={newIssue.reportedBy}
+                      onChange={(e) => setNewIssue({ ...newIssue, reportedBy: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-group col-span-2">
+                    <label>Số tiền bảo trì dự kiến (VNĐ)</label>
+                    <div className="formatted-currency-input-wrapper">
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="VD: 500.000"
+                        value={newIssue.estimatedCost}
+                        onChange={(e) =>
+                          setNewIssue({ ...newIssue, estimatedCost: formatDotNumber(e.target.value) })
+                        }
+                      />
+                      <span className="currency-unit-suffix">VNĐ</span>
+                    </div>
+                  </div>
+
+                  <div className="form-group col-span-2">
+                    <label>Mô tả chi tiết tình trạng hỏng</label>
+                    <textarea
+                      className="form-input"
+                      rows="3"
+                      placeholder="Mô tả cụ thể vị trí, tình trạng hỏng hóc..."
+                      value={newIssue.description}
+                      onChange={(e) => setNewIssue({ ...newIssue, description: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-footer" style={{ flexShrink: 0 }}>
+                <button
+                  type="button"
+                  className="btn-modal-cancel"
+                  onClick={() => setShowCreateModal(false)}
+                >
+                  Hủy
+                </button>
+                <button type="submit" className="btn-modal-submit">
+                  <span className="material-symbols-outlined" style={{ fontSize: "1.1rem" }}>
+                    add_circle
+                  </span>
+                  Tạo phiếu bảo trì
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Xem Chi tiết Sân & Các Phiếu Bảo trì (Tối ưu giao diện, bỏ nút dư thừa) ── */}
+      {showDetailModal && selectedPitch && (
+        <div
+          className="modal-overlay"
+          style={{ zIndex: 1000 }}
+          onClick={() => {
+            if (!showEditModal && !showRepairModal) setShowDetailModal(false);
+          }}
+        >
+          <div
+            className={`modal-content-box modal-pitch-detail ${showEditModal || showRepairModal ? "modal-dimmed-background" : ""}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                <span className="material-symbols-outlined" style={{ color: "#059669", fontSize: "1.4rem" }}>
+                  stadium
+                </span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "1.15rem", display: "flex", alignItems: "center" }}>
+                    Chi tiết bảo trì: {selectedPitch.field_name}
+                    {getPitchActiveIssues(selectedPitch).length > 0 && (
+                      <span
+                        className="red-dot-indicator pulse"
+                        style={{ marginLeft: 8 }}
+                        title="Sân có sự cố chưa xử lý"
+                      />
+                    )}
+                  </h3>
+                  <small style={{ color: "#64748b" }}>
+                    {selectedPitch.field_type || "Sân cỏ nhân tạo"} •{" "}
+                    {selectedPitch.is_available === false ? (
+                      <span style={{ color: "#d97706", fontWeight: 600 }}>Đang khóa bảo trì</span>
+                    ) : (
+                      <span style={{ color: "#059669", fontWeight: 600 }}>Đang hoạt động bình thường</span>
+                    )}
+                  </small>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn-modal-close"
+                onClick={() => setShowDetailModal(false)}
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div style={{ padding: "1.25rem 1.5rem", overflowY: "auto", flex: 1, overscrollBehavior: "contain" }}>
+              {/* Thẻ tổng quan sân */}
+              <div className="pitch-detail-overview">
+                <div className="overview-item">
+                  <span className="lbl">Số phiếu sự cố</span>
+                  <span className="val">
+                    {getPitchIssues(selectedPitch).length} phiếu
+                  </span>
+                </div>
+                <div className="overview-item">
+                  <span className="lbl">Sự cố đang chờ sửa</span>
+                  <span className="val" style={{ color: getPitchActiveIssues(selectedPitch).length > 0 ? "#ef4444" : "#059669" }}>
+                    {getPitchActiveIssues(selectedPitch).length} phiếu
+                  </span>
+                </div>
+                <div className="overview-item">
+                  <span className="lbl">Chi phí đã sửa chữa</span>
+                  <span className="val" style={{ color: "#059669" }}>
+                    {formatCurrency(
+                      getPitchIssues(selectedPitch)
+                        .filter((i) => i.status === "done" || i.status === "resolved")
+                        .reduce((sum, i) => sum + (parseFloat(i.cost) || 0), 0)
+                    )} đ
+                  </span>
+                </div>
+                <div className="overview-item">
+                  <span className="lbl">Đã khắc phục xong</span>
+                  <span className="val" style={{ color: "#059669" }}>
+                    {getPitchIssues(selectedPitch).filter((i) => i.status === "done" || i.status === "resolved").length} phiếu
+                  </span>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: "0.75rem",
+                }}
+              >
+                <h4 style={{ margin: 0, fontSize: "0.95rem", color: "#1e293b" }}>
+                  Danh sách hồ sơ bảo trì của sân ({getPitchIssues(selectedPitch).length})
+                </h4>
+              </div>
+
+              {/* Danh sách các phiếu bảo trì của sân */}
+              <div className="tickets-list-wrap">
+                {getPitchIssues(selectedPitch).map((ticket) => {
+                  const isDone = ticket.status === "done" || ticket.status === "resolved";
+                  const reporter = ticket.reportedBy || ticket.reported_by_name || "Kỹ thuật";
+                  const isFromCleaning =
+                    reporter.toLowerCase().includes("vệ sinh") ||
+                    reporter.toLowerCase().includes("dọn dẹp");
+
+                  const estCost =
+                    parseFloat(ticket.estimatedCost || ticket.estimated_cost) || 0;
+                  const actCost = parseFloat(ticket.cost) || 0;
+
+                  return (
+                    <div
+                      key={ticket.id}
+                      className={`ticket-card-item ${isDone ? "is-done" : "is-active"}`}
+                    >
+                      <div className="ticket-card-header">
+                        <div className="ticket-title">
+                          <span
+                            className="material-symbols-outlined"
+                            style={{
+                              fontSize: "1.15rem",
+                              color: isDone ? "#10b981" : "#ef4444",
+                            }}
+                          >
+                            {isDone ? "check_circle" : "error"}
+                          </span>
+                          {ticket.category}
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                          <span
+                            className={`priority-badge priority-${
+                              ticket.priority === "Khẩn cấp" || ticket.priority === "Cao"
+                                ? "high"
+                                : "normal"
+                            }`}
+                          >
+                            {ticket.priority}
+                          </span>
+                          <span
+                            className={`priority-badge`}
+                            style={{
+                              background: isDone ? "#ecfdf5" : ticket.status === "fixing" ? "#fffbeb" : "#fee2e2",
+                              color: isDone ? "#047857" : ticket.status === "fixing" ? "#b45309" : "#b91c1c",
+                            }}
+                          >
+                            {isDone ? "Đã sửa xong" : ticket.status === "fixing" ? "Đang sửa chữa" : "Chờ xử lý"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="ticket-meta-row">
+                        <span>
+                          <strong>Nguồn báo:</strong>{" "}
+                          {isFromCleaning ? (
+                            <span className="source-tag cleaning-source">
+                              <span className="material-symbols-outlined">cleaning_services</span>
+                              Từ vệ sinh sân
+                            </span>
+                          ) : (
+                            <span className="source-tag tech-source">
+                              <span className="material-symbols-outlined">build</span>
+                              {reporter}
+                            </span>
+                          )}
+                        </span>
+                        <span>
+                          <strong>Tiếp nhận:</strong> {formatDateTime(ticket.createdAt || ticket.created_at || "Vừa xong")}
+                        </span>
+                        {(ticket.resolvedAt || ticket.resolved_at) && (
+                          <span style={{ color: "#059669" }}>
+                            <strong>Đã sửa xong:</strong> {formatDateTime(ticket.resolvedAt || ticket.resolved_at)}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="ticket-desc-box">
+                        <strong>Mô tả sự cố:</strong> {ticket.description}
+                      </div>
+
+                      <div className="ticket-cost-info">
+                        {estCost > 0 && (
+                          <span className="cost-est-tag">
+                            Chi phí dự kiến: <strong>{formatCurrency(estCost)} đ</strong>
+                          </span>
+                        )}
+                        {isDone ? (
+                          <span className="cost-act-tag">
+                            Chi phí thực tế: <strong>{formatCurrency(actCost)} đ</strong>
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <div className="ticket-actions-bar">
+                        {!isDone && (
+                          <button
+                            type="button"
+                            className="btn-tbl-action btn-complete-fix"
+                            onClick={() => {
+                              openRepairModal(selectedPitch, ticket);
+                            }}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: "0.95rem" }}>
+                              done
+                            </span>
+                            Sửa xong
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          className="btn-tbl-action btn-edit"
+                          onClick={() => {
+                            openEditModal(ticket);
+                          }}
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: "0.95rem" }}>
+                            edit
+                          </span>
+                          Sửa phiếu
+                        </button>
+
+                        <button
+                          type="button"
+                          className="btn-tbl-action btn-delete"
+                          onClick={() => handleDeleteIssue(ticket.id)}
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: "0.95rem" }}>
+                            delete
+                          </span>
+                          Xóa
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {getPitchIssues(selectedPitch).length === 0 && (
+                  <div style={{ textAlign: "center", padding: "2.5rem 1rem", color: "#94a3b8" }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: "2.5rem", display: "block", marginBottom: 8, color: "#10b981" }}>
+                      verified
+                    </span>
+                    Sân này hiện hoạt động rất tốt, không có phiếu bảo trì nào được ghi nhận.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="modal-footer" style={{ flexShrink: 0 }}>
+              <button
+                type="button"
+                className="btn-cancel"
+                onClick={() => setShowDetailModal(false)}
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      
+      {/* ── Modal Sửa phiếu bảo trì (Form chuẩn đẹp 2 cột, nút xanh) ── */}
+      {showEditModal && editingIssue && (
+        <div
+          className="modal-overlay modal-top-layer"
+          style={{ zIndex: 200005 }}
+          onClick={() => setShowEditModal(false)}
+        >
+          <div
+            className="modal-content-box modal-issue-form"
+            style={{ maxHeight: "88vh", display: "flex", flexDirection: "column", overflow: "hidden" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header" style={{ flexShrink: 0 }}>
+              <h3>Chỉnh sửa phiếu bảo trì</h3>
+              <button
+                type="button"
+                className="btn-modal-close"
+                onClick={() => setShowEditModal(false)}
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditIssue} style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden", minHeight: 0 }}>
+              <div className="modal-body-form" style={{ flex: 1, overflowY: "auto", overscrollBehavior: "contain" }}>
+                <div className="modal-form-grid">
+                  <div className="form-group">
+                    <label>Sân bóng</label>
+                    <select
+                      className="form-input"
+                      value={editingIssue.fieldName}
+                      onChange={(e) =>
+                        setEditingIssue({ ...editingIssue, fieldName: e.target.value })
+                      }
+                    >
+                      {fields.map((f) => (
+                        <option key={f.id} value={f.field_name}>
+                          {f.field_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Hạng mục hư hỏng</label>
+                    <select
+                      className="form-input"
+                      value={editingIssue.category}
+                      onChange={(e) =>
+                        setEditingIssue({ ...editingIssue, category: e.target.value })
+                      }
+                    >
+                      <option value="Đèn chiếu sáng cao áp">Đèn chiếu sáng cao áp</option>
+                      <option value="Mặt cỏ nhân tạo">Mặt cỏ nhân tạo</option>
+                      <option value="Lưới khung thành & Cột">Lưới khung thành &amp; Cột</option>
+                      <option value="Hệ thống thoát nước">Hệ thống thoát nước</option>
+                      <option value="Hàng rào & Khán đài">Hàng rào &amp; Khán đài</option>
+                      <option value="Khác (Ghế chờ, bảng tỷ số)">Khác (Ghế chờ, bảng tỷ số)</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Mức độ ưu tiên</label>
+                    <select
+                      className="form-input"
+                      value={editingIssue.priority}
+                      onChange={(e) =>
+                        setEditingIssue({ ...editingIssue, priority: e.target.value })
+                      }
+                    >
+                      <option value="Khẩn cấp">Khẩn cấp</option>
+                      <option value="Cao">Cao</option>
+                      <option value="Bình thường">Bình thường</option>
+                      <option value="Thấp">Thấp</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Trạng thái xử lý</label>
+                    <select
+                      className="form-input"
+                      value={editingIssue.status}
+                      onChange={(e) =>
+                        setEditingIssue({ ...editingIssue, status: e.target.value })
+                      }
+                    >
+                      <option value="pending">Chờ xử lý (Đang hỏng)</option>
+                      <option value="fixing">Đang sửa chữa</option>
+                      <option value="done">Đã sửa xong</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Chi phí dự kiến (VNĐ)</label>
+                    <div className="formatted-currency-input-wrapper">
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="0"
+                        value={editingIssue.estimatedCost}
+                        onChange={(e) =>
+                          setEditingIssue({
+                            ...editingIssue,
+                            estimatedCost: formatDotNumber(e.target.value),
+                          })
+                        }
+                      />
+                      <span className="currency-unit-suffix">VNĐ</span>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Chi phí thực tế (VNĐ)</label>
+                    <div className="formatted-currency-input-wrapper">
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="0"
+                        value={editingIssue.cost}
+                        onChange={(e) =>
+                          setEditingIssue({
+                            ...editingIssue,
+                            cost: formatDotNumber(e.target.value),
+                          })
+                        }
+                      />
+                      <span className="currency-unit-suffix">VNĐ</span>
+                    </div>
+                  </div>
+
+                  <div className="form-group col-span-2">
+                    <label>Mô tả chi tiết sự cố</label>
+                    <textarea
+                      className="form-input"
+                      rows="3"
+                      value={editingIssue.description}
+                      onChange={(e) =>
+                        setEditingIssue({ ...editingIssue, description: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-footer" style={{ flexShrink: 0 }}>
+                <button
+                  type="button"
+                  className="btn-modal-cancel"
+                  onClick={() => setShowEditModal(false)}
+                >
+                  Hủy
+                </button>
+                <button type="submit" className="btn-modal-submit">
+                  <span className="material-symbols-outlined" style={{ fontSize: "1.1rem" }}>
+                    save
+                  </span>
+                  Lưu thay đổi
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Xác nhận Sửa Xong & Nhập Chi phí Thực tế (có dấu . phân biệt triệu trăm nghìn) ── */}
+      {showRepairModal && (repairingField || repairingIssue) && (
+        <div
+          className="modal-overlay modal-top-layer"
+          style={{ zIndex: 200005 }}
+          onClick={() => setShowRepairModal(false)}
+        >
+          <div
+            className="modal-content-box"
+            style={{ maxHeight: "88vh", display: "flex", flexDirection: "column", overflow: "hidden" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header" style={{ flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <span className="material-symbols-outlined" style={{ color: "#059669" }}>
+                  task_alt
+                </span>
+                <h3 style={{ margin: 0 }}>Xác nhận hoàn thành sửa chữa</h3>
+              </div>
+              <button
+                type="button"
+                className="btn-modal-close"
+                onClick={() => setShowRepairModal(false)}
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div className="modal-body-form" style={{ flex: 1, overflowY: "auto", overscrollBehavior: "contain" }}>
+              <div className="repair-confirm-box">
+                <div className="repair-confirm-title">
+                  <span className="material-symbols-outlined" style={{ fontSize: "1.1rem" }}>
+                    check_circle
+                  </span>
+                  Thông báo xác nhận sửa xong
+                </div>
+                <p className="repair-confirm-desc">
+                  {repairingIssue ? (
+                    <>
+                      Bạn đang xác nhận đã khắc phục xong sự cố{" "}
+                      <strong>{repairingIssue.category}</strong> tại{" "}
+                      <strong>{repairingIssue.fieldName || repairingField?.field_name}</strong>.
+                    </>
+                  ) : (
+                    <>
+                      Bạn đang xác nhận đã khắc phục xong tất cả sự cố tại{" "}
+                      <strong>{repairingField?.field_name}</strong>. Sau khi hoàn thành,{" "}
+                      <strong>chấm đỏ cảnh báo sự cố trên sân sẽ hết</strong>.
+                    </>
+                  )}
+                </p>
+              </div>
+
+              {/* Hiển thị chi phí dự kiến cần bảo trì */}
+              <div className="repair-est-highlight">
+                <span>Chi phí bảo trì dự kiến:</span>
+                <strong>
+                  {formatCurrency(
+                    repairingIssue
+                      ? parseFloat(repairingIssue.estimatedCost || repairingIssue.estimated_cost) || 0
+                      : getPitchEstimatedCost(repairingField)
+                  )}{" "}
+                  đ
+                </strong>
+              </div>
+
+              <div className="form-group">
+                <label>Chi phí bảo trì thực tế (VNĐ) — Nhập để ghi nhận chi phí:</label>
+                <div className="formatted-currency-input-wrapper">
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="VD: 500.000"
+                    value={actualCostInput}
+                    onChange={(e) => setActualCostInput(formatDotNumber(e.target.value))}
+                    autoFocus
+                  />
+                  <span className="currency-unit-suffix">VNĐ</span>
+                </div>
+                <small style={{ color: "#64748b" }}>
+                  Hệ thống tự động thêm dấu chấm (.) phân biệt triệu, trăm, nghìn.
+                </small>
+              </div>
+            </div>
+
+            <div className="modal-footer" style={{ flexShrink: 0 }}>
+              <button
+                type="button"
+                className="btn-modal-cancel"
+                onClick={() => setShowRepairModal(false)}
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                className="btn-modal-submit"
+                onClick={handleConfirmRepairDone}
+              >
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: "1rem", verticalAlign: "middle", marginRight: "4px" }}
+                >
+                  verified
+                </span>
+                Xác nhận sửa xong
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL XÁC NHẬN IN-SCREEN */}
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        cancelText={confirmConfig.cancelText}
+        type={confirmConfig.type}
+        onConfirm={confirmConfig.onConfirm}
+        onClose={() => setConfirmConfig((prev) => ({ ...prev, isOpen: false }))}
+      />
+    </>
+  );
+}

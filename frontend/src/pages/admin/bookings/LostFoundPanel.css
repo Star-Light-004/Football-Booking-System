@@ -1,0 +1,49 @@
+/* ── Nút Thao tác & Giao diện Đồ khách quên (Lost & Found) ── */
+.lost-item-row:hover {
+  background: #f8fafc;
+}
+
+.lost-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 11px;
+  border-radius: 6px;
+  font-size: 0.775rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.lost-action-btn .material-symbols-outlined {
+  font-size: 0.95rem;
+}
+
+.lost-edit-btn {
+  background: #f0f9ff;
+  color: #0284c7;
+  border-color: #bae6fd;
+}
+
+.lost-edit-btn:hover {
+  background: #e0f2fe;
+  color: #0369a1;
+  border-color: #7dd3fc;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.15);
+}
+
+.lost-delete-btn {
+  background: transparent;
+  color: #94a3b8;
+  padding: 5px 7px;
+  border-color: transparent;
+}
+
+.lost-delete-btn:hover {
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+

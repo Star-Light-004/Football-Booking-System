@@ -19,6 +19,13 @@ export const createField = async (formData) => {
 };
 
 export const updateField = async (id, data) => {
+  if (data instanceof FormData) {
+    return await axios.put(`${BASE_URL}/football-fields/${id}/update/`, data, {
+      headers: {
+        "Content-Type": "multipart/form-data"
+      }
+    });
+  }
   return await axios.put(`${BASE_URL}/football-fields/${id}/update/`, data);
 };
 

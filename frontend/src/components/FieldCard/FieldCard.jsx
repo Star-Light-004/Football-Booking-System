@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import "./FieldCard.css";
 
-const FieldCard = ({ id, image, type, name, location, price, bookingCount, rating }) => {
+const FieldCard = ({ id, image, type, name, location, price, minPrice, bookingCount, rating }) => {
   // Determine type label & badge
   const typeStr = String(type || "").toLowerCase();
   let typeLabel = type || "Sân bóng";
@@ -16,8 +16,9 @@ const FieldCard = ({ id, image, type, name, location, price, bookingCount, ratin
   const ratingNum = parseFloat(rating) || 0;
   const ratingDisplay = ratingNum > 0 ? ratingNum.toFixed(1) : null;
 
-  // Price display
-  const priceNum = typeof price === "number" ? price : parseFloat(price) || 0;
+  // Price display: Ưu tiên mức giá thấp nhất trong tất cả slot đang có
+  const effectivePrice = (minPrice !== undefined && minPrice !== null && Number(minPrice) > 0) ? minPrice : price;
+  const priceNum = typeof effectivePrice === "number" ? effectivePrice : parseFloat(effectivePrice) || 0;
   const priceDisplay = priceNum > 0 ? priceNum.toLocaleString("vi-VN") : "Liên hệ";
 
   return (
@@ -100,7 +101,7 @@ const FieldCard = ({ id, image, type, name, location, price, bookingCount, ratin
         {/* Footer */}
         <div className="field-card__footer">
           <div>
-            <div className="field-card__price-label">Giá thuê từ</div>
+            <div className="field-card__price-label">Giá thuê chỉ từ</div>
             <div className="field-card__price">
               {priceDisplay}
               {priceNum > 0 && <span>đ/giờ</span>}

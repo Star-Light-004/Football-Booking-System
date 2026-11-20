@@ -52,6 +52,24 @@ class FootballFields(models.Model):
         null=True
     )
 
+    sub_image_1 = models.ImageField(
+        upload_to='fields/',
+        blank=True,
+        null=True
+    )
+
+    sub_image_2 = models.ImageField(
+        upload_to='fields/',
+        blank=True,
+        null=True
+    )
+
+    sub_image_3 = models.ImageField(
+        upload_to='fields/',
+        blank=True,
+        null=True
+    )
+
     is_available = models.BooleanField(
         default=True
     )
@@ -85,15 +103,20 @@ class FootballFields(models.Model):
 
 # 🔹 Thêm method trả JSON có image.url
     def to_dict(self):
+        min_p = getattr(self, 'annotated_min_price', None)
         return {
             "id": str(self.id),
             "field_name": self.field_name,
             "field_type": self.field_type.name if self.field_type else None,
             "location": self.location,
             "price_per_hour": float(self.price_per_hour) if self.price_per_hour else None,
+            "min_price": float(min_p) if min_p is not None else (float(self.price_per_hour) if self.price_per_hour else None),
             "is_available": self.is_available,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "image": self.image.url if self.image else None,  # 🔹 trả URL đầy đủ
+            "sub_image_1": self.sub_image_1.url if self.sub_image_1 else None,
+            "sub_image_2": self.sub_image_2.url if self.sub_image_2 else None,
+            "sub_image_3": self.sub_image_3.url if self.sub_image_3 else None,
             "booking_count": self.booking_count or 0,
             "description": self.description,
             "rating_avg": float(self.rating_avg) if self.rating_avg else 0,

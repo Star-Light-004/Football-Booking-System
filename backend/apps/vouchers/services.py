@@ -50,49 +50,35 @@ def award_completion_voucher(booking):
     )
     print(f"[Voucher] Awarded voucher {personalized_code} to customer {booking.customer.id}")
 
-    # Gửi thông báo đến người dùng
-    try:
-        from apps.notifications.models import Notification
-        field_name = booking.field.field_name if booking.field else "sân bóng"
-        Notification.objects.create(
-            user=booking.customer,
-            booking=booking,
-            notification_type='system_message',
-            title='🎁 Tặng bạn Voucher giảm giá 10%!',
-            message=(
-                f"Chúc mừng bạn đã hoàn thành trận đấu tại {field_name}! "
-                f"Hệ thống gửi tặng bạn Voucher: {personalized_code} "
-                f"(Giảm 10% tối đa 50.000đ, hạn dùng {reward_voucher.expiry_days} ngày) "
-                f"áp dụng cho các lần đặt sân tiếp theo."
-            ),
-            is_read=False
-        )
-        print("[Voucher] Notification created successfully.")
-    except Exception as notif_err:
-        print(f"[Voucher] Could not create notification: {notif_err}")
-
     return customer_voucher
 
 
-def calculate_discount(voucher, total_price):
+def calculate_discount(voucher, total_price, field_price=None, service_price=0):
     """
-    Tính số tiền được giảm dựa theo voucher và tổng tiền gốc.
+    Tính số tiền được giảm dựa theo voucher và phạm vi áp dụng (applicable_to).
+    - 'field_only': Chỉ áp dụng giảm trên tiền thuê sân
+    - 'all': Áp dụng trên toàn bộ tiền sân + dịch vụ
     """
-    price_dec = Decimal(str(total_price or 0))
-    if price_dec <= 0:
+    scope = getattr(voucher, 'applicable_to', 'all') or 'all'
+    if scope == 'field_only' and field_price is not None:
+        target_price = Decimal(str(field_price or 0))
+    else:
+        target_price = Decimal(str(total_price or 0))
+
+    if target_price <= 0:
         return Decimal('0')
 
     if voucher.discount_type == 'percent':
-        raw_discount = (price_dec * Decimal(str(voucher.discount_value))) / Decimal('100')
+        raw_discount = (target_price * Decimal(str(voucher.discount_value))) / Decimal('100')
         if voucher.max_discount and raw_discount > Decimal(str(voucher.max_discount)):
             return Decimal(str(voucher.max_discount))
         return raw_discount
     else:  # 'fixed'
         fixed_val = Decimal(str(voucher.discount_value))
-        return min(fixed_val, price_dec)
+        return min(fixed_val, target_price)
 
 
-def validate_voucher_for_customer(code, customer_id=None, total_price=0):
+def validate_voucher_for_customer(code, customer_id=None, total_price=0, field_price=None, service_price=0):
     """
     Kiểm tra tính hợp lệ của mã voucher khi khách hàng nhập/chọn lúc đặt sân.
     """
@@ -101,6 +87,7 @@ def validate_voucher_for_customer(code, customer_id=None, total_price=0):
 
     code_clean = str(code).strip().upper()
     price_dec = Decimal(str(total_price or 0))
+    field_dec = Decimal(str(field_price)) if field_price is not None else None
 
     # 1. Tìm trong CustomerVoucher (voucher cá nhân)
     cust_voucher = None
@@ -131,14 +118,19 @@ def validate_voucher_for_customer(code, customer_id=None, total_price=0):
         if not voucher.is_active:
             return {"valid": False, "error": "Mã giảm giá này hiện đang tạm khóa"}
 
-        if price_dec < voucher.min_booking_price:
+        # Kiểm tra điều kiện tối thiểu
+        check_min_price = field_dec if (getattr(voucher, 'applicable_to', 'all') == 'field_only' and field_dec is not None) else price_dec
+        if check_min_price < voucher.min_booking_price:
+            scope_desc = "tiền thuê sân" if getattr(voucher, 'applicable_to', 'all') == 'field_only' else "đơn đặt sân"
             return {
                 "valid": False,
-                "error": f"Đơn đặt sân phải có giá trị tối thiểu {int(voucher.min_booking_price):,}đ để dùng voucher này"
+                "error": f"Giá trị {scope_desc} phải tối thiểu {int(voucher.min_booking_price):,}đ để dùng voucher này"
             }
 
-        discount = calculate_discount(voucher, price_dec)
+        discount = calculate_discount(voucher, price_dec, field_dec, service_price)
         final_price = max(Decimal('0'), price_dec - discount)
+        scope = getattr(voucher, 'applicable_to', 'all') or 'all'
+        scope_note = " (chỉ áp dụng tiền sân)" if scope == 'field_only' else ""
 
         return {
             "valid": True,
@@ -148,9 +140,11 @@ def validate_voucher_for_customer(code, customer_id=None, total_price=0):
             "discount_value": float(voucher.discount_value),
             "discount_amount": float(discount),
             "final_price": float(final_price),
+            "applicable_to": scope,
+            "applicable_label": "Chỉ giảm giá giờ sân" if scope == 'field_only' else "Giảm cả giờ sân + dịch vụ",
             "customer_voucher_id": str(cust_voucher.id),
             "valid_until": cust_voucher.valid_until.strftime('%Y-%m-%d %H:%M'),
-            "message": f"Áp dụng mã thành công! Giảm {int(discount):,}đ"
+            "message": f"Áp dụng mã thành công! Giảm {int(discount):,}đ{scope_note}"
         }
 
     # 2. Nếu không phải mã cá nhân, tìm trong Voucher dùng chung (Public Voucher)
@@ -174,14 +168,18 @@ def validate_voucher_for_customer(code, customer_id=None, total_price=0):
                     "error": f"Mã giảm giá này đã hết số lượng sử dụng ({public_voucher.usage_limit}/{public_voucher.usage_limit} lượt)"
                 }
 
-        if price_dec < public_voucher.min_booking_price:
+        check_min_price = field_dec if (getattr(public_voucher, 'applicable_to', 'all') == 'field_only' and field_dec is not None) else price_dec
+        if check_min_price < public_voucher.min_booking_price:
+            scope_desc = "tiền thuê sân" if getattr(public_voucher, 'applicable_to', 'all') == 'field_only' else "đơn đặt sân"
             return {
                 "valid": False,
-                "error": f"Đơn đặt sân phải có giá trị tối thiểu {int(public_voucher.min_booking_price):,}đ"
+                "error": f"Giá trị {scope_desc} phải tối thiểu {int(public_voucher.min_booking_price):,}đ"
             }
 
-        discount = calculate_discount(public_voucher, price_dec)
+        discount = calculate_discount(public_voucher, price_dec, field_dec, service_price)
         final_price = max(Decimal('0'), price_dec - discount)
+        scope = getattr(public_voucher, 'applicable_to', 'all') or 'all'
+        scope_note = " (chỉ áp dụng tiền sân)" if scope == 'field_only' else ""
 
         return {
             "valid": True,
@@ -191,8 +189,10 @@ def validate_voucher_for_customer(code, customer_id=None, total_price=0):
             "discount_value": float(public_voucher.discount_value),
             "discount_amount": float(discount),
             "final_price": float(final_price),
+            "applicable_to": scope,
+            "applicable_label": "Chỉ giảm giá giờ sân" if scope == 'field_only' else "Giảm cả giờ sân + dịch vụ",
             "customer_voucher_id": None,
-            "message": f"Áp dụng mã thành công! Giảm {int(discount):,}đ"
+            "message": f"Áp dụng mã thành công! Giảm {int(discount):,}đ{scope_note}"
         }
 
     return {"valid": False, "error": "Mã giảm giá không tồn tại hoặc đã hết hạn"}

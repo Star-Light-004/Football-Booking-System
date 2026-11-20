@@ -277,6 +277,7 @@ const Home = () => {
                     name={field.field_name}
                     location={field.location}
                     price={field.price_per_hour}
+                    minPrice={field.min_price}
                     bookingCount={field.booking_count}
                     rating={field.rating_avg}
                   />

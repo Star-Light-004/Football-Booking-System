@@ -9,6 +9,11 @@ class Voucher(models.Model):
         ('fixed', 'Giảm theo số tiền cố định (VNĐ)'),
     )
 
+    APPLICABLE_TO_CHOICES = (
+        ('field_only', 'Chỉ giảm giá giờ sân'),
+        ('all', 'Giảm cả giờ sân và dịch vụ đi kèm'),
+    )
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     code = models.CharField(max_length=50, unique=True, db_index=True)
     title = models.CharField(max_length=255)
@@ -18,6 +23,12 @@ class Voucher(models.Model):
     discount_value = models.DecimalField(max_digits=10, decimal_places=2)
     max_discount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     min_booking_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    applicable_to = models.CharField(
+        max_length=20,
+        choices=APPLICABLE_TO_CHOICES,
+        default='all'
+    )
 
     expiry_days = models.IntegerField(default=30)
     usage_limit = models.IntegerField(default=100, null=True, blank=True)

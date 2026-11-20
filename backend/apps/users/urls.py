@@ -1,6 +1,8 @@
 from django.urls import path
 from .views import (
     register,
+    check_user_exists,
+    social_auth,
     create_guest_user,
     login,
     get_users,
@@ -14,6 +16,8 @@ from .views import (
 
 urlpatterns = [
     path('register/', register),
+    path('check-exists/', check_user_exists),
+    path('social-auth/', social_auth),
     path('create-guest/', create_guest_user),
     path('login/', login),
     path('roles/permissions/', role_permissions_view),

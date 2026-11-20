@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { getBookings } from '../../../api/bookingsApi';
 import { getFields } from '../../../api/fieldsApi';
 import timeslotsApi from '../../../api/timeslotsApi';
 import { SERVER_URL } from '../../../config';
 import AdminSidebar from '../../../components/AdminSidebar/AdminSidebar';
+import { onSyncEvent } from '../../../utils/realtimeSync';
 import './bookings.css';
 import './BookingCalendar.css';
 
@@ -78,35 +79,79 @@ export default function BookingCalendar() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    Promise.all([getFields({ params: { show_all: true } }), getBookings()])
-      .then(([fieldsRes, bookingsRes]) => {
-        setFields(fieldsRes.data.fields || fieldsRes.data || []);
-        setBookings(bookingsRes.data || []);
-      })
-      .catch(() => setError('Không thể tải dữ liệu lịch đặt sân. Vui lòng thử lại.'))
-      .finally(() => setLoading(false));
+  const loadBookings = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
+    try {
+      const [fieldsRes, bookingsRes] = await Promise.all([
+        getFields({ params: { show_all: true } }),
+        getBookings()
+      ]);
+      setFields(fieldsRes.data.fields || fieldsRes.data || []);
+      setBookings(bookingsRes.data || []);
+    } catch {
+      if (!isSilent) setError('Không thể tải dữ liệu lịch đặt sân. Vui lòng thử lại.');
+    } finally {
+      if (!isSilent) setLoading(false);
+    }
   }, []);
 
-  useEffect(() => {
+  const loadTimeslots = useCallback(async (isSilent = false) => {
     if (!selectedFieldId || !date) {
       setTimeslots([]);
       return;
     }
-    const loadTimeslots = async () => {
-      try {
-        setTimeslotsLoading(true);
-        const res = await timeslotsApi.getByField(selectedFieldId, date);
-        setTimeslots(res.data || []);
-      } catch (error) {
-        console.error("Lỗi tải timeslots:", error);
-        setTimeslots([]);
-      } finally {
-        setTimeslotsLoading(false);
+    if (!isSilent) setTimeslotsLoading(true);
+    try {
+      const res = await timeslotsApi.getByField(selectedFieldId, date);
+      setTimeslots(res.data || []);
+    } catch (error) {
+      if (!isSilent) console.error("Lỗi tải timeslots:", error);
+      setTimeslots([]);
+    } finally {
+      if (!isSilent) setTimeslotsLoading(false);
+    }
+  }, [selectedFieldId, date]);
+
+  useEffect(() => {
+    loadBookings(false);
+  }, [loadBookings]);
+
+  useEffect(() => {
+    loadTimeslots(false);
+  }, [loadTimeslots]);
+
+  // Realtime Polling & Cross-tab Sync (4s)
+  useEffect(() => {
+    const unsub = onSyncEvent((event) => {
+      if (event?.type?.startsWith('booking_')) {
+        loadBookings(true);
+        loadTimeslots(true);
+      } else if (event?.type?.startsWith('timeslot_')) {
+        loadTimeslots(true);
+      }
+    });
+
+    const pollTimer = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadBookings(true);
+        loadTimeslots(true);
+      }
+    }, 4000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadBookings(true);
+        loadTimeslots(true);
       }
     };
-    loadTimeslots();
-  }, [selectedFieldId, date]);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      unsub();
+      clearInterval(pollTimer);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [loadBookings, loadTimeslots]);
 
   const schedule = useMemo(() => {
     return bookings.filter(item => item.date === date && activeBooking(item.status)).reduce((result, item) => ({
@@ -237,7 +282,7 @@ export default function BookingCalendar() {
                       <div className="detail-section-heading">
                         <h3>
                           <span className="material-symbols-outlined" style={{ fontSize: '1.1rem', verticalAlign: 'middle', marginRight: '6px', color: '#059669' }}>schedule</span>
-                          Người đã đặt sân 
+                          Người đã đặt sân
                         </h3>
                         <p>{selectedBookings.length} lượt đặt</p>
                       </div>

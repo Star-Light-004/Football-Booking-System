@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status as http_status
 from .models import TimeSlots
 from apps.fields.models import FootballFields
-from datetime import date, timedelta, time
+from datetime import datetime, date, timedelta, time
 from decimal import Decimal
 
 HOURLY_PRICES = {
@@ -156,13 +156,19 @@ def generate_slots(request):
         for hour, price in HOURLY_PRICES.items():
             time_rules.append((time(hour, 0), time(hour + 1, 0), Decimal(str(price))))
 
-    today = date.today()
+    now = datetime.now()
+    today = now.date()
     slots_to_create = []
     skipped_count = 0
 
     for delta in range(days):
         slot_date = today + timedelta(days=delta)
         for start, end, price in time_rules:
+            # Nếu là ngày hôm nay, không khởi tạo các khung giờ trước đó và khung giờ hiện tại
+            if slot_date == today and start.hour <= now.hour:
+                skipped_count += 1
+                continue
+
             for field in fields:
                 exists = TimeSlots.objects.filter(
                     field=field,

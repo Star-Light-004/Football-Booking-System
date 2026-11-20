@@ -183,6 +183,56 @@
   color: #059669;
 }
 
+.aso-booking-stats {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.aso-stat-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.73rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: 0.45rem;
+  line-height: 1.2;
+}
+
+.aso-stat-row.today {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.aso-stat-row.today .material-symbols-outlined {
+  font-size: 0.95rem;
+  color: #16a34a;
+}
+
+.aso-stat-row.total {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+}
+
+.aso-stat-row.total .material-symbols-outlined {
+  font-size: 0.95rem;
+  color: #0284c7;
+}
+
+.aso-stat-label {
+  flex: 1;
+  font-weight: 500;
+}
+
+.aso-stat-value {
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: inherit;
+}
+
 .aso-card-actions {
   display: flex;
   gap: 0.5rem;
@@ -572,23 +622,49 @@
   white-space: nowrap;
 }
 
+.aso-today-count {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.4rem !important;
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #334155 !important;
+  font-size: 0.76rem !important;
+  font-weight: 600 !important;
+}
+
+.aso-today-count strong {
+  color: #0f172a;
+  font-weight: 800;
+  margin-left: auto;
+}
+
+.aso-today-count .material-symbols-outlined {
+  font-size: 0.95rem !important;
+  color: #0284c7 !important;
+}
+
 .aso-total-count {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.35rem;
   margin-top: 0.3rem !important;
-  padding: 0.3rem 0.6rem;
+  padding: 0.35rem 0.65rem;
   border-radius: 0.5rem;
   background: #f0fdf4;
   border: 1px solid #bbf7d0;
   color: #059669 !important;
-  font-size: 0.75rem !important;
+  font-size: 0.76rem !important;
   font-weight: 600 !important;
 }
 
 .aso-total-count strong {
   color: #047857;
   font-weight: 800;
+  margin-left: auto;
 }
 
 .aso-total-count .material-symbols-outlined {

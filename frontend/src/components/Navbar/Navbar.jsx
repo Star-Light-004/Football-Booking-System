@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import "./Navbar.css";
 import notificationsApi from "../../api/notificationsApi";
+import { onSyncEvent } from "../../utils/realtimeSync";
 
 // ── Helper: lấy thông tin hiển thị theo role ──────────────────────────────
 const getRoleInfo = (role) => {
@@ -66,15 +67,30 @@ const Navbar = () => {
     }
   };
 
-  // ✅ polling notifications mỗi 5 giây
+  // ✅ Lắng nghe sự kiện đồng bộ và cập nhật notifications
   useEffect(() => {
     if (!user?.id) return;
 
     fetchNotifications();
 
+    const cleanupSync = onSyncEvent((event) => {
+      if (
+        event?.type === "notification_created" ||
+        event?.type === "notification_updated" ||
+        event?.type === "booking_created" ||
+        event?.type === "booking_updated" ||
+        event?.type === "booking_cancelled"
+      ) {
+        fetchNotifications();
+      }
+    });
+
     const interval = setInterval(fetchNotifications, 5000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      cleanupSync();
+    };
   }, [user?.id]);
 
   // ✅ mark notification as read
@@ -110,6 +126,18 @@ const Navbar = () => {
     }
   };
 
+  // ✅ Xóa tất cả thông báo
+  const handleDeleteAllNotifications = async (e) => {
+    if (e) e.stopPropagation();
+    if (!user?.id) return;
+    try {
+      await notificationsApi.deleteAllNotifications(user.id);
+      await fetchNotifications();
+    } catch (error) {
+      console.error("Error deleting all notifications:", error);
+    }
+  };
+
   // ✅ logout — chỉ xóa session user, KHÔNG ảnh hưởng session admin
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -137,9 +165,7 @@ const Navbar = () => {
             {[
               { to: "/", label: "Trang chủ", icon: "home", roles: null },
               { to: "/fields", label: "Sân bóng", icon: "stadium", roles: null },
-              // Chỉ customer và staff mới thấy "Đặt sân"
-              { to: "/booking", label: "Đặt sân", icon: "event_available", roles: ["customer", "staff", "admin"] },
-              { to: "/lookup", label: "Tra cứu", icon: "search", roles: null },
+              { to: "/tournaments", label: "Đặt giải đấu", icon: "emoji_events", roles: null },
               // Chỉ user đã đăng nhập mới thấy "Lịch sử"
               { to: "/my-bookings", label: "Lịch sử", icon: "history", roles: ["customer", "staff", "admin"] },
               { to: "/contact", label: "Liên hệ", icon: "support_agent", roles: null },
@@ -181,28 +207,66 @@ const Navbar = () => {
                   </button>
 
                   {/* Notifications Dropdown */}
-                  <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 opacity-0 invisible group-hover:opacity-100 group-hover:visible translate-y-2 group-hover:translate-y-0 transition-all duration-300 z-[100] overflow-hidden">
-                    <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
-                      <h3 className="font-bold text-slate-800 dark:text-white">Thông báo</h3>
-                      {unreadCount > 0 && (
-                        <span
-                          onClick={handleMarkAllAsRead}
-                          className="text-xs text-primary font-medium cursor-pointer hover:underline"
-                        >
-                          Đánh dấu đã đọc
-                        </span>
+                  <div className="absolute right-0 mt-2 w-[410px] max-w-[calc(100vw-1.5rem)] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200/90 dark:border-slate-800 opacity-0 invisible group-hover:opacity-100 group-hover:visible translate-y-2 group-hover:translate-y-0 transition-all duration-300 z-[100] overflow-hidden">
+                    {/* Header */}
+                    <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex justify-between items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-[15px] text-slate-800 dark:text-white">Thông báo</span>
+                        {unreadCount > 0 ? (
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-600 dark:bg-red-950/60 dark:text-red-400">
+                            {unreadCount} mới
+                          </span>
+                        ) : (
+                          <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                            {notifications.length}
+                          </span>
+                        )}
+                      </div>
+
+                      {notifications.length > 0 && (
+                        <div className="flex items-center gap-1.5">
+                          {unreadCount > 0 && (
+                            <button
+                              type="button"
+                              onClick={handleMarkAllAsRead}
+                              className="text-[11.5px] font-semibold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 px-2 py-1 rounded-lg transition-colors flex items-center gap-1"
+                              title="Đánh dấu tất cả thông báo là đã đọc"
+                            >
+                              <span className="material-symbols-outlined text-[15px]">done_all</span>
+                              Đọc tất cả
+                            </button>
+                          )}
+
+                          {unreadCount > 0 && <span className="text-slate-200 dark:text-slate-700">|</span>}
+
+                          <button
+                            type="button"
+                            onClick={handleDeleteAllNotifications}
+                            className="text-[11.5px] font-semibold text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 px-2 py-1 rounded-lg transition-colors flex items-center gap-1"
+                            title="Xóa tất cả thông báo"
+                          >
+                            <span className="material-symbols-outlined text-[15px]">delete_sweep</span>
+                            Xóa tất cả
+                          </button>
+                        </div>
                       )}
                     </div>
-                    <div className="max-h-64 overflow-y-auto">
+
+                    {/* Danh sách thông báo */}
+                    <div className="max-h-[360px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/80">
                       {loadingNotifications ? (
-                        <div className="p-4 text-center text-slate-500">
-                          <span className="material-symbols-outlined animate-spin">
+                        <div className="py-8 text-center text-slate-500">
+                          <span className="material-symbols-outlined animate-spin text-2xl text-primary">
                             refresh
                           </span>
                         </div>
                       ) : notifications.length === 0 ? (
-                        <div className="p-4 text-center text-slate-400 text-sm">
-                          Không có thông báo nào
+                        <div className="py-10 px-4 text-center">
+                          <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 mx-auto flex items-center justify-center mb-2.5">
+                            <span className="material-symbols-outlined text-2xl">notifications_none</span>
+                          </div>
+                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Không có thông báo nào</p>
+                          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Các thông tin về lịch thi đấu và ưu đãi sẽ xuất hiện tại đây.</p>
                         </div>
                       ) : (
                         notifications.map((notif) => {
@@ -211,44 +275,73 @@ const Navbar = () => {
                           let icon = 'info';
 
                           if (notif.notification_type === 'booking_approved') {
-                            iconColor = 'bg-green-100 text-green-600';
-                            icon = 'check_circle';
-                          } else if (notif.notification_type === 'booking_rejected') {
-                            iconColor = 'bg-red-100 text-red-600';
+                            iconColor = 'bg-emerald-100 text-emerald-600';
+                            icon = 'task_alt';
+                          } else if (notif.notification_type === 'booking_rejected' || notif.notification_type === 'booking_cancelled') {
+                            iconColor = 'bg-rose-100 text-rose-600';
                             icon = 'cancel';
+                          } else if (notif.notification_type === 'booking_pending') {
+                            iconColor = 'bg-amber-100 text-amber-600';
+                            icon = 'schedule';
                           } else if (notif.notification_type === 'booking_completed') {
                             iconColor = 'bg-purple-100 text-purple-600';
-                            icon = 'done_all';
+                            icon = 'sports_soccer';
+                          } else if (notif.title?.includes('Voucher') || notif.title?.includes('🎁')) {
+                            iconColor = 'bg-teal-100 text-teal-600';
+                            icon = 'redeem';
                           }
 
                           return (
                             <div
                               key={notif.id}
-                              className={`p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 cursor-pointer transition-colors flex gap-3 justify-between ${!notif.is_read ? 'bg-blue-50 dark:bg-blue-900/10' : ''
-                                }`}
-                              onClick={() => handleMarkAsRead(notif.id, event)}
+                              className={`p-3.5 hover:bg-slate-50/80 dark:hover:bg-slate-800/60 cursor-pointer transition-all flex items-start gap-3 relative ${
+                                !notif.is_read ? 'bg-emerald-50/35 dark:bg-emerald-950/15' : 'bg-white dark:bg-slate-900'
+                              }`}
+                              onClick={(e) => handleMarkAsRead(notif.id, e)}
                             >
-                              <div className="flex gap-3 flex-1 min-w-0">
-                                <div className={`w-8 h-8 rounded-full ${iconColor} flex items-center justify-center shrink-0`}>
-                                  <span className="material-symbols-outlined text-sm">{icon}</span>
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="font-semibold text-sm text-slate-700 dark:text-slate-300">{notif.title}</p>
-                                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">{notif.message}</p>
-                                  <p className="text-xs text-slate-400 mt-1">
-                                    {new Date(notif.created_at).toLocaleDateString('vi-VN', {
+                              {/* Chấm tròn báo chưa đọc */}
+                              {!notif.is_read && (
+                                <span className="absolute left-1.5 top-5 w-2 h-2 rounded-full bg-emerald-500 shadow-sm" />
+                              )}
+
+                              {/* Icon hộp thông báo */}
+                              <div className={`w-9 h-9 rounded-xl ${iconColor} flex items-center justify-center shrink-0 shadow-sm mt-0.5`}>
+                                <span className="material-symbols-outlined text-[18px]">{icon}</span>
+                              </div>
+
+                              {/* Nội dung thông báo */}
+                              <div className="flex-1 min-w-0 pr-1">
+                                <p className="font-bold text-[13px] text-slate-800 dark:text-slate-100 leading-snug">
+                                  {notif.title}
+                                </p>
+                                <p className="text-[12.5px] text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+                                  {notif.message}
+                                </p>
+                                <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mt-2">
+                                  <span className="material-symbols-outlined text-[13px]">schedule</span>
+                                  <span>
+                                    {new Date(notif.created_at).toLocaleString('vi-VN', {
                                       hour: '2-digit',
                                       minute: '2-digit',
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      year: 'numeric',
                                     })}
-                                  </p>
+                                  </span>
+                                  {!notif.is_read && (
+                                    <span className="text-emerald-600 font-semibold ml-1">• Chưa đọc</span>
+                                  )}
                                 </div>
                               </div>
+
+                              {/* Nút Xóa thông báo này */}
                               <button
+                                type="button"
                                 onClick={(e) => handleDeleteNotification(notif.id, e)}
-                                className="text-slate-400 hover:text-red-500 transition-colors shrink-0 hover:bg-red-50 dark:hover:bg-red-900/20 w-6 h-6 rounded flex items-center justify-center"
-                                title="Xóa thông báo"
+                                className="text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 w-7 h-7 rounded-lg flex items-center justify-center transition-colors shrink-0 -mr-1"
+                                title="Xóa thông báo này"
                               >
-                                <span className="material-symbols-outlined text-sm">close</span>
+                                <span className="material-symbols-outlined text-[16px]">close</span>
                               </button>
                             </div>
                           );
@@ -318,8 +411,8 @@ const Navbar = () => {
                         Thông tin của tôi
                       </Link>
 
-                      {/* Chỉ admin và staff mới thấy link quản trị trong dropdown */}
-                      {(user?.role === "admin" || user?.role === "staff") && (
+                      {/* Quản trị viên và nhân viên thấy link quản trị trong dropdown */}
+                      {Boolean(user?.role && ["admin", "field_owner", "field_manager", "receptionist", "cashier", "cleaner", "service_staff", "maintenance", "staff"].includes(user.role)) && (
                         <Link
                           to="/admin/dashboard"
                           className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary rounded-xl transition-all"

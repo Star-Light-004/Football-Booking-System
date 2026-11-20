@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { BASE_URL } from "../../config";
 import PageHero from "../../components/PageHero/PageHero";
+import { broadcastSyncEvent, onSyncEvent } from "../../utils/realtimeSync";
 import "./MyBookings.css";
 
 const normalizeStatusKey = (status) => {
@@ -26,22 +27,42 @@ const canCustomerCancel = (status) => {
 const getBookingStatusLabel = (status) => {
   const s = normalizeStatusKey(status);
   switch (s) {
-    case "pending":    return "Chờ xác nhận";
-    case "confirmed":  return "Đã xác nhận";
+    case "pending": return "Chờ xác nhận";
+    case "confirmed": return "Đã xác nhận";
     case "checked_in": return "Đã check-in";
-    case "completed":  return "Đã hoàn thành";
-    case "cancelled":  return "Đã hủy";
-    default:           return status || "Đã đặt";
+    case "completed": return "Đã hoàn thành";
+    case "cancelled": return "Đã hủy";
+    default: return status || "Đã đặt";
   }
 };
 
+const cleanTimeSlot = (slot) => {
+  if (!slot) return "";
+  return slot
+    .split("-")
+    .map((p) => {
+      const trimmed = p.trim();
+      const m = trimmed.match(/^(\d{1,2}:\d{2})/);
+      return m ? m[1] : trimmed;
+    })
+    .join(" - ");
+};
+
 const STATUS_TABS = [
-  { id: "all",        label: "Tất cả",       icon: "apps" },
-  { id: "pending",    label: "Chờ xác nhận", icon: "pending_actions" },
-  { id: "confirmed",  label: "Đã xác nhận",  icon: "check_circle" },
-  { id: "checked_in", label: "Đã check-in",  icon: "login" },
-  { id: "completed",  label: "Hoàn thành",   icon: "task_alt" },
-  { id: "cancelled",  label: "Đã hủy",       icon: "cancel" },
+  { id: "all", label: "Tất cả", icon: "apps" },
+  { id: "pending", label: "Chờ xác nhận", icon: "pending_actions" },
+  { id: "confirmed", label: "Đã xác nhận", icon: "check_circle" },
+  { id: "checked_in", label: "Đã check-in", icon: "login" },
+  { id: "completed", label: "Hoàn thành", icon: "task_alt" },
+  { id: "cancelled", label: "Đã hủy", icon: "cancel" },
+];
+
+const RATING_LEVELS = [
+  { value: 5, label: "Rất tuyệt vời", desc: "Mặt sân, trang thiết bị và dịch vụ đều hoàn hảo!", color: "#16a34a", bg: "#f0fdf4" },
+  { value: 4, label: "Hài lòng", desc: "Chất lượng sân tốt, trải nghiệm thi đấu tuyệt vời.", color: "#059669", bg: "#ecfdf5" },
+  { value: 3, label: "Bình thường", desc: "Sân mức ổn, đáp ứng tốt nhu cầu thi đấu cơ bản.", color: "#d97706", bg: "#fffbeb" },
+  { value: 2, label: "Chưa hài lòng", desc: "Cần cải thiện thêm về mặt cỏ hoặc dịch vụ hỗ trợ.", color: "#ea580c", bg: "#fff7ed" },
+  { value: 1, label: "Thất vọng", desc: "Trải nghiệm không tốt, mong sân sớm khắc phục.", color: "#dc2626", bg: "#fef2f2" },
 ];
 
 import { useToast, ToastContainer } from "../../components/Toast/Toast";
@@ -89,30 +110,72 @@ const MyBookings = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [reviewingBooking, setReviewingBooking] = useState(null);
   const [rating, setRating] = useState(5);
+  const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [user, setUser] = useState(null);
   const { toasts, removeToast, toast } = useToast();
 
+  const bookingsRef = useRef([]);
   useEffect(() => {
-    const userData = JSON.parse(localStorage.getItem("user"));
-    setUser(userData);
-    fetchMyBookings(userData?.id);
-  }, []);
+    bookingsRef.current = bookings;
+  }, [bookings]);
 
-  const fetchMyBookings = async (userId) => {
+  const fetchMyBookings = async (userId, isSilent = false) => {
     if (!userId) return;
     try {
-      const res = await fetch(
-        `${BASE_URL}/bookings/user/${userId}/`
-      );
+      const res = await fetch(`${BASE_URL}/bookings/user/${userId}/`);
       const data = await res.json();
-      setBookings(data);
+      if (Array.isArray(data)) {
+        // Kiểm tra xem có trạng thái đơn nào vừa được Ban quản lý thay đổi không
+        if (isSilent && bookingsRef.current.length > 0) {
+          const oldMap = new Map(bookingsRef.current.map((b) => [b.id, b.status]));
+          const changed = data.find((b) => oldMap.has(b.id) && oldMap.get(b.id) !== b.status);
+          if (changed) {
+            toast.info(`Đơn đặt sân "${changed.fieldName || 'bóng đá'}" vừa được cập nhật: ${getBookingStatusLabel(changed.status)}`);
+          }
+        }
+        setBookings(data);
+      }
     } catch (err) {
       console.log("Lỗi load bookings:", err);
     }
   };
+
+  useEffect(() => {
+    const userData = JSON.parse(localStorage.getItem("user"));
+    setUser(userData);
+    fetchMyBookings(userData?.id, false);
+
+    // 1. Đồng bộ tức thì khi có sự kiện từ tab khác (Cross-tab sync 0ms)
+    const cleanupSync = onSyncEvent((event) => {
+      if (event.type?.startsWith("booking_")) {
+        fetchMyBookings(userData?.id, true);
+      }
+    });
+
+    // 2. Smart Polling tự động kiểm tra mỗi 3.5 giây khi tab đang hiển thị
+    const pollInterval = setInterval(() => {
+      if (document.visibilityState === "visible" && userData?.id) {
+        fetchMyBookings(userData?.id, true);
+      }
+    }, 3500);
+
+    // 3. Cập nhật tức thì khi người dùng chuyển lại vào tab này
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && userData?.id) {
+        fetchMyBookings(userData?.id, true);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      cleanupSync();
+      clearInterval(pollInterval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
@@ -144,9 +207,10 @@ const MyBookings = () => {
           setReviewingBooking(null);
           setSubmitSuccess(false);
           setRating(5);
+          setHoverRating(0);
           setComment("");
           fetchMyBookings(user.id);
-        }, 2000);
+        }, 1800);
       } else {
         setSubmitError(data.error || "Có lỗi xảy ra khi gửi đánh giá");
       }
@@ -154,6 +218,18 @@ const MyBookings = () => {
       setSubmitError("Lỗi kết nối máy chủ");
     }
   };
+
+  const openReviewModal = (booking) => {
+    setReviewingBooking(booking);
+    setRating(5);
+    setHoverRating(0);
+    setComment("");
+    setSubmitError("");
+    setSubmitSuccess(false);
+  };
+
+  const currentRatingLevel =
+    RATING_LEVELS.find((r) => r.value === Number(hoverRating || rating)) || RATING_LEVELS[0];
 
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancellingBookingId, setCancellingBookingId] = useState(null);
@@ -176,6 +252,7 @@ const MyBookings = () => {
 
       if (response.ok) {
         toast.success("Đã hủy đặt sân thành công!");
+        broadcastSyncEvent("booking_cancelled", { bookingId: cancellingBookingId });
         fetchMyBookings(user.id);
       } else {
         const data = await response.json();
@@ -217,21 +294,28 @@ const MyBookings = () => {
       || (timeFilter === "past" && daysFromToday < 0);
     return matchesStatus && matchesSearch && matchesField && matchesTime;
   });
+  const sortedBookings = [...filteredBookings].sort((a, b) => {
+    const dateCmp = (b.bookingDate || "").localeCompare(a.bookingDate || "");
+    if (dateCmp !== 0) return dateCmp;
+    const getStartTime = (slot) => (slot || "").split("-")[0]?.trim() || "";
+    return getStartTime(a.timeSlot).localeCompare(getStartTime(b.timeSlot));
+  });
+
   const fieldOptions = [...new Set(bookings.map((booking) => booking.fieldName).filter(Boolean))];
   const pageSize = 5;
-  const pageCount = Math.max(1, Math.ceil(filteredBookings.length / pageSize));
-  const visibleBookings = filteredBookings.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  const featuredBooking = bookings.find((booking) => normalizeStatusKey(booking.status) !== "cancelled") || bookings[0];
+  const pageCount = Math.max(1, Math.ceil(sortedBookings.length / pageSize));
+  const visibleBookings = sortedBookings.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const featuredBooking = sortedBookings.find((booking) => normalizeStatusKey(booking.status) !== "cancelled") || sortedBookings[0];
 
   const handleExport = () => {
     const rows = [
       ["Mã đặt sân", "Sân bóng", "Địa chỉ", "Ngày thi đấu", "Khung giờ", "Chi phí", "Trạng thái"],
-      ...filteredBookings.map((booking) => [
+      ...sortedBookings.map((booking) => [
         `BK${booking.id?.substring(0, 8).toUpperCase()}`,
         booking.fieldName,
         booking.fieldAddress,
         booking.bookingDate,
-        booking.timeSlot,
+        cleanTimeSlot(booking.timeSlot),
         booking.price,
         getBookingStatusLabel(booking.status),
       ]),
@@ -383,7 +467,7 @@ const MyBookings = () => {
                       <p><span className="material-symbols-outlined">location_on</span>{booking.fieldAddress || "Chưa cập nhật địa chỉ"}</p>
                       <div className="history-booking-meta">
                         <span><span className="material-symbols-outlined">calendar_month</span>{new Date(booking.bookingDate).toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })}</span>
-                        <span><span className="material-symbols-outlined">schedule</span>{booking.timeSlot || "Chưa có khung giờ"}</span>
+                        <span><span className="material-symbols-outlined">schedule</span>{cleanTimeSlot(booking.timeSlot) || "Chưa có khung giờ"}</span>
                       </div>
                     </div>
                   </div>
@@ -394,9 +478,54 @@ const MyBookings = () => {
                   <div className="history-card-footer">
                     <div className="history-card-total">
                       <span>Tổng chi phí</span>
-                      <strong>{Number(booking.price || 0).toLocaleString("vi-VN")}đ</strong>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginTop: "2px" }}>
+                        <strong>{Number(booking.price || 0).toLocaleString("vi-VN")}đ</strong>
+
+                        {/* Thông tin thanh toán người dùng đã chọn */}
+                        {(() => {
+                          const pay = booking.payment_info || {};
+                          const badgeType = pay.badge_type || "pay_at_field";
+                          const iconMap = {
+                            deposit_paid: "payments",
+                            full_paid: "verified",
+                            pending_deposit: "hourglass_top",
+                            pending_full: "hourglass_top",
+                            pay_at_field: "storefront",
+                          };
+                          const icon = iconMap[badgeType] || "payments";
+
+                          return (
+                            <span className={`myb-pay-badge myb-pay-badge--${badgeType}`} title={pay.sub_label || pay.method}>
+                              <span className="material-symbols-outlined" style={{ fontSize: "0.85rem" }}>{icon}</span>
+                              <span>{pay.status_label || "Thanh toán tại sân"}</span>
+                            </span>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Dòng chi tiết phụ nếu có tiền cọc hoặc phương thức */}
+                      {(() => {
+                        const pay = booking.payment_info;
+                        if (pay?.sub_label) {
+                          return (
+                            <small
+                              style={{
+                                color: pay.badge_type === "deposit_paid" ? "#d97706" : "#64748b",
+                                fontWeight: 600,
+                                display: "block",
+                                fontSize: "0.75rem",
+                                marginTop: "2px",
+                              }}
+                            >
+                              {pay.sub_label}
+                            </small>
+                          );
+                        }
+                        return null;
+                      })()}
+
                       {booking.discountAmount > 0 && (
-                        <small style={{ color: "#16a34a", fontWeight: 600, display: "block", fontSize: "0.75rem" }}>
+                        <small style={{ color: "#16a34a", fontWeight: 600, display: "block", fontSize: "0.75rem", marginTop: "2px" }}>
                           (Đã giảm {Number(booking.discountAmount).toLocaleString("vi-VN")}đ với mã {booking.voucherCode})
                         </small>
                       )}
@@ -420,7 +549,7 @@ const MyBookings = () => {
                         </button>
                       )}
                       {isCompletedBooking(booking.status) && !hasReviewedBooking(booking.is_reviewed) && (
-                        <button onClick={() => setReviewingBooking(booking)} className="btn-review-action btn-review-inline">
+                        <button onClick={() => openReviewModal(booking)} className="btn-review-action btn-review-inline">
                           <span className="material-symbols-outlined">star</span> Đánh giá
                         </button>
                       )}
@@ -478,7 +607,7 @@ const MyBookings = () => {
                 </div>
                 <div className="history-ticket-info">
                   <strong>{featuredBooking.fieldName}</strong>
-                  <span>{featuredBooking.timeSlot} · {new Date(featuredBooking.bookingDate).toLocaleDateString("vi-VN")}</span>
+                  <span>{cleanTimeSlot(featuredBooking.timeSlot)} · {new Date(featuredBooking.bookingDate).toLocaleDateString("vi-VN")}</span>
                   <small>Xuất trình mã QR này cho nhân viên khi đến sân.</small>
                 </div>
                 <a
@@ -519,40 +648,147 @@ const MyBookings = () => {
       </main>
 
       {reviewingBooking && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-              <h3 className="font-bold text-lg text-slate-900 dark:text-white">Đánh giá sân bóng</h3>
-              <button onClick={() => setReviewingBooking(null)} className="text-slate-400 hover:text-slate-600">
+        <div className="review-modal-overlay" onClick={() => setReviewingBooking(null)}>
+          <div className="review-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="review-modal-header">
+              <div className="review-modal-title-group">
+                <div className="review-modal-icon-badge">
+                  <span className="material-symbols-outlined">rate_review</span>
+                </div>
+                <div>
+                  <h3 className="review-modal-title">Đánh giá sân bóng</h3>
+                  <p className="review-modal-subtitle">Góp ý trải nghiệm để nâng cao chất lượng dịch vụ</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="review-modal-close"
+                onClick={() => setReviewingBooking(null)}
+                aria-label="Đóng modal"
+              >
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
-            <div className="p-4 md:p-6">
+
+            <div className="review-modal-body">
               {submitSuccess ? (
-                <div className="bg-emerald-50 text-emerald-600 p-4 rounded-lg flex items-center gap-2">
-                  <span className="material-symbols-outlined">check_circle</span>
-                  Cảm ơn bạn đã gửi đánh giá!
+                <div className="review-success-state">
+                  <div className="review-success-icon-wrap">
+                    <span className="material-symbols-outlined">verified</span>
+                  </div>
+                  <h4>Đã gửi đánh giá thành công!</h4>
+                  <p>Cảm ơn bạn đã đóng góp ý kiến quý báu giúp ban quản lý nâng cao chất lượng sân bóng.</p>
                 </div>
               ) : (
-                <form onSubmit={handleReviewSubmit} className="flex flex-col gap-4">
-                  {submitError && <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">{submitError}</div>}
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Mức độ hài lòng</label>
-                    <select value={rating} onChange={(e) => setRating(e.target.value)} className="w-full border rounded-lg p-2.5">
-                      <option value={5}>⭐⭐⭐⭐⭐ (Rất tuyệt vời)</option>
-                      <option value={4}>⭐⭐⭐⭐ (Tuyệt vời)</option>
-                      <option value={3}>⭐⭐⭐ (Bình thường)</option>
-                      <option value={2}>⭐⭐ (Tạm được)</option>
-                      <option value={1}>⭐ (Tệ)</option>
-                    </select>
+                <form onSubmit={handleReviewSubmit} className="review-form">
+                  {submitError && (
+                    <div className="review-error-banner">
+                      <span className="material-symbols-outlined">error</span>
+                      <span>{submitError}</span>
+                    </div>
+                  )}
+
+                  {/* Field preview card */}
+                  <div className="review-field-preview">
+                    <div className="review-field-avatar">
+                      <span className="material-symbols-outlined">sports_soccer</span>
+                    </div>
+                    <div className="review-field-info">
+                      <h4>{reviewingBooking.fieldName || reviewingBooking.field || "Sân bóng đá"}</h4>
+                      <div className="review-field-meta">
+                        {(reviewingBooking.bookingDate || reviewingBooking.date) && (
+                          <span>
+                            <span className="material-symbols-outlined">calendar_today</span>
+                            {new Date(reviewingBooking.bookingDate || reviewingBooking.date).toLocaleDateString("vi-VN")}
+                          </span>
+                        )}
+                        {(reviewingBooking.timeSlot || reviewingBooking.time) && (
+                          <span>
+                            <span className="material-symbols-outlined">schedule</span>
+                            {reviewingBooking.timeSlot || reviewingBooking.time}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Nhận xét của bạn</label>
-                    <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows="4" className="w-full border rounded-lg p-2.5 resize-none"></textarea>
+
+                  {/* Rating Selector */}
+                  <div className="review-form-group">
+                    <label className="review-field-label">
+                      <span>Mức độ hài lòng</span>
+                      <span
+                        className="review-rating-active-pill"
+                        style={{ color: currentRatingLevel.color, background: currentRatingLevel.bg }}
+                      >
+                        {currentRatingLevel.label}
+                      </span>
+                    </label>
+
+                    <div className="review-stars-wrapper">
+                      <div className="review-stars-list" onMouseLeave={() => setHoverRating(0)}>
+                        {[1, 2, 3, 4, 5].map((star) => {
+                          const isFilled = (hoverRating || rating) >= star;
+                          return (
+                            <button
+                              type="button"
+                              key={star}
+                              className={`review-star-item ${isFilled ? "filled" : ""}`}
+                              onMouseEnter={() => setHoverRating(star)}
+                              onClick={() => setRating(star)}
+                              aria-label={`${star} sao`}
+                            >
+                              <span
+                                className="material-symbols-outlined"
+                                style={{ fontVariationSettings: isFilled ? "'FILL' 1" : "'FILL' 0" }}
+                              >
+                                star
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <span className="review-rating-score-text">
+                        <strong>{hoverRating || rating}</strong>/5
+                      </span>
+                    </div>
+                    <p className="review-level-desc">{currentRatingLevel.desc}</p>
                   </div>
-                  <div className="flex justify-end gap-2">
-                    <button type="button" onClick={() => setReviewingBooking(null)} className="px-4 py-2 bg-slate-100 rounded-lg">Hủy</button>
-                    <button type="submit" className="px-4 py-2 text-white bg-primary rounded-lg">Gửi đánh giá</button>
+
+                  {/* Comment Textarea */}
+                  <div className="review-form-group">
+                    <div className="review-label-between">
+                      <label className="review-field-label" htmlFor="review-comment-input">
+                        Nhận xét của bạn
+                      </label>
+                      <span className="review-counter">{comment.length}/500</span>
+                    </div>
+                    <textarea
+                      id="review-comment-input"
+                      value={comment}
+                      maxLength={500}
+                      onChange={(e) => setComment(e.target.value)}
+                      rows="4"
+                      placeholder="Hãy chia sẻ thêm về chất lượng mặt cỏ, hệ thống chiếu sáng, bóng thi đấu, phòng thay đồ hoặc thái độ phục vụ..."
+                      className="review-textarea"
+                    />
+                  </div>
+
+                  {/* Actions */}
+                  <div className="review-modal-actions">
+                    <button
+                      type="button"
+                      onClick={() => setReviewingBooking(null)}
+                      className="btn-review-secondary"
+                    >
+                      Hủy bỏ
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn-review-primary"
+                    >
+                      <span className="material-symbols-outlined">send</span>
+                      Gửi đánh giá
+                    </button>
                   </div>
                 </form>
               )}

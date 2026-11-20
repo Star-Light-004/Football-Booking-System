@@ -34,21 +34,21 @@ const Login = () => {
         password: formData.password
       });
       const userData = res.data.user;
-      localStorage.setItem("user", JSON.stringify(userData));
-
-      // Nếu là admin / staff → lưu thêm session riêng cho trang quản trị
       const ADMIN_ROLES = ["admin", "field_owner", "field_manager", "receptionist", "cashier", "cleaner", "service_staff", "maintenance"];
+
       if (ADMIN_ROLES.includes(userData.role)) {
+        // ✅ Tài khoản quản trị: Lưu riêng vào "admin_user", KHÔNG ghi đè "user" của trang khách hàng
         localStorage.setItem("admin_user", JSON.stringify(userData));
+        navigate("/admin/dashboard");
+      } else {
+        // ✅ Khách hàng: Lưu vào "user" và kích hoạt cập nhật Navbar trang chủ
+        localStorage.setItem("user", JSON.stringify(userData));
+        window.dispatchEvent(new Event("userChanged"));
+        navigate("/");
       }
 
-      window.dispatchEvent(new Event("userChanged"));
-
-      // ✅ chuyển trang home ngay, không hiện thông báo
-      navigate("/");
-
     } catch (err) {
-      toast.error(err.response?.data?.error || "Sai tài khoản hoặc mật khẩu!");
+      toast.error(err.response?.data?.error || "Tài khoản hoặc mật khẩu không chính xác!");
     }
   };
 
@@ -80,10 +80,10 @@ const Login = () => {
 
             <form className="auth-form" onSubmit={handleSubmit}>
               <div className="auth-field">
-                <label htmlFor="identifier">Email hoặc Số điện thoại <b>*</b></label>
+                <label htmlFor="identifier">Gmail hoặc Số điện thoại <b>*</b></label>
                 <div className="auth-input-wrap">
                   <span className="material-symbols-outlined">mail</span>
-                  <input id="identifier" onChange={handleChange} placeholder="name@example.com hoặc 0901234xxx" type="text" autoComplete="username" />
+                  <input id="identifier" onChange={handleChange} placeholder="name@gmail.com hoặc 0901234xxx" type="text" autoComplete="username" />
                 </div>
               </div>
 

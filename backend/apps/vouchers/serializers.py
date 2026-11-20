@@ -8,7 +8,7 @@ class VoucherSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'code', 'title', 'description', 'discount_type',
             'discount_value', 'max_discount', 'min_booking_price',
-            'expiry_days', 'is_system_reward', 'is_active', 'created_at'
+            'applicable_to', 'expiry_days', 'is_system_reward', 'is_active', 'created_at'
         ]
 
 
@@ -21,7 +21,7 @@ class AdminVoucherSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'code', 'title', 'description', 'discount_type',
             'discount_value', 'max_discount', 'min_booking_price',
-            'expiry_days', 'usage_limit', 'is_system_reward', 'is_active',
+            'applicable_to', 'expiry_days', 'usage_limit', 'is_system_reward', 'is_active',
             'total_issued', 'total_used', 'created_at', 'updated_at'
         ]
 
@@ -62,6 +62,7 @@ class CustomerVoucherSerializer(serializers.ModelSerializer):
     discount_value = serializers.FloatField(source='voucher.discount_value', read_only=True)
     max_discount = serializers.FloatField(source='voucher.max_discount', read_only=True)
     min_booking_price = serializers.FloatField(source='voucher.min_booking_price', read_only=True)
+    applicable_to = serializers.CharField(source='voucher.applicable_to', read_only=True)
     is_expired = serializers.BooleanField(read_only=True)
     is_valid_to_use = serializers.BooleanField(read_only=True)
 
@@ -70,7 +71,7 @@ class CustomerVoucherSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'code', 'title', 'description', 'discount_type',
             'discount_value', 'max_discount', 'min_booking_price',
-            'discount_amount', 'is_used', 'used_at', 'valid_until',
+            'applicable_to', 'discount_amount', 'is_used', 'used_at', 'valid_until',
             'is_expired', 'is_valid_to_use', 'created_at'
         ]
 

@@ -2,7 +2,6 @@ from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.utils import timezone
 from .models import Bookings
-from apps.notifications.models import Notification
 
 
 # Lưu trữ status cũ trước khi save
@@ -30,16 +29,7 @@ def create_notification_on_booking_update(sender, instance, created, update_fiel
         
         # Nếu là lần đầu tạo booking
         if created:
-            print(f"✅ Creating new booking notification for customer: {instance.customer.id}")
-            Notification.objects.create(
-                user=instance.customer,
-                booking=instance,
-                notification_type='booking_pending',
-                title='Đặt sân thành công',
-                message=f'Đặt sân của bạn tại {instance.field.field_name} vào {instance.booking_date} đã được ghi nhận. Chờ xác nhận từ quản trị viên.',
-                is_read=False
-            )
-            print(f"✅ Notification created successfully")
+            print(f"✅ New booking created for customer: {instance.customer.id}")
             return
         
         # Kiểm tra status thay đổi
@@ -48,46 +38,35 @@ def create_notification_on_booking_update(sender, instance, created, update_fiel
         
         print(f"📊 Status check - Old: {old_status}, New: {new_status}")
         
-        # Nếu status không thay đổi, không tạo notification
+        # Nếu status không thay đổi, không xử lý
         if old_status == new_status:
-            print(f"⚠️ Status not actually changed - skipping notification")
+            print(f"⚠️ Status not actually changed - skipping")
             return
         
         print(f"🔄 Status update detected for booking: {instance.id}")
         
-        # Tạo notification tương ứng với status mới
-        notification_type = None
-        message = None
-        title = None
-        
         if new_status and (new_status.lower() == 'approved' or new_status.lower() == 'confirmed'):
-            notification_type = 'booking_approved'
-            title = 'Đặt sân được duyệt'
-            message = f'Đặt sân của bạn tại {instance.field.field_name} vào {instance.booking_date} ({instance.start_time} - {instance.end_time}) đã được duyệt. Vui lòng thanh toán để hoàn tất.'
+            pass
         
         elif new_status and (new_status.lower() == 'rejected' or new_status.lower() == 'cancelled'):
-            notification_type = 'booking_cancelled'
-            title = 'Lượt đặt sân đã bị hủy'
-            message = f'Lượt đặt sân tại {instance.field.field_name} vào {instance.booking_date} ({instance.start_time} - {instance.end_time}) đã được cập nhật trạng thái hủy.'
             try:
-                from apps.users.models import Customers
-                admins = Customers.objects.filter(role__in=['admin', 'field_owner', 'field_manager', 'receptionist'])
-                for adm in admins:
-                    Notification.objects.create(
-                        user=adm,
-                        booking=instance,
-                        notification_type='booking_cancelled',
-                        title='Khách hàng đã hủy đặt sân',
-                        message=f'Đơn đặt sân #{str(instance.id)[:8].upper()} tại {instance.field.field_name} ({instance.booking_date} {instance.start_time} - {instance.end_time}) vừa bị khách hủy.',
-                        is_read=False
-                    )
-            except Exception as adm_notif_err:
-                print("Lỗi tạo thông báo admin:", adm_notif_err)
+                from apps.servicesadd.views import sync_booking_services_stock
+                sync_booking_services_stock(instance, new_status, old_status)
+            except Exception as stock_err:
+                print("Lỗi hoàn tồn kho dịch vụ khi hủy booking:", stock_err)
         
         elif new_status and new_status.lower() in ['completed', 'hoàn thành']:
             notification_type = 'booking_completed'
             title = 'Đặt sân hoàn thành'
             message = f'Đặt sân của bạn tại {instance.field.field_name} vào {instance.booking_date} đã hoàn thành. Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi!'
+            
+            # 📦 Trừ số lượng tồn kho dịch vụ đi kèm khi hoàn thành
+            try:
+                from apps.servicesadd.views import sync_booking_services_stock
+                sync_booking_services_stock(instance, new_status, old_status)
+            except Exception as stock_err:
+                print("Lỗi trừ tồn kho dịch vụ khi hoàn thành booking:", stock_err)
+
             # 🎁 Tự động tặng voucher cho khách hàng
             try:
                 from apps.vouchers.services import award_completion_voucher
@@ -111,26 +90,18 @@ def create_notification_on_booking_update(sender, instance, created, update_fiel
                     print("Lỗi cập nhật voucher khi completed:", cv_err)
         
         elif new_status and new_status.lower() == 'pending':
-            notification_type = 'booking_pending'
-            title = 'Đặt sân đang chờ xác nhận'
-            message = f'Đặt sân của bạn tại {instance.field.field_name} vào {instance.booking_date} đang chờ xác nhận từ quản trị viên.'
-        
-        # Tạo notification nếu có type
-        if notification_type and message and title:
-            print(f"✅ Creating notification: {notification_type}")
-            Notification.objects.create(
-                user=instance.customer,
-                booking=instance,
-                notification_type=notification_type,
-                title=title,
-                message=message,
-                is_read=False
-            )
-            print(f"✅ Notification created successfully")
-            # Cleanup
-            _booking_old_status.pop(instance.id, None)
-        else:
-            print(f"⚠️ No notification type matched for status: {new_status}")
+            pass
+
+        # Kiểm tra nếu chuyển từ hoàn thành sang trạng thái khác thì hoàn lại tồn kho
+        if old_status and str(old_status).lower() in ['completed', 'hoàn thành'] and str(new_status).lower() not in ['completed', 'hoàn thành', 'rejected', 'cancelled']:
+            try:
+                from apps.servicesadd.views import sync_booking_services_stock
+                sync_booking_services_stock(instance, new_status, old_status)
+            except Exception as stock_err:
+                print("Lỗi hoàn tồn kho khi chuyển trạng thái:", stock_err)
+
+        # Cleanup
+        _booking_old_status.pop(instance.id, None)
     
     except Exception as e:
         print(f"❌ Error creating notification: {e}")

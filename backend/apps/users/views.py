@@ -36,6 +36,7 @@ DEFAULT_PERMISSIONS = {
         'services_view', 'services_create', 'services_edit',
         'vouchers_view', 'vouchers_create', 'vouchers_edit',
         'users_view',
+        'revenue_view',
         'maintenance_manage', 'cleaning_manage',
     ],
     'receptionist': [
@@ -45,6 +46,7 @@ DEFAULT_PERMISSIONS = {
         'timeslots_view',
         'services_view',
         'vouchers_view',
+        'users_view',
     ],
     'cashier': [
         'dashboard_view',
@@ -54,11 +56,13 @@ DEFAULT_PERMISSIONS = {
         'vouchers_view',
     ],
     'cleaner': [
+        'dashboard_view',
         'cleaning_manage',
     ],
     'service_staff': [
         'dashboard_view',
         'services_view', 'services_create', 'services_edit',
+        'bookings_view',
     ],
     'maintenance': [
         'dashboard_view',
@@ -136,23 +140,42 @@ def get_permissions_for_role(role):
 def register(request):
     data = request.data
 
-    phone    = data.get('phone')
-    fullname = data.get('fullname')
-    email    = data.get('email')
+    phone    = (data.get('phone') or '').strip()
+    fullname = (data.get('fullname') or '').strip()
+    email    = (data.get('email') or '').strip().lower()
     password = data.get('password')
 
     if not phone or not fullname or not password:
-        return Response({"error": "Thiếu dữ liệu bắt buộc"}, status=400)
+        return Response({"error": "Vui lòng điền đầy đủ các trường thông tin bắt buộc"}, status=400)
 
-    if Customers.objects.filter(phone=phone).exists():
-        return Response({"error": "Số điện thoại đã tồn tại"}, status=400)
+    # ── Kiểm tra định dạng dữ liệu (Validation) ─────────────────────────────
+    import re
+    if len(fullname) < 2:
+        return Response({"error": "Họ và tên phải có tối thiểu 2 ký tự"}, status=400)
+
+    if email:
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@gmail\.com$', email):
+            return Response({"error": "Gmail phải có đuôi @gmail.com (ví dụ: example@gmail.com)"}, status=400)
+
+    # Chuẩn hóa và kiểm tra số điện thoại Việt Nam (10 số, đầu 03, 05, 07, 08, 09)
+    clean_phone = re.sub(r'[\s\.\-\(\)]', '', phone)
+    if clean_phone.startswith('+84'):
+        clean_phone = '0' + clean_phone[3:]
+    if not re.match(r'^(0[35789])[0-9]{8}$', clean_phone):
+        return Response({"error": "Số điện thoại không hợp lệ (phải gồm 10 số, bắt đầu bằng 03, 05, 07, 08, 09)"}, status=400)
+
+    if len(password) < 8:
+        return Response({"error": "Mật khẩu phải có tối thiểu 8 ký tự"}, status=400)
+
+    if Customers.objects.filter(phone=clean_phone).exists():
+        return Response({"error": "Số điện thoại này đã có người đăng ký"}, status=400)
 
     if email and Customers.objects.filter(email=email).exists():
-        return Response({"error": "Email đã tồn tại"}, status=400)
+        return Response({"error": "Gmail này đã có người đăng ký"}, status=400)
 
     Customers.objects.create(
         full_name=fullname,
-        phone=phone,
+        phone=clean_phone,
         email=email,
         password_hash=make_password(password),
         role=Customers.Role.CUSTOMER,   # mặc định: khách hàng
@@ -161,6 +184,77 @@ def register(request):
     )
 
     return Response({"message": "Đăng ký thành công"})
+
+
+# ================= CHECK USER EXISTS =================
+@api_view(['GET'])
+def check_user_exists(request):
+    """Kiểm tra số điện thoại hoặc gmail đã được đăng ký trước đó hay chưa."""
+    phone = (request.query_params.get('phone') or '').strip()
+    email = (request.query_params.get('email') or '').strip().lower()
+
+    response_data = {
+        'phone_exists': False,
+        'email_exists': False
+    }
+
+    import re
+    if phone:
+        clean_phone = re.sub(r'[\s\.\-\(\)]', '', phone)
+        if clean_phone.startswith('+84'):
+            clean_phone = '0' + clean_phone[3:]
+        if Customers.objects.filter(phone=clean_phone).exists():
+            response_data['phone_exists'] = True
+
+    if email:
+        if Customers.objects.filter(email=email).exists():
+            response_data['email_exists'] = True
+
+    return Response(response_data)
+
+
+# ================= SOCIAL AUTH (GOOGLE & FACEBOOK) =================
+@api_view(['POST'])
+def social_auth(request):
+    """Đăng ký / đăng nhập nhanh bằng tài khoản Google hoặc Facebook."""
+    data = request.data
+    provider = data.get('provider', 'google')
+    email = (data.get('email') or '').strip().lower()
+    fullname = (data.get('fullname') or '').strip()
+
+    if not email:
+        return Response({"error": f"Không tìm thấy email liên kết với tài khoản {provider.capitalize()}"}, status=400)
+
+    user = Customers.objects.filter(email=email).first()
+
+    if not user:
+        user = Customers.objects.create(
+            full_name=fullname or f"Khách hàng {provider.capitalize()}",
+            email=email,
+            phone=data.get('phone') or '',
+            role=Customers.Role.CUSTOMER,
+            is_active=True,
+            created_at=timezone.now()
+        )
+    else:
+        if not user.is_active:
+            return Response({"error": "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên."}, status=403)
+        if fullname and not user.full_name:
+            user.full_name = fullname
+            user.save()
+
+    return Response({
+        "message": f"Đăng nhập thành công với {provider.capitalize()}",
+        "user": {
+            "id": str(user.id),
+            "fullname": user.full_name,
+            "email": user.email,
+            "phone": user.phone,
+            "role": user.role,
+            "status": user.status,
+            "is_active": user.is_active,
+        }
+    })
 
 
 # ================= LOGIN =================
@@ -172,22 +266,21 @@ def login(request):
     password   = data.get('password')
 
     if not identifier or not password:
-        return Response({"error": "Thiếu dữ liệu"}, status=400)
+        return Response({"error": "Vui lòng nhập tài khoản và mật khẩu"}, status=400)
 
     user = (
         Customers.objects.filter(email=identifier).first()
         or Customers.objects.filter(phone=identifier).first()
     )
 
-    if not user:
-        return Response({"error": "Tài khoản không tồn tại"}, status=404)
+    # Bảo mật: Không thông báo cụ thể tài khoản không tồn tại hay sai mật khẩu
+    # để tránh tấn công dò quét tài khoản (User Enumeration).
+    if not user or not check_password(password, user.password_hash):
+        return Response({"error": "Tài khoản hoặc mật khẩu không chính xác"}, status=400)
 
     # ── Kiểm tra tài khoản bị khóa ──────────────────────────────────────────
     if not user.is_active:
         return Response({"error": "Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên."}, status=403)
-
-    if not check_password(password, user.password_hash):
-        return Response({"error": "Sai mật khẩu"}, status=400)
 
     return Response({
         "message": "Đăng nhập thành công",

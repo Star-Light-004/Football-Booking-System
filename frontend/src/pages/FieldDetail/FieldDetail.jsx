@@ -1,52 +1,16 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getFieldDetail } from "../../api/fieldsApi";
 import { getServices } from "../../api/servicesApi";
+import { getCustomerBookingLimits } from "../../api/bookingsApi";
 import timeslotsApi from "../../api/timeslotsApi";
 import { validateVoucher, getMyVouchers } from "../../api/vouchersApi";
 import FieldMap from "../../components/FieldMap/FieldMap";
-import { BASE_URL } from "../../config";
+import { BASE_URL, SERVER_URL } from "../../config";
+import { useToast, ToastContainer } from "../../components/Toast/Toast";
+import { onSyncEvent } from "../../utils/realtimeSync";
+import { isSlotExpired, getLocalDateString } from "../../utils/timeslotUtils";
 import "./FieldDetail.css";
-
-const DEFAULT_SERVICES = [
-  {
-    id: "serv_shoes",
-    name: "Thuê giày đá bóng",
-    desc: "Đầy đủ size 38 - 44, vệ sinh sạch sẽ",
-    price: 20000,
-    unit: "đôi",
-    icon: "sports",
-    isShoe: true,
-  },
-  {
-    id: "serv_water",
-    name: "Nước bù khoáng Pocari",
-    desc: "Chai 500ml ướp lạnh sẵn sàng",
-    price: 15000,
-    unit: "chai",
-    icon: "water_drop",
-    isShoe: false,
-  },
-  {
-    id: "serv_bib",
-    name: "Áo bib phân đội (7 cái)",
-    desc: "Gồm 2 màu phân biệt nổi bật",
-    price: 0,
-    unit: "bộ",
-    icon: "checkroom",
-    isShoe: false,
-    isFree: true,
-  },
-  {
-    id: "serv_referee",
-    name: "Trọng tài bắt trận",
-    desc: "Trọng tài cấp 2 VFF điều hành",
-    price: 150000,
-    unit: "trận",
-    icon: "sports_soccer",
-    isShoe: false,
-  },
-];
 
 const formatDateDisplay = (dateValue) => {
   if (!dateValue) return "";
@@ -63,6 +27,7 @@ const getSlotDurationMinutes = (slot) => {
 const FieldDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { toasts, removeToast, toast } = useToast();
 
   const [field, setField] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -70,7 +35,7 @@ const FieldDetail = () => {
   const [isSaved, setIsSaved] = useState(false);
 
   // ─── DATE PICKER STATE ──────────────────────────────────────────────────
-  const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
+  const todayStr = useMemo(() => getLocalDateString(), []);
   const [selectedDate, setSelectedDate] = useState(todayStr);
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const [year, month] = todayStr.split("-").map(Number);
@@ -138,10 +103,41 @@ const FieldDetail = () => {
   // ─── TIMESLOTS STATE ────────────────────────────────────────────────────
   const [availableSlots, setAvailableSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [selectedSlots, setSelectedSlots] = useState([]);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState(null);
   const [slotPrice, setSlotPrice] = useState(0);
   const [showSlotDropdown, setShowSlotDropdown] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [customerLimits, setCustomerLimits] = useState({
+    same_field_booked_count: 0,
+    same_field_slots: [],
+    other_field_slots: [],
+    max_slots_per_day: 3,
+  });
+
+  // Lấy giới hạn và các khung giờ khách đã đặt tại sân khác trong ngày
+  const fetchCustomerLimits = useCallback(async (dateToCheck) => {
+    try {
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      if (id && dateToCheck) {
+        const res = await getCustomerBookingLimits({
+          fieldId: id,
+          date: dateToCheck,
+          customerId: user.id || null,
+          phone: user.phone || null,
+        });
+        if (res.data) {
+          setCustomerLimits(res.data);
+        }
+      }
+    } catch (e) {
+      console.log("Lỗi kiểm tra giới hạn khách hàng:", e);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchCustomerLimits(selectedDate);
+  }, [selectedDate, fetchCustomerLimits]);
 
   // ─── SERVICES STATE ─────────────────────────────────────────────────────
   const [servicesList, setServicesList] = useState([]);
@@ -169,7 +165,7 @@ const FieldDetail = () => {
           })
           .catch((err) => console.log("Lỗi tải voucher cá nhân:", err));
       }
-    } catch (e) {}
+    } catch (e) { }
   }, []);
 
   // ─── REVIEWS STATE (CHỈ LẤY TỪ API) ────────────────────────────────────
@@ -177,6 +173,14 @@ const FieldDetail = () => {
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState("");
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [eligibleBooking, setEligibleBooking] = useState(null);
+  const [checkingEligibility, setCheckingEligibility] = useState(true);
+
+  const resolveImgUrl = useCallback((urlOrPath) => {
+    if (!urlOrPath) return "";
+    if (urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://")) return urlOrPath;
+    return `${SERVER_URL}${urlOrPath}`;
+  }, []);
 
   // ─── Fetch Field Detail ─────────────────────────────────────────────────
   useEffect(() => {
@@ -185,7 +189,8 @@ const FieldDetail = () => {
         const res = await getFieldDetail(id);
         const data = res.data;
         setField(data);
-        setCurrentImage(data.image_url || "");
+        const main = data.image_url || (data.image ? `${SERVER_URL}${data.image}` : "");
+        setCurrentImage(main);
         if (data.price_per_hour) {
           setSlotPrice(Number(data.price_per_hour));
         }
@@ -198,112 +203,310 @@ const FieldDetail = () => {
     fetchDetail();
   }, [id]);
 
-  // 3 ảnh nhỏ tạm thời lấy ảnh của ảnh chính hiển thị
+  // 3 ảnh phụ riêng biệt (nếu chưa có thì fallback về ảnh chính)
   const subImages = useMemo(() => {
-    const mainImg = field?.image_url || currentImage || "";
+    const mainImg = resolveImgUrl(field?.image_url || field?.image || currentImage || "");
+    const sub1 = resolveImgUrl(field?.sub_image_1_url || field?.sub_image_1) || mainImg;
+    const sub2 = resolveImgUrl(field?.sub_image_2_url || field?.sub_image_2) || mainImg;
+    const sub3 = resolveImgUrl(field?.sub_image_3_url || field?.sub_image_3) || mainImg;
+
     return [
       {
-        url: mainImg,
+        url: sub1,
         label: "Khung thành & lưới chuẩn FIFA",
       },
       {
-        url: mainImg,
+        url: sub2,
         label: "Mặt cỏ nhân tạo thế hệ 3 mới",
       },
       {
-        url: mainImg,
+        url: sub3,
         label: "Dàn đèn LED chiếu sáng ban đêm",
       },
     ];
-  }, [field?.image_url, currentImage]);
+  }, [field, currentImage, resolveImgUrl]);
+
+  const selectedSlotsRef = useRef(selectedSlots);
+  useEffect(() => {
+    selectedSlotsRef.current = selectedSlots;
+  }, [selectedSlots]);
+
+  const selectedDateRef = useRef(selectedDate);
+  useEffect(() => {
+    selectedDateRef.current = selectedDate;
+  }, [selectedDate]);
 
   // ─── Fetch Timeslots by Date ───────────────────────────────────────────
-  const fetchSlots = useCallback(async (dateToFetch) => {
+  const fetchSlots = useCallback(async (dateToFetch, isSilent = false) => {
     if (!id || !dateToFetch) return;
-    setLoadingSlots(true);
+    if (!isSilent) setLoadingSlots(true);
     try {
       const res = await timeslotsApi.getByField(id, dateToFetch);
-      const slots = (Array.isArray(res.data) ? res.data : [])
-        .filter((slot) => getSlotDurationMinutes(slot) === 60)
-        .sort((a, b) => a.start_time.localeCompare(b.start_time));
+      let slots = (Array.isArray(res.data) ? res.data : [])
+        .filter((slot) => getSlotDurationMinutes(slot) === 60);
+
+      // Nếu ngày này có khung giờ hoạt động trong DB (sân mở cửa):
+      // Bổ sung các khung giờ trước đó của ngày hôm nay (từ 06:00 đến giờ hiện tại) nếu chưa có trong DB,
+      // để trên giao diện người dùng vẫn hiển thị đầy đủ các khung giờ đã qua và xám màu lại không cho chọn.
+      // Nếu ngày này trong DB không có khung giờ nào (slots.length === 0, ví dụ admin đã xóa hết):
+      // thì giữ nguyên rỗng để đúng với dữ liệu thực tế.
+      if (slots.length > 0) {
+        const standardHoursList = [
+          { start_time: "06:00", end_time: "07:00", price: 80000 },
+          { start_time: "07:00", end_time: "08:00", price: 80000 },
+          { start_time: "08:00", end_time: "09:00", price: 100000 },
+          { start_time: "09:00", end_time: "10:00", price: 100000 },
+          { start_time: "10:00", end_time: "11:00", price: 120000 },
+          { start_time: "11:00", end_time: "12:00", price: 120000 },
+          { start_time: "12:00", end_time: "13:00", price: 120000 },
+          { start_time: "13:00", end_time: "14:00", price: 120000 },
+          { start_time: "14:00", end_time: "15:00", price: 150000 },
+          { start_time: "15:00", end_time: "16:00", price: 150000 },
+          { start_time: "16:00", end_time: "17:00", price: 180000 },
+          { start_time: "17:00", end_time: "18:00", price: 200000 },
+          { start_time: "18:00", end_time: "19:00", price: 250000 },
+          { start_time: "19:00", end_time: "20:00", price: 270000 },
+          { start_time: "20:00", end_time: "21:00", price: 270000 },
+          { start_time: "21:00", end_time: "22:00", price: 250000 },
+        ];
+
+        standardHoursList.forEach((std) => {
+          if (isSlotExpired(dateToFetch, std.start_time)) {
+            const alreadyExists = slots.some((s) => s.start_time && s.start_time.substring(0, 5) === std.start_time);
+            if (!alreadyExists) {
+              slots.push({
+                id: `past-${dateToFetch}-${std.start_time}`,
+                start_time: std.start_time,
+                end_time: std.end_time,
+                price: std.price,
+                status: "expired",
+                is_past: true,
+              });
+            }
+          }
+        });
+      }
+
+      slots.sort((a, b) => a.start_time.localeCompare(b.start_time));
       setAvailableSlots(slots);
 
-      if (slots.length > 0) {
-        const firstAvail = slots.find((s) => s.status === "available");
-        if (firstAvail) {
-          const tr = `${firstAvail.start_time} - ${firstAvail.end_time}`;
-          setSelectedTimeSlot(tr);
-          setSlotPrice(Number(firstAvail.price) || (field?.price_per_hour ? Number(field.price_per_hour) : 350000));
+      if (!isSilent) {
+        // Reset hoặc lọc lại các slot đã chọn phù hợp với ngày mới
+        setSelectedSlots([]);
+        setSelectedTimeSlot(null);
+        setSlotPrice(0);
+      } else {
+        // Kiểm tra xem slot đang chọn có bị khách khác đặt mất không trong thời gian thực
+        const currentSelected = selectedSlotsRef.current || [];
+        if (currentSelected.length > 0 && slots.length > 0) {
+          const invalid = currentSelected.filter((sel) => {
+            const match = slots.find((s) => s.start_time === sel.start_time && s.end_time === sel.end_time);
+            return (match && match.status !== "available") || isSlotExpired(selectedDateRef.current, sel.start_time);
+          });
+          if (invalid.length > 0) {
+            const invalidLabels = invalid.map((s) => `${s.start_time} - ${s.end_time}`).join(", ");
+            toast.warning(`Khung giờ (${invalidLabels}) vừa có khách khác đặt hoặc đã quá giờ!`);
+            const remaining = currentSelected.filter(
+              (sel) => !invalid.some((inv) => inv.start_time === sel.start_time && inv.end_time === sel.end_time)
+            );
+            setSelectedSlots(remaining);
+            if (remaining.length === 0) {
+              setSelectedTimeSlot(null);
+              setSlotPrice(0);
+            }
+          }
         }
       }
     } catch (err) {
-      console.error("Lỗi lấy timeslots:", err);
-      setAvailableSlots([]);
+      if (!isSilent) {
+        console.error("Lỗi lấy timeslots:", err);
+        setAvailableSlots([]);
+      }
     } finally {
-      setLoadingSlots(false);
+      if (!isSilent) setLoadingSlots(false);
     }
-  }, [id, field]);
+  }, [id, toast]);
 
   useEffect(() => {
-    fetchSlots(selectedDate);
+    fetchSlots(selectedDate, false);
   }, [selectedDate, fetchSlots]);
 
-  // ─── Fetch Services ────────────────────────────────────────────────────
+  // Realtime Smart Polling & Cross-tab Sync
+  useEffect(() => {
+    const unsub = onSyncEvent((event) => {
+      if (event?.type?.startsWith("booking_") || event?.type?.startsWith("timeslot_")) {
+        fetchSlots(selectedDateRef.current, true);
+        fetchCustomerLimits(selectedDateRef.current);
+      }
+    });
+
+    const pollTimer = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        fetchSlots(selectedDateRef.current, true);
+      }
+    }, 4000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        fetchSlots(selectedDateRef.current, true);
+        fetchCustomerLimits(selectedDateRef.current);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      unsub();
+      clearInterval(pollTimer);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [fetchSlots, fetchCustomerLimits]);
+
+  // ─── Fetch Services (Lấy trực tiếp từ CSDL Services) ──────────────────
   useEffect(() => {
     const fetchServicesList = async () => {
       try {
-        const res = await getServices({ field_id: id });
-        const list = Array.isArray(res.data) ? res.data : res.data?.services || [];
-        if (list.length > 0) {
-          const formatted = list.map((item) => ({
-            id: item.id,
-            name: item.name,
-            desc: item.description || "Dịch vụ đi kèm chất lượng",
-            price: Number(item.price) || 0,
-            unit: "lần",
-            image: item.image || item.image_url || "",
-            icon: /giày|shoe/i.test(item.name)
-              ? "sports"
-              : /nước|pocari|water/i.test(item.name)
-              ? "water_drop"
-              : /áo|bib/i.test(item.name)
-              ? "checkroom"
-              : "inventory_2",
-            isShoe: /giày|giay|shoe/i.test(item.name),
-            isFree: Number(item.price) === 0,
-          }));
+        let list = [];
+        try {
+          const res = await getServices({ field_id: id });
+          list = Array.isArray(res?.data) ? res.data : res?.data?.services || [];
+        } catch (e) {
+          console.warn("Lỗi getServices với field_id:", e);
+        }
+
+        // Nếu gọi kèm field_id không thấy dịch vụ nào, tự động lấy toàn bộ dịch vụ active trong CSDL
+        if (!list || list.length === 0) {
+          try {
+            const resAll = await getServices();
+            list = Array.isArray(resAll?.data) ? resAll.data : resAll?.data?.services || [];
+          } catch (eAll) {
+            console.warn("Lỗi getServices toàn bộ:", eAll);
+          }
+        }
+
+        if (Array.isArray(list) && list.length > 0) {
+          const formatted = list
+            .filter((item) => item.is_active !== false)
+            .map((item) => ({
+              id: item.id,
+              name: item.name,
+              desc: item.description || "Dịch vụ đi kèm chất lượng cao",
+              price: Number(item.price) || 0,
+              stock: item.stock !== undefined && item.stock !== null ? Number(item.stock) : 0,
+              unit: /nước|pocari|aquafina|sting|revive|chai/i.test(item.name)
+                ? "chai"
+                : /giày|shoe|giay/i.test(item.name)
+                  ? "đôi"
+                  : /áo|bib/i.test(item.name)
+                    ? "bộ"
+                    : /trọng tài/i.test(item.name)
+                      ? "trận"
+                      : /bóng/i.test(item.name)
+                        ? "quả"
+                        : "lần",
+              image: item.image || item.image_url || "",
+              icon: /giày|giay|shoe/i.test(item.name)
+                ? "sports"
+                : /nước|pocari|water|aquafina|sting|revive/i.test(item.name)
+                  ? "water_drop"
+                  : /áo|bib/i.test(item.name)
+                    ? "checkroom"
+                    : /trọng tài/i.test(item.name)
+                      ? "sports_soccer"
+                      : "inventory_2",
+              isShoe: /giày|giay|shoe/i.test(item.name),
+              isFree: Number(item.price) === 0,
+            }));
           setServicesList(formatted);
         } else {
-          setServicesList(DEFAULT_SERVICES);
+          setServicesList([]);
         }
       } catch (err) {
-        console.error("Lỗi lấy danh sách dịch vụ:", err);
-        setServicesList(DEFAULT_SERVICES);
+        console.error("Lỗi lấy danh sách dịch vụ từ CSDL:", err);
+        setServicesList([]);
       }
     };
     fetchServicesList();
   }, [id]);
 
   // ─── Fetch Reviews (Chỉ lấy dữ liệu thực từ API) ────────────────────────
-  useEffect(() => {
-    const fetchRev = async () => {
-      try {
-        const res = await fetch(`${BASE_URL}/reviews/${id}/`);
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) {
-            setReviews(data);
-            return;
-          }
+  const fetchRev = useCallback(async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/reviews/${id}/`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setReviews(data);
+          return;
         }
-        setReviews([]);
-      } catch (err) {
-        console.error("Lỗi lấy đánh giá:", err);
-        setReviews([]);
       }
-    };
-    fetchRev();
+      setReviews([]);
+    } catch (err) {
+      console.error("Lỗi lấy đánh giá:", err);
+      setReviews([]);
+    }
   }, [id]);
+
+  useEffect(() => {
+    fetchRev();
+  }, [fetchRev]);
+
+  // ─── Kiểm tra điều kiện gửi đánh giá của người dùng ─────────────────────
+  // Chỉ hiển thị form nếu:
+  // 1. Người dùng đã đăng nhập
+  // 2. Có đơn đặt sân tại sân này
+  // 3. Đơn đặt sân ở trạng thái "hoàn thành" (Completed)
+  // 4. Đơn đó chưa từng gửi đánh giá (is_reviewed = false)
+  const checkUserEligibility = useCallback(async () => {
+    try {
+      const storedUser = JSON.parse(localStorage.getItem("user") || "null");
+      if (!storedUser?.id || !id) {
+        setEligibleBooking(null);
+        setCheckingEligibility(false);
+        return;
+      }
+
+      const res = await fetch(`${BASE_URL}/bookings/user/${storedUser.id}/`);
+      if (!res.ok) {
+        setEligibleBooking(null);
+        setCheckingEligibility(false);
+        return;
+      }
+
+      const userBookings = await res.json();
+      if (Array.isArray(userBookings)) {
+        const isFieldMatch = (b) => {
+          if (b.field_id && String(b.field_id).toLowerCase() === String(id).toLowerCase()) return true;
+          if (field?.field_name && b.fieldName && String(b.fieldName).trim().toLowerCase() === String(field.field_name).trim().toLowerCase()) return true;
+          return false;
+        };
+
+        const isCompleted = (status) => {
+          const s = String(status || "").trim().toLowerCase();
+          return ["completed", "hoàn thành", "hoan thanh", "đã hoàn thành"].includes(s);
+        };
+
+        const isReviewed = (r) => r === true || r === "true";
+
+        // Tìm đơn đặt sân thuộc sân này đã hoàn thành và chưa được đánh giá
+        const unreviewedCompleted = userBookings.find(
+          (b) => isFieldMatch(b) && isCompleted(b.status) && !isReviewed(b.is_reviewed)
+        );
+
+        setEligibleBooking(unreviewedCompleted || null);
+      } else {
+        setEligibleBooking(null);
+      }
+    } catch (err) {
+      console.error("Lỗi kiểm tra quyền đánh giá:", err);
+      setEligibleBooking(null);
+    } finally {
+      setCheckingEligibility(false);
+    }
+  }, [id, field?.field_name]);
+
+  useEffect(() => {
+    checkUserEligibility();
+  }, [checkUserEligibility]);
 
   // ─── Tính điểm trung bình thực tế nếu có reviews ──────────────────────
   const averageRating = useMemo(() => {
@@ -314,8 +517,19 @@ const FieldDetail = () => {
 
   // ─── Handle Service Quantity ───────────────────────────────────────────
   const updateServiceQty = (serviceId, delta) => {
+    const targetService = servicesList.find((s) => String(s.id) === String(serviceId));
+    const availableStock = targetService?.stock !== undefined ? targetService.stock : 999;
+
     setSelectedServices((prev) => {
       const cur = prev[serviceId] || 0;
+      if (delta > 0 && cur >= availableStock) {
+        toast.warning(
+          availableStock <= 0
+            ? `Dịch vụ "${targetService?.name || ''}" hiện đã hết hàng trong kho.`
+            : `Dịch vụ "${targetService?.name || ''}" chỉ còn tồn kho ${availableStock} sản phẩm, không thể chọn thêm.`
+        );
+        return prev;
+      }
       const next = Math.max(0, cur + delta);
       if (next === 0) {
         const copy = { ...prev };
@@ -345,7 +559,14 @@ const FieldDetail = () => {
     return sum;
   }, [servicesList, selectedServices]);
 
-  const currentFieldPrice = slotPrice || (field?.price_per_hour ? Number(field.price_per_hour) : 350000);
+  const defaultHourlyPrice = field?.price_per_hour ? Number(field.price_per_hour) : 0;
+  const currentFieldPrice = useMemo(() => {
+    if (selectedSlots.length > 0) {
+      return selectedSlots.reduce((sum, s) => sum + (Number(s.price) || defaultHourlyPrice), 0);
+    }
+    return 0;
+  }, [selectedSlots, defaultHourlyPrice]);
+
   const subtotalPrice = currentFieldPrice + totalServicePrice;
   const discountAmount = appliedVoucher ? (Number(appliedVoucher.discount_amount) || 0) : 0;
   const totalPrice = Math.max(0, subtotalPrice - discountAmount);
@@ -365,6 +586,8 @@ const FieldDetail = () => {
         code,
         customer_id: user.id || null,
         total_price: subtotalPrice,
+        field_price: currentFieldPrice,
+        service_price: totalServicePrice,
       });
       if (res.data && res.data.valid) {
         setAppliedVoucher(res.data);
@@ -394,28 +617,62 @@ const FieldDetail = () => {
         code: appliedVoucher.code,
         customer_id: user.id || null,
         total_price: subtotalPrice,
+        field_price: currentFieldPrice,
+        service_price: totalServicePrice,
       })
         .then((res) => {
           if (res.data && res.data.valid) {
             setAppliedVoucher(res.data);
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
-  }, [subtotalPrice]);
+  }, [subtotalPrice, currentFieldPrice, totalServicePrice]);
 
-  // ─── Handle Slot Selection ──────────────────────────────────────────────
+  // ─── Handle Slot Selection (Tối đa 3 khung giờ / ngày / sân & Chặn trùng sân khác) ───
   const handleSelectSlot = (slot) => {
-    if (slot.status !== "available") return;
+    if (slot.status !== "available" || isSlotExpired(selectedDate, slot.start_time)) return;
     const tr = `${slot.start_time} - ${slot.end_time}`;
-    setSelectedTimeSlot(tr);
-    setSlotPrice(Number(slot.price) || currentFieldPrice);
+
+    // 🔹 Kiểm tra quy tắc 2: Đã đặt khung giờ nào ở sân khác thì không được đặt ở sân này
+    const otherConflict = customerLimits.other_field_slots?.find(
+      (o) => o.start_time === slot.start_time || o.time === tr
+    );
+    if (otherConflict) {
+      toast.warning(`Bạn đã đặt khung giờ ${tr} tại ${otherConflict.field_name} trong ngày này. Bạn không thể đặt tiếp khung giờ đó ở sân khác.`);
+      return;
+    }
+
+    // Toggle: Nếu slot đã được chọn thì bỏ chọn
+    const existingIndex = selectedSlots.findIndex(
+      (s) => s.id === slot.id || `${s.start_time} - ${s.end_time}` === tr
+    );
+
+    if (existingIndex !== -1) {
+      const next = selectedSlots.filter((_, idx) => idx !== existingIndex);
+      setSelectedSlots(next);
+      setSelectedTimeSlot(next.length > 0 ? next.map((s) => `${s.start_time} - ${s.end_time}`).join(", ") : null);
+    } else {
+      // 🔹 Kiểm tra quy tắc 1: Chỉ được đặt tối đa 3 khung giờ khác nhau của 1 ngày của 1 sân
+      const bookedAtThisField = customerLimits.same_field_booked_count || 0;
+      if (selectedSlots.length + bookedAtThisField >= 3) {
+        toast.warning(
+          bookedAtThisField > 0
+            ? `Bạn chỉ được đặt tối đa 3 khung giờ khác nhau của 1 ngày của 1 sân (đã đặt ${bookedAtThisField} khung giờ trước đó).`
+            : "Chỉ được đặt tối đa 3 khung giờ khác nhau của 1 ngày của 1 sân!"
+        );
+        return;
+      }
+      const next = [...selectedSlots, slot].sort((a, b) => a.start_time.localeCompare(b.start_time));
+      setSelectedSlots(next);
+      setSelectedTimeSlot(next.map((s) => `${s.start_time} - ${s.end_time}`).join(", "));
+    }
   };
 
   // ─── Handle Proceed to Booking ──────────────────────────────────────────
   const handleProceedBooking = async () => {
-    if (!selectedTimeSlot) {
-      alert("Vui lòng chọn khung giờ thi đấu trước khi tiếp tục!");
+    if (selectedSlots.length === 0) {
+      toast.warning("Vui lòng chọn ít nhất một khung giờ thi đấu trước khi tiếp tục!");
       return;
     }
 
@@ -431,6 +688,8 @@ const FieldDetail = () => {
           code: rawCode,
           customer_id: user.id || null,
           total_price: subtotalPrice,
+          field_price: currentFieldPrice,
+          service_price: totalServicePrice,
         });
         if (res.data && res.data.valid) {
           currentApplied = res.data;
@@ -445,14 +704,30 @@ const FieldDetail = () => {
     const effectiveCode = currentApplied?.code || rawCode;
     const finalPrice = Math.max(0, subtotalPrice - currentDiscount);
 
+    // Kiểm tra số lượng dịch vụ chọn không vượt quá tồn kho
+    for (const s of servicesList) {
+      const qty = selectedServices[s.id] || 0;
+      const stock = s.stock !== undefined ? s.stock : 999;
+      if (qty > stock) {
+        toast.warning(`Dịch vụ "${s.name}" chỉ còn ${stock} sản phẩm trong kho. Vui lòng giảm số lượng.`);
+        return;
+      }
+    }
+
     const bookingPayload = {
       fieldId: field.id,
       fieldName: field.field_name,
       fieldAddress: field.location || field.address,
       fieldType: field.field_type,
-      fieldImage: currentImage || field.image_url,
+      fieldImage: currentImage || resolveImgUrl(field.image_url || field.image),
       selectedDate,
-      selectedTimeSlot,
+      selectedTimeSlots: selectedSlots.map((s) => `${s.start_time} - ${s.end_time}`),
+      selectedTimeSlot: selectedSlots.map((s) => `${s.start_time} - ${s.end_time}`).join(", "),
+      slots: selectedSlots.map((s) => ({
+        start_time: s.start_time,
+        end_time: s.end_time,
+        price: Number(s.price) || defaultHourlyPrice,
+      })),
       price: currentFieldPrice,
       selectedServices,
       selectedShoeSizes,
@@ -472,39 +747,62 @@ const FieldDetail = () => {
   // ─── Handle Submit Review ───────────────────────────────────────────────
   const handleSubmitReview = async (e) => {
     e.preventDefault();
-    if (!newComment.trim()) return;
+    if (!newComment.trim()) {
+      toast.warning("Vui lòng nhập nhận xét của bạn!");
+      return;
+    }
+
+    if (!eligibleBooking) {
+      toast.warning("Chỉ người dùng có lượt đặt sân hoàn thành mới có thể gửi đánh giá!");
+      return;
+    }
 
     const user = JSON.parse(localStorage.getItem("user") || "{}");
-    const newEntry = {
-      id: `rev-${Date.now()}`,
-      username: user.fullname || user.username || "Cầu thủ ẩn danh",
-      role: "Đã trải nghiệm sân",
-      created_at: new Date().toISOString(),
-      rating: newRating,
-      comment: newComment.trim(),
-    };
+    if (!user.id) {
+      toast.warning("Vui lòng đăng nhập để gửi đánh giá!");
+      return;
+    }
 
-    setReviews((prev) => [newEntry, ...prev]);
-    setNewComment("");
-    setReviewSubmitted(true);
-    setTimeout(() => setReviewSubmitted(false), 3000);
+    try {
+      const response = await fetch(`${BASE_URL}/reviews/create/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          booking_id: eligibleBooking.id,
+          field_id: field?.id || id,
+          user_id: user.id,
+          rating: Number(newRating),
+          comment: newComment.trim(),
+        }),
+      });
 
-    // Gửi lên backend nếu người dùng có tài khoản
-    if (user.id) {
-      try {
-        await fetch(`${BASE_URL}/reviews/create/`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            field_id: field.id,
-            user_id: user.id,
-            rating: Number(newRating),
-            comment: newComment.trim(),
-          }),
-        });
-      } catch (err) {
-        console.error("Lỗi gửi đánh giá lên server:", err);
+      const resData = await response.json();
+      if (response.ok) {
+        toast.success("Gửi nhận xét thành công! Cảm ơn bạn.");
+        const newEntry = {
+          id: resData.id || `rev-${Date.now()}`,
+          username: user.fullname || user.username || "Cầu thủ",
+          role: "Đã đặt sân",
+          created_at: new Date().toISOString(),
+          rating: newRating,
+          comment: newComment.trim(),
+        };
+
+        setReviews((prev) => [newEntry, ...prev]);
+        setNewComment("");
+        setReviewSubmitted(true);
+        // Sau khi đã đánh giá xong, ẩn form theo yêu cầu
+        setEligibleBooking(null);
+        setTimeout(() => setReviewSubmitted(false), 3000);
+
+        // Fetch lại dữ liệu đánh giá từ server
+        fetchRev();
+      } else {
+        toast.error(resData.error || "Có lỗi xảy ra khi gửi đánh giá");
       }
+    } catch (err) {
+      console.error("Lỗi gửi đánh giá lên server:", err);
+      toast.error("Lỗi kết nối máy chủ");
     }
   };
 
@@ -520,7 +818,7 @@ const FieldDetail = () => {
     });
   }, [selectedDate]);
 
-  // Phân chia ca sáng/chiều vs ca tối
+  // Phân chia ca sáng/chiều vs ca tối (Hiển thị đầy đủ tất cả khung giờ từ 6h sáng)
   const { daySlots, nightSlots } = useMemo(() => {
     const day = [];
     const night = [];
@@ -638,7 +936,7 @@ const FieldDetail = () => {
               onClick={() => {
                 if (navigator.clipboard) {
                   navigator.clipboard.writeText(window.location.href);
-                  alert("Đã sao chép liên kết sân bóng vào khay nhớ tạm!");
+                  toast.success("Đã sao chép liên kết sân bóng vào khay nhớ tạm!");
                 }
               }}
             >
@@ -673,7 +971,7 @@ const FieldDetail = () => {
             <button
               type="button"
               className="btn-view-all-photos"
-              onClick={() => setCurrentImage(field.image_url || "")}
+              onClick={() => setCurrentImage(resolveImgUrl(field.image_url || field.image || ""))}
             >
               <span className="material-symbols-outlined">photo_library</span>
               <span>Xem toàn bộ ảnh</span>
@@ -775,6 +1073,37 @@ const FieldDetail = () => {
                           )}
                         </div>
 
+                        {/* Thông tin số lượng trong kho */}
+                        <div style={{ marginTop: "4px" }}>
+                          {isFree ? (
+                            <span style={{ fontSize: "0.74rem", color: "#16a34a", fontWeight: 600 }}>
+                              Miễn phí đi kèm
+                            </span>
+                          ) : Number(service.stock) <= 0 ? (
+                            <span style={{ fontSize: "0.74rem", color: "#dc2626", fontWeight: 700, background: "#fee2e2", padding: "1px 6px", borderRadius: "4px" }}>
+                              Hết hàng trong kho
+                            </span>
+                          ) : (
+                            <span
+                              style={{
+                                fontSize: "0.74rem",
+                                color: Number(service.stock) <= 5 ? "#e11d48" : "#047857",
+                                fontWeight: 600,
+                                background: Number(service.stock) <= 5 ? "#fff1f2" : "#f0fdf4",
+                                padding: "2px 7px",
+                                borderRadius: "4px",
+                                border: `1px solid ${Number(service.stock) <= 5 ? "#fecdd3" : "#bbf7d0"}`,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "3px",
+                              }}
+                            >
+                              <span className="material-symbols-outlined" style={{ fontSize: "0.85rem" }}>inventory_2</span>
+                              Kho: <strong>{service.stock}</strong> {service.unit}
+                            </span>
+                          )}
+                        </div>
+
                         {/* Size selector nếu là giày */}
                         {service.isShoe && qty > 0 && (
                           <div className="service-size-selector">
@@ -796,6 +1125,10 @@ const FieldDetail = () => {
                       <div className="service-action">
                         {isFree ? (
                           <span className="badge-included">Đã bao gồm</span>
+                        ) : Number(service.stock) <= 0 ? (
+                          <span className="badge-included" style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca', fontWeight: 700 }}>
+                            Hết hàng
+                          </span>
                         ) : (
                           <div className="qty-control">
                             <button
@@ -803,6 +1136,7 @@ const FieldDetail = () => {
                               className="qty-btn"
                               onClick={() => updateServiceQty(service.id, -1)}
                               disabled={qty <= 0}
+                              title="Giảm số lượng"
                             >
                               -
                             </button>
@@ -811,6 +1145,8 @@ const FieldDetail = () => {
                               type="button"
                               className="qty-btn plus"
                               onClick={() => updateServiceQty(service.id, 1)}
+                              disabled={qty >= Number(service.stock)}
+                              title={qty >= Number(service.stock) ? `Đã đạt số lượng tồn kho tối đa (${service.stock})` : "Thêm số lượng"}
                             >
                               +
                             </button>
@@ -826,9 +1162,14 @@ const FieldDetail = () => {
             {/* 5. CARD: LỊCH TRỐNG & CHỌN KHUNG GIỜ */}
             <div className="fd-card fd-card--schedule">
               <div className="fd-card-header flex-between">
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span className="green-bar" />
-                  <h2 className="fd-card-title">Lịch trống & Chọn khung giờ</h2>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span className="green-bar" />
+                    <h2 className="fd-card-title">Lịch trống & Chọn khung giờ</h2>
+                  </div>
+                  <div style={{ fontSize: "0.82rem", color: "#64748b", marginTop: 4 }}>
+                    Mỗi ngày chỉ được đặt tối đa 3 khung giờ khác nhau tại sân này. Khung giờ đã đặt ở sân khác sẽ không thể chọn.
+                  </div>
                 </div>
                 <div className="fd-slot-legend">
                   <span className="legend-item">
@@ -840,8 +1181,25 @@ const FieldDetail = () => {
                   <span className="legend-item">
                     <span className="dot dot-booked" /> Đã đặt
                   </span>
+                  <span className="legend-item">
+                    <span className="dot dot-other" style={{ background: "#f59e0b" }} /> Đã đặt ở sân khác
+                  </span>
                 </div>
               </div>
+
+              {/* Thông báo giới hạn đặt sân */}
+              {customerLimits.same_field_booked_count >= 3 && (
+                <div style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b", padding: "10px 14px", borderRadius: "8px", fontSize: "0.84rem", margin: "10px 0", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: "1.1rem" }}>warning</span>
+                  <span>Bạn đã đặt đủ 3 khung giờ tại sân này trong ngày hôm nay. Không thể đặt thêm khung giờ nào khác.</span>
+                </div>
+              )}
+              {customerLimits.same_field_booked_count > 0 && customerLimits.same_field_booked_count < 3 && (
+                <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#166534", padding: "8px 12px", borderRadius: "8px", fontSize: "0.82rem", margin: "10px 0", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: "1.1rem" }}>info</span>
+                  <span>Bạn đã đặt {customerLimits.same_field_booked_count} khung giờ tại sân này ({customerLimits.same_field_slots.join(", ")}). Bạn có thể chọn thêm tối đa {3 - customerLimits.same_field_booked_count} khung giờ nữa.</span>
+                </div>
+              )}
 
               {/* Day Tabs */}
               <div className="fd-day-tabs">
@@ -880,24 +1238,48 @@ const FieldDetail = () => {
                     <div className="empty-slots">Chưa có ca sáng & chiều cho ngày này.</div>
                   ) : (
                     daySlots.map((slot) => {
-                      const isBooked = slot.status !== "available";
                       const tr = `${slot.start_time} - ${slot.end_time}`;
-                      const isSelected = selectedTimeSlot === tr;
+                      const isPast = isSlotExpired(selectedDate, slot.start_time);
+                      const isBooked = slot.status !== "available";
+                      const otherConflict = customerLimits.other_field_slots?.find(
+                        (o) => o.start_time === slot.start_time || o.time === tr
+                      );
+                      const isDisabled = isBooked || isPast || Boolean(otherConflict);
+                      const isSelected = selectedSlots.some(
+                        (s) => s.id === slot.id || `${s.start_time} - ${s.end_time}` === tr
+                      );
 
                       return (
                         <button
                           key={slot.id}
                           type="button"
-                          disabled={isBooked}
-                          className={`slot-pill ${isSelected ? "selected" : ""} ${isBooked ? "booked" : ""}`}
+                          disabled={isDisabled}
+                          className={`slot-pill ${isSelected ? "selected" : ""} ${isBooked ? "booked" : ""} ${isPast ? "past-dimmed" : ""} ${otherConflict ? "booked-other" : ""}`}
                           onClick={() => handleSelectSlot(slot)}
+                          title={
+                            isPast
+                              ? "Khung giờ này đã qua hôm nay"
+                              : otherConflict
+                                ? `Bạn đã đặt khung giờ này tại ${otherConflict.field_name}`
+                                : isBooked
+                                  ? "Khung giờ này đã có người đặt"
+                                  : `${Number(slot.price || defaultHourlyPrice).toLocaleString()}đ - Bấm để chọn (tối đa 3)`
+                          }
                         >
                           <div className="slot-pill__time">{tr}</div>
                           <div className="slot-pill__price">
-                            {Number(slot.price || currentFieldPrice).toLocaleString()}đ
+                            {Number(slot.price || defaultHourlyPrice).toLocaleString()}đ
                           </div>
                           <div className="slot-pill__status">
-                            {isBooked ? "Đã đặt" : isSelected ? "✓ Đang chọn" : "Trống"}
+                            {isPast
+                              ? ""
+                              : isBooked
+                                ? "Đã đặt"
+                                : otherConflict
+                                  ? `Đã đặt ở ${otherConflict.field_name}`
+                                  : isSelected
+                                    ? "✓ Đang chọn"
+                                    : "Trống"}
                           </div>
                         </button>
                       );
@@ -918,24 +1300,48 @@ const FieldDetail = () => {
                     <div className="empty-slots">Chưa có ca tối cho ngày này.</div>
                   ) : (
                     nightSlots.map((slot) => {
-                      const isBooked = slot.status !== "available";
                       const tr = `${slot.start_time} - ${slot.end_time}`;
-                      const isSelected = selectedTimeSlot === tr;
+                      const isPast = isSlotExpired(selectedDate, slot.start_time);
+                      const isBooked = slot.status !== "available";
+                      const otherConflict = customerLimits.other_field_slots?.find(
+                        (o) => o.start_time === slot.start_time || o.time === tr
+                      );
+                      const isDisabled = isBooked || isPast || Boolean(otherConflict);
+                      const isSelected = selectedSlots.some(
+                        (s) => s.id === slot.id || `${s.start_time} - ${s.end_time}` === tr
+                      );
 
                       return (
                         <button
                           key={slot.id}
                           type="button"
-                          disabled={isBooked}
-                          className={`slot-pill ${isSelected ? "selected" : ""} ${isBooked ? "booked" : ""}`}
+                          disabled={isDisabled}
+                          className={`slot-pill ${isSelected ? "selected" : ""} ${isBooked ? "booked" : ""} ${isPast ? "past-dimmed" : ""} ${otherConflict ? "booked-other" : ""}`}
                           onClick={() => handleSelectSlot(slot)}
+                          title={
+                            isPast
+                              ? "Khung giờ này đã qua hôm nay"
+                              : otherConflict
+                                ? `Bạn đã đặt khung giờ này tại ${otherConflict.field_name}`
+                                : isBooked
+                                  ? "Khung giờ này đã có người đặt"
+                                  : `${Number(slot.price || defaultHourlyPrice).toLocaleString()}đ - Bấm để chọn (tối đa 3)`
+                          }
                         >
                           <div className="slot-pill__time">{tr}</div>
                           <div className="slot-pill__price">
-                            {Number(slot.price || currentFieldPrice).toLocaleString()}đ
+                            {Number(slot.price || defaultHourlyPrice).toLocaleString()}đ
                           </div>
                           <div className="slot-pill__status">
-                            {isBooked ? "Đã đặt" : isSelected ? "✓ Đang chọn" : "Trống"}
+                            {isPast
+                              ? ""
+                              : isBooked
+                                ? "Đã đặt"
+                                : otherConflict
+                                  ? `Đã đặt ở ${otherConflict.field_name}`
+                                  : isSelected
+                                    ? "✓ Đang chọn"
+                                    : "Trống"}
                           </div>
                         </button>
                       );
@@ -1034,44 +1440,46 @@ const FieldDetail = () => {
                 </div>
               )}
 
-              {/* Form gửi đánh giá */}
-              <div className="review-form-wrap">
-                <div className="review-form-title">Gửi nhận xét của bạn:</div>
-                <div className="rating-picker">
-                  <span>Mức độ hài lòng:</span>
-                  <div className="stars-pick">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <span
-                        key={s}
-                        className="material-symbols-outlined star-pick-btn"
-                        style={{
-                          color: s <= newRating ? "#f59e0b" : "#d1d5db",
-                          fontVariationSettings: "'FILL' 1",
-                        }}
-                        onClick={() => setNewRating(s)}
-                      >
-                        star
-                      </span>
-                    ))}
+              {/* Form gửi đánh giá: Chỉ hiển thị khi người dùng đã đặt sân tại đây, trạng thái hoàn thành và chưa đánh giá */}
+              {eligibleBooking && (
+                <div className="review-form-wrap">
+                  <div className="review-form-title">Gửi nhận xét của bạn:</div>
+                  <div className="rating-picker">
+                    <span>Mức độ hài lòng:</span>
+                    <div className="stars-pick">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <span
+                          key={s}
+                          className="material-symbols-outlined star-pick-btn"
+                          style={{
+                            color: s <= newRating ? "#f59e0b" : "#d1d5db",
+                            fontVariationSettings: "'FILL' 1",
+                          }}
+                          onClick={() => setNewRating(s)}
+                        >
+                          star
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </div>
 
-                <form onSubmit={handleSubmitReview} className="review-input-row">
-                  <input
-                    type="text"
-                    className="review-input"
-                    placeholder="Chia sẻ trải nghiệm của bạn về mặt sân, ánh sáng, dịch vụ..."
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                  />
-                  <button type="submit" className="btn-submit-review">
-                    Đánh giá
-                  </button>
-                </form>
-                {reviewSubmitted && (
-                  <div className="review-success-msg">✓ Cảm ơn bạn đã đóng góp đánh giá cho sân bóng!</div>
-                )}
-              </div>
+                  <form onSubmit={handleSubmitReview} className="review-input-row">
+                    <input
+                      type="text"
+                      className="review-input"
+                      placeholder="Chia sẻ trải nghiệm của bạn về mặt sân, ánh sáng, dịch vụ..."
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                    />
+                    <button type="submit" className="btn-submit-review">
+                      Đánh giá
+                    </button>
+                  </form>
+                  {reviewSubmitted && (
+                    <div className="review-success-msg">✓ Cảm ơn bạn đã đóng góp đánh giá cho sân bóng!</div>
+                  )}
+                </div>
+              )}
             </div>
           </main>
 
@@ -1082,363 +1490,395 @@ const FieldDetail = () => {
               <div className="fd-booking-widget">
                 <div className="widget-header">
                   <h3 className="widget-title">Thông tin đặt sân</h3>
-                <span className="material-symbols-outlined icon-clock">schedule</span>
-              </div>
-
-              {/* Ngày thi đấu */}
-              <div
-                className={`widget-field-row ${showDatePicker ? "open" : ""}`}
-                onClick={() => setShowDatePicker((prev) => !prev)}
-                title="Bấm để chọn ngày thi đấu"
-              >
-                <span className="material-symbols-outlined icon-gray">calendar_today</span>
-                <div className="widget-field-info">
-                  <div className="label">Ngày thi đấu:</div>
-                  <div className="val">{formattedFullDate}</div>
+                  <span className="material-symbols-outlined icon-clock">schedule</span>
                 </div>
-                <button
-                  type="button"
-                  className="btn-change-date"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowDatePicker((prev) => !prev);
-                  }}
+
+                {/* Ngày thi đấu */}
+                <div
+                  className={`widget-field-row ${showDatePicker ? "open" : ""}`}
+                  onClick={() => setShowDatePicker((prev) => !prev)}
+                  title="Bấm để chọn ngày thi đấu"
                 >
-                  Đổi
-                </button>
-              </div>
-
-              {showDatePicker && (
-                <div className="widget-date-picker">
-                  <div className="widget-date-picker__header">
-                    <button
-                      type="button"
-                      className="widget-date-picker__nav"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        changeCalendarMonth(-1);
-                      }}
-                    >
-                      ‹
-                    </button>
-                    <span>
-                      {calendarMonth.toLocaleDateString("vi-VN", { month: "long", year: "numeric" })}
-                    </span>
-                    <button
-                      type="button"
-                      className="widget-date-picker__nav"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        changeCalendarMonth(1);
-                      }}
-                    >
-                      ›
-                    </button>
+                  <span className="material-symbols-outlined icon-gray">calendar_today</span>
+                  <div className="widget-field-info">
+                    <div className="label">Ngày thi đấu:</div>
+                    <div className="val">{formattedFullDate}</div>
                   </div>
-
-                  <div className="widget-date-picker__weekdays">
-                    {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((wd) => (
-                      <span key={wd}>{wd}</span>
-                    ))}
-                  </div>
-
-                  <div className="widget-date-picker__grid">
-                    {monthCalendarDays.map(({ date, inCurrentMonth }) => {
-                      const dateKey = formatDateKey(date);
-                      const isSelected = dateKey === selectedDate;
-                      const isPast = date < new Date(new Date().setHours(0, 0, 0, 0));
-
-                      return (
-                        <button
-                          key={dateKey}
-                          type="button"
-                          className={`widget-date-cell ${inCurrentMonth ? "in-month" : "out-month"} ${isSelected ? "selected" : ""} ${isPast ? "past" : ""}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!isPast) {
-                              setSelectedDate(dateKey);
-                              setShowDatePicker(false);
-                            }
-                          }}
-                          disabled={isPast}
-                        >
-                          {date.getDate()}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <button
+                    type="button"
+                    className="btn-change-date"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowDatePicker((prev) => !prev);
+                    }}
+                  >
+                    Đổi
+                  </button>
                 </div>
-              )}
 
-              {/* KHUNG GIỜ ĐÃ CHỌN - CLICK VÀO ĐỂ HIỂN THỊ CÁC KHUNG GIỜ CÓ TRONG TIMESLOT ĐỂ CHỌN */}
-              <div
-                className={`widget-slot-card ${showSlotDropdown ? "open" : ""}`}
-                onClick={() => setShowSlotDropdown((prev) => !prev)}
-                title="Bấm để chọn hoặc đổi khung giờ"
-              >
-                <div className="widget-slot-card-left">
-                  <div className="widget-slot-label">KHUNG GIỜ ĐÃ CHỌN (BẤM ĐỂ CHỌN)</div>
-                  <div className="widget-slot-time">
-                    {selectedTimeSlot ? `${selectedTimeSlot} (60 phút)` : "Chưa chọn — bấm để chọn"}
-                  </div>
-                  <div className="widget-slot-sub">
-                    {field.field_name} • {field.field_type || "Sân 7 FIFA Pro"}
-                  </div>
-                </div>
-                <span className="material-symbols-outlined widget-slot-arrow">
-                  {showSlotDropdown ? "expand_less" : "expand_more"}
-                </span>
-              </div>
+                {showDatePicker && (
+                  <div className="widget-date-picker">
+                    <div className="widget-date-picker__header">
+                      <button
+                        type="button"
+                        className="widget-date-picker__nav"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          changeCalendarMonth(-1);
+                        }}
+                      >
+                        ‹
+                      </button>
+                      <span>
+                        {calendarMonth.toLocaleDateString("vi-VN", { month: "long", year: "numeric" })}
+                      </span>
+                      <button
+                        type="button"
+                        className="widget-date-picker__nav"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          changeCalendarMonth(1);
+                        }}
+                      >
+                        ›
+                      </button>
+                    </div>
 
-              {/* DROPDOWN DANH SÁCH TIMESLOT KHI BẤM VÀO KHUNG GIỜ */}
-              {showSlotDropdown && (
-                <div className="widget-slot-dropdown">
-                  <div className="dropdown-title">
-                    <span>Chọn khung giờ ngày {formatDateDisplay(selectedDate)}:</span>
-                    <button
-                      type="button"
-                      className="btn-close-dropdown"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowSlotDropdown(false);
-                      }}
-                    >
-                      ✕
-                    </button>
-                  </div>
+                    <div className="widget-date-picker__weekdays">
+                      {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((wd) => (
+                        <span key={wd}>{wd}</span>
+                      ))}
+                    </div>
 
-                  {availableSlots.length === 0 ? (
-                    <div className="dropdown-empty">Chưa có khung giờ nào cho ngày này</div>
-                  ) : (
-                    <div className="dropdown-slots-list">
-                      {availableSlots.map((slot) => {
-                        const isBooked = slot.status !== "available";
-                        const tr = `${slot.start_time} - ${slot.end_time}`;
-                        const timeLabel = `${slot.start_time}\u2013${slot.end_time}`;
-                        const isSelected = selectedTimeSlot === tr;
+                    <div className="widget-date-picker__grid">
+                      {monthCalendarDays.map(({ date, inCurrentMonth }) => {
+                        const dateKey = formatDateKey(date);
+                        const isSelected = dateKey === selectedDate;
+                        const isPast = date < new Date(new Date().setHours(0, 0, 0, 0));
 
                         return (
-                          <div
-                            key={slot.id}
-                            className={`dropdown-slot-item ${isSelected ? "selected" : ""} ${isBooked ? "booked" : ""}`}
+                          <button
+                            key={dateKey}
+                            type="button"
+                            className={`widget-date-cell ${inCurrentMonth ? "in-month" : "out-month"} ${isSelected ? "selected" : ""} ${isPast ? "past" : ""}`}
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (!isBooked) {
-                                handleSelectSlot(slot);
-                                setShowSlotDropdown(false);
+                              if (!isPast) {
+                                setSelectedDate(dateKey);
+                                setShowDatePicker(false);
                               }
                             }}
+                            disabled={isPast}
                           >
-                            <span className="item-time">{timeLabel}</span>
-                            <div className="item-right">
-                              <span className="item-price">
-                                {Number(slot.price || currentFieldPrice).toLocaleString()}đ
-                              </span>
-                              <span className={`item-badge ${isBooked ? "badge-booked" : isSelected ? "badge-selected" : "badge-avail"}`}>
-                                {isBooked ? "Đã đặt" : isSelected ? "✓ Đang chọn" : "Trống"}
-                              </span>
-                            </div>
-                          </div>
+                            {date.getDate()}
+                          </button>
                         );
                       })}
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
+                )}
 
-              {/* Dịch vụ phát sinh */}
-              {Object.keys(selectedServices).length > 0 && (
-                <div className="widget-services-box">
-                  <div className="box-title">Dịch vụ phát sinh:</div>
-                  {servicesList
-                    .filter((s) => selectedServices[s.id] > 0)
-                    .map((s) => (
-                      <div key={s.id} className="widget-service-line">
-                        <span>
-                          + {selectedServices[s.id]} {s.name}
-                          {s.isShoe && selectedShoeSizes[s.id] ? ` (size ${selectedShoeSizes[s.id]})` : ""}
-                        </span>
-                        <span className="service-line-price">
-                          {(s.price * selectedServices[s.id]).toLocaleString()}đ
-                        </span>
-                      </div>
-                    ))}
-                </div>
-              )}
-
-              {/* Bảng chi phí */}
-              <div className="widget-price-table">
-                <div className="price-row">
-                  <span className="row-label">Tiền thuê sân (60p):</span>
-                  <span className="row-val">{currentFieldPrice.toLocaleString("vi-VN")}đ</span>
-                </div>
-                <div className="price-row">
-                  <span className="row-label">Phí dịch vụ phụ trợ:</span>
-                  <span className="row-val">
-                    {totalServicePrice > 0 ? `${totalServicePrice.toLocaleString("vi-VN")}đ` : "0đ"}
+                {/* KHUNG GIỜ ĐÃ CHỌN - CLICK VÀO ĐỂ HIỂN THỊ CÁC KHUNG GIỜ CÓ TRONG TIMESLOT ĐỂ CHỌN */}
+                <div
+                  className={`widget-slot-card ${showSlotDropdown ? "open" : ""}`}
+                  onClick={() => setShowSlotDropdown((prev) => !prev)}
+                  title="Bấm để chọn hoặc đổi khung giờ (tối đa 3)"
+                >
+                  <div className="widget-slot-card-left">
+                    <div className="widget-slot-label">
+                      <span>KHUNG GIỜ ĐÃ CHỌN</span>
+                    </div>
+                    <div className="widget-slot-time" style={{ fontSize: selectedSlots.length > 1 ? "0.88rem" : "1.05rem" }}>
+                      {selectedSlots.length > 0
+                        ? selectedSlots.map((s) => `${s.start_time} - ${s.end_time}`).join(", ")
+                        : "Chưa chọn — bấm để chọn"}
+                    </div>
+                    <div className="widget-slot-sub">
+                      {field.field_name} • {selectedSlots.length > 0 ? `${selectedSlots.length * 60} phút thi đấu` : (field.field_type || "Sân 7 FIFA Pro")}
+                    </div>
+                  </div>
+                  <span className="material-symbols-outlined widget-slot-arrow">
+                    {showSlotDropdown ? "expand_less" : "expand_more"}
                   </span>
                 </div>
-                <div className="price-row">
-                  <span className="row-label">Đèn chiếu sáng ban đêm:</span>
-                  <span className="row-val text-green">Miễn phí</span>
-                </div>
-                {appliedVoucher && (
-                  <div className="price-row price-row--discount">
-                    <span className="row-label text-green" style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: "1rem" }}>confirmation_number</span>
-                      Giảm giá voucher ({appliedVoucher.code}):
-                    </span>
-                    <span className="row-val text-green font-bold">
-                      -{discountAmount.toLocaleString("vi-VN")}đ
-                    </span>
+
+                {/* DROPDOWN DANH SÁCH TIMESLOT KHI BẤM VÀO KHUNG GIỜ */}
+                {showSlotDropdown && (
+                  <div className="widget-slot-dropdown">
+                    <div className="dropdown-title">
+                      <span>Khung giờ ngày {formatDateDisplay(selectedDate)}:</span>
+                      <button
+                        type="button"
+                        className="btn-close-dropdown"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowSlotDropdown(false);
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    {availableSlots.length === 0 ? (
+                      <div className="dropdown-empty">Chưa có khung giờ nào cho ngày này</div>
+                    ) : (
+                      <div className="dropdown-slots-list">
+                        {availableSlots.map((slot) => {
+                          const tr = `${slot.start_time} - ${slot.end_time}`;
+                          const timeLabel = `${slot.start_time}\u2013${slot.end_time}`;
+                          const isPast = isSlotExpired(selectedDate, slot.start_time);
+                          const isBooked = slot.status !== "available";
+                          const otherConflict = customerLimits.other_field_slots?.find(
+                            (o) => o.start_time === slot.start_time || o.time === tr
+                          );
+                          const isDisabled = isBooked || isPast || Boolean(otherConflict);
+                          const isSelected = selectedSlots.some(
+                            (s) => s.id === slot.id || `${s.start_time} - ${s.end_time}` === tr
+                          );
+                          const selIndex = selectedSlots.findIndex(
+                            (s) => s.id === slot.id || `${s.start_time} - ${s.end_time}` === tr
+                          );
+
+                          return (
+                            <div
+                              key={slot.id}
+                              className={`dropdown-slot-item ${isSelected ? "selected" : ""} ${isBooked ? "booked" : ""} ${isPast ? "past-dimmed" : ""} ${otherConflict ? "booked-other" : ""}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (isDisabled) return;
+                                handleSelectSlot(slot);
+                              }}
+                              title={
+                                isPast
+                                  ? "Khung giờ này đã qua hôm nay"
+                                  : otherConflict
+                                    ? `Bạn đã đặt khung giờ này tại ${otherConflict.field_name}`
+                                    : isBooked
+                                      ? "Khung giờ này đã có người đặt"
+                                      : `${Number(slot.price || defaultHourlyPrice).toLocaleString()}đ - Bấm để chọn (tối đa 3)`
+                              }
+                            >
+                              <span className="item-time">{timeLabel}</span>
+                              <div className="item-right">
+                                <span className="item-price">
+                                  {Number(slot.price || defaultHourlyPrice).toLocaleString()}đ
+                                </span>
+                                {isPast ? null : (
+                                  <span className={`item-badge ${isBooked ? "badge-booked" : otherConflict ? "badge-booked" : isSelected ? "badge-selected" : "badge-avail"}`}
+                                    style={otherConflict ? { background: "#fef3c7", color: "#b45309", borderColor: "#fde68a" } : {}}>
+                                    {isBooked
+                                      ? "Đã đặt"
+                                      : otherConflict
+                                        ? `Đã đặt ở ${otherConflict.field_name}`
+                                        : isSelected
+                                          ? "✓ Đang chọn"
+                                          : "Trống"}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
 
-              {/* Ô nhập Voucher trên chỗ tổng thanh toán */}
-              <div className="widget-voucher-block">
-                <div className="voucher-block-header">
-                  <div className="voucher-block-title">
-                    <span className="material-symbols-outlined icon">confirmation_number</span>
-                    <span>Mã ưu đãi / Voucher</span>
+                {/* Dịch vụ phát sinh */}
+                {Object.keys(selectedServices).length > 0 && (
+                  <div className="widget-services-box">
+                    <div className="box-title">Dịch vụ phát sinh:</div>
+                    {servicesList
+                      .filter((s) => selectedServices[s.id] > 0)
+                      .map((s) => (
+                        <div key={s.id} className="widget-service-line">
+                          <span>
+                            + {selectedServices[s.id]} {s.name}
+                            {s.isShoe && selectedShoeSizes[s.id] ? ` (size ${selectedShoeSizes[s.id]})` : ""}
+                          </span>
+                          <span className="service-line-price">
+                            {(s.price * selectedServices[s.id]).toLocaleString()}đ
+                          </span>
+                        </div>
+                      ))}
                   </div>
-                  {myVouchers.length > 0 && !appliedVoucher && (
-                    <button
-                      type="button"
-                      className="btn-open-wallet"
-                      onClick={() => setShowVoucherModal(true)}
-                    >
-                      Ví voucher ({myVouchers.length})
-                    </button>
+                )}
+
+                {/* Bảng chi phí */}
+                <div className="widget-price-table">
+                  <div className="price-row">
+                    <span className="row-label">
+                      Tiền thuê sân{selectedSlots.length > 0 ? ` (${selectedSlots.length * 60}p)` : ""}:
+                    </span>
+                    <span className="row-val">{currentFieldPrice.toLocaleString("vi-VN")}đ</span>
+                  </div>
+                  <div className="price-row">
+                    <span className="row-label">Phí dịch vụ phụ trợ:</span>
+                    <span className="row-val">
+                      {totalServicePrice > 0 ? `${totalServicePrice.toLocaleString("vi-VN")}đ` : "0đ"}
+                    </span>
+                  </div>
+                  <div className="price-row">
+                    <span className="row-label">Đèn chiếu sáng ban đêm:</span>
+                    <span className="row-val text-green">Miễn phí</span>
+                  </div>
+                  {appliedVoucher && (
+                    <div className="price-row price-row--discount">
+                      <span className="row-label text-green" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: "1rem" }}>confirmation_number</span>
+                        Giảm giá voucher ({appliedVoucher.code}):
+                      </span>
+                      <span className="row-val text-green font-bold">
+                        -{discountAmount.toLocaleString("vi-VN")}đ
+                      </span>
+                    </div>
                   )}
                 </div>
 
-                {!appliedVoucher ? (
-                  <div className="voucher-input-group">
-                    <input
-                      type="text"
-                      className="voucher-input"
-                      placeholder="Nhập mã voucher (VD: FB-XXXXXX)"
-                      value={voucherCode}
-                      onChange={(e) => {
-                        setVoucherCode(e.target.value.toUpperCase());
-                        setVoucherError("");
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleApplyVoucher();
-                        }
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className="btn-apply-voucher"
-                      onClick={() => handleApplyVoucher()}
-                      disabled={validatingVoucher || !voucherCode.trim()}
-                    >
-                      {validatingVoucher ? "..." : "Áp dụng"}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="voucher-applied-card">
-                    <div className="applied-left">
-                      <span className="material-symbols-outlined check-icon">check_circle</span>
-                      <div>
-                        <div className="applied-code">Đã áp dụng: <strong>{appliedVoucher.code}</strong></div>
-                        <div className="applied-saving">Tiết kiệm {discountAmount.toLocaleString("vi-VN")}đ</div>
-                      </div>
+                {/* Ô nhập Voucher trên chỗ tổng thanh toán */}
+                <div className="widget-voucher-block">
+                  <div className="voucher-block-header">
+                    <div className="voucher-block-title">
+                      <span className="material-symbols-outlined icon">confirmation_number</span>
+                      <span>Mã ưu đãi / Voucher</span>
                     </div>
-                    <button
-                      type="button"
-                      className="btn-remove-voucher"
-                      onClick={handleRemoveVoucher}
-                      title="Bỏ áp dụng mã"
-                    >
-                      Bỏ chọn
-                    </button>
+                    {myVouchers.length > 0 && !appliedVoucher && (
+                      <button
+                        type="button"
+                        className="btn-open-wallet"
+                        onClick={() => setShowVoucherModal(true)}
+                      >
+                        Ví voucher ({myVouchers.length})
+                      </button>
+                    )}
                   </div>
-                )}
 
-                {voucherError && (
-                  <div className="voucher-error-msg">
-                    <span className="material-symbols-outlined">error</span>
-                    <span>{voucherError}</span>
+                  {!appliedVoucher ? (
+                    <div className="voucher-input-group">
+                      <input
+                        type="text"
+                        className="voucher-input"
+                        placeholder="Nhập mã voucher (VD: FB-XXXXXX)"
+                        value={voucherCode}
+                        onChange={(e) => {
+                          setVoucherCode(e.target.value.toUpperCase());
+                          setVoucherError("");
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleApplyVoucher();
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="btn-apply-voucher"
+                        onClick={() => handleApplyVoucher()}
+                        disabled={validatingVoucher || !voucherCode.trim()}
+                      >
+                        {validatingVoucher ? "..." : "Áp dụng"}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="voucher-applied-card">
+                      <div className="applied-left">
+                        <span className="material-symbols-outlined check-icon">check_circle</span>
+                        <div>
+                          <div className="applied-code">Đã áp dụng: <strong>{appliedVoucher.code}</strong></div>
+                          <div className="applied-saving">Tiết kiệm {discountAmount.toLocaleString("vi-VN")}đ</div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-remove-voucher"
+                        onClick={handleRemoveVoucher}
+                        title="Bỏ áp dụng mã"
+                      >
+                        Bỏ chọn
+                      </button>
+                    </div>
+                  )}
+
+                  {voucherError && (
+                    <div className="voucher-error-msg">
+                      <span className="material-symbols-outlined">error</span>
+                      <span>{voucherError}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Tổng thanh toán */}
+                <div className="widget-total-block">
+                  <div className="total-label-wrap">
+                    <div className="total-label">Tổng thanh toán:</div>
+                    <div className="total-sub">Đã bao gồm VAT & tiện ích</div>
                   </div>
-                )}
+                  <div className="total-price">{totalPrice.toLocaleString("vi-VN")}đ</div>
+                </div>
+
+                {/* Nút hành động chính */}
+                <button
+                  type="button"
+                  className="btn-proceed-booking"
+                  onClick={handleProceedBooking}
+                >
+                  <span>TIẾP TỤC ĐẶT SÂN & THANH TOÁN</span>
+                  <span className="material-symbols-outlined">arrow_forward</span>
+                </button>
+
+                {/* Cam kết */}
+                <div className="widget-guarantees">
+                  <div className="guarantee-item">
+                    <span className="material-symbols-outlined check-icon">check_circle</span>
+                    <span>Giữ sân ngay lập tức sau khi xác nhận</span>
+                  </div>
+                  <div className="guarantee-item">
+                    <span className="material-symbols-outlined check-icon">check_circle</span>
+                    <span>Miễn phí hủy trước 4 tiếng</span>
+                  </div>
+                </div>
+
+                {/* Hotline */}
+                <div className="widget-hotline-footer">
+                  <span>Cần hỗ trợ đặt sân nhanh?</span>
+                  <a href={`tel:${field.phone || "0905123778"}`}>
+                    <span className="material-symbols-outlined">call</span>
+                    {field.phone || "0905.123.778"}
+                  </a>
+                </div>
               </div>
 
-              {/* Tổng thanh toán */}
-              <div className="widget-total-block">
-                <div className="total-label-wrap">
-                  <div className="total-label">Tổng thanh toán:</div>
-                  <div className="total-sub">Đã bao gồm VAT & tiện ích</div>
-                </div>
-                <div className="total-price">{totalPrice.toLocaleString("vi-VN")}đ</div>
-              </div>
-
-              {/* Nút hành động chính */}
-              <button
-                type="button"
-                className="btn-proceed-booking"
-                onClick={handleProceedBooking}
-              >
-                <span>TIẾP TỤC ĐẶT SÂN & THANH TOÁN</span>
-                <span className="material-symbols-outlined">arrow_forward</span>
-              </button>
-
-              {/* Cam kết */}
-              <div className="widget-guarantees">
-                <div className="guarantee-item">
-                  <span className="material-symbols-outlined check-icon">check_circle</span>
-                  <span>Giữ sân ngay lập tức sau khi xác nhận</span>
-                </div>
-                <div className="guarantee-item">
-                  <span className="material-symbols-outlined check-icon">check_circle</span>
-                  <span>Miễn phí hủy trước 4 tiếng</span>
+              {/* 3. CARD: CHÍNH SÁCH HỦY SÂN */}
+              <div className="fd-policy-card">
+                <div className="policy-badge">BẢO LƯU 100% TIỀN CỌC</div>
+                <div className="policy-title">Chính sách hủy sân:</div>
+                <div className="policy-desc">
+                  Hoàn tiền hoặc dời lịch miễn phí nếu thời tiết mưa bão không thể diễn ra trận đấu.
                 </div>
               </div>
 
-              {/* Hotline */}
-              <div className="widget-hotline-footer">
-                <span>Cần hỗ trợ đặt sân nhanh?</span>
-                <a href={`tel:${field.phone || "0905123778"}`}>
-                  <span className="material-symbols-outlined">call</span>
-                  {field.phone || "0905.123.778"}
-                </a>
+              {/* 4. CARD: VỊ TRÍ & CHỈ ĐƯỜNG */}
+              <div id="map-section" className="fd-map-widget-card">
+                <div className="map-widget-header">
+                  <h4 className="map-widget-title">Vị trí & Chỉ đường</h4>
+                  <span className="material-symbols-outlined icon-map">map</span>
+                </div>
+                <div className="map-widget-body">
+                  <FieldMap
+                    lat={field.latitude}
+                    lng={field.longitude}
+                    address={field.address}
+                    location={field.location}
+                    fieldName={field.field_name}
+                    compact={true}
+                  />
+                </div>
               </div>
             </div>
-
-            {/* 3. CARD: CHÍNH SÁCH HỦY SÂN */}
-            <div className="fd-policy-card">
-              <div className="policy-badge">BẢO LƯU 100% TIỀN CỌC</div>
-              <div className="policy-title">Chính sách hủy sân:</div>
-              <div className="policy-desc">
-                Hoàn tiền hoặc dời lịch miễn phí nếu thời tiết mưa bão không thể diễn ra trận đấu.
-              </div>
-            </div>
-
-            {/* 4. CARD: VỊ TRÍ & CHỈ ĐƯỜNG */}
-            <div id="map-section" className="fd-map-widget-card">
-              <div className="map-widget-header">
-                <h4 className="map-widget-title">Vị trí & Chỉ đường</h4>
-                <span className="material-symbols-outlined icon-map">map</span>
-              </div>
-              <div className="map-widget-body">
-                <FieldMap
-                  lat={field.latitude}
-                  lng={field.longitude}
-                  address={field.address}
-                  location={field.location}
-                  fieldName={field.field_name}
-                  compact={true}
-                />
-              </div>
-            </div>
-          </div>
-        </aside>
+          </aside>
+        </div>
       </div>
-    </div>
 
       {/* Modal ví voucher của tôi */}
       {showVoucherModal && (
@@ -1566,6 +2006,7 @@ const FieldDetail = () => {
           </div>
         </div>
       )}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 };

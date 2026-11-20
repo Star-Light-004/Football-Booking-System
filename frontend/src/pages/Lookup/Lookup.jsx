@@ -1,11 +1,20 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import PageHero from "../../components/PageHero/PageHero";
 import "./Lookup.css";
 
 const isCompletedBooking = (status) => ["completed", "hoàn thành", "hoan thanh"].includes(String(status || "").trim().toLowerCase());
 const hasReviewedBooking = (isReviewed) => isReviewed === true || isReviewed === "true";
+
+const RATING_LEVELS = [
+  { value: 5, label: "Rất tuyệt vời", desc: "Mặt sân, trang thiết bị và dịch vụ đều hoàn hảo!", color: "#16a34a", bg: "#f0fdf4" },
+  { value: 4, label: "Hài lòng", desc: "Chất lượng sân tốt, trải nghiệm thi đấu tuyệt vời.", color: "#059669", bg: "#ecfdf5" },
+  { value: 3, label: "Bình thường", desc: "Sân mức ổn, đáp ứng tốt nhu cầu thi đấu cơ bản.", color: "#d97706", bg: "#fffbeb" },
+  { value: 2, label: "Chưa hài lòng", desc: "Cần cải thiện thêm về mặt cỏ hoặc dịch vụ hỗ trợ.", color: "#ea580c", bg: "#fff7ed" },
+  { value: 1, label: "Thất vọng", desc: "Trải nghiệm không tốt, mong sân sớm khắc phục.", color: "#dc2626", bg: "#fef2f2" },
+];
 import { BASE_URL } from "../../config";
 import { useToast, ToastContainer } from "../../components/Toast/Toast";
+import { onSyncEvent } from "../../utils/realtimeSync";
 
 const BookingResultItem = ({ booking, formatDateLong, maskPhone, onReviewClick }) => {
   const [services, setServices] = useState([]);
@@ -137,11 +146,24 @@ const Lookup = () => {
 
   const [reviewingBooking, setReviewingBooking] = useState(null);
   const [rating, setRating] = useState(5);
+  const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [user, setUser] = useState(null);
   const { toasts, removeToast, toast } = useToast();
+
+  const openReviewModal = (booking) => {
+    setReviewingBooking(booking);
+    setRating(5);
+    setHoverRating(0);
+    setComment("");
+    setSubmitError("");
+    setSubmitSuccess(false);
+  };
+
+  const currentRatingLevel =
+    RATING_LEVELS.find((r) => r.value === Number(hoverRating || rating)) || RATING_LEVELS[0];
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem("user"));
@@ -189,13 +211,13 @@ const Lookup = () => {
     }
   };
 
-  const handleLookup = async () => {
+  const handleLookup = useCallback(async (isSilent = false) => {
     if (!phoneNumber && !bookingId) {
-      toast.warning("Vui lòng nhập ít nhất số điện thoại hoặc mã đặt sân");
+      if (!isSilent) toast.warning("Vui lòng nhập ít nhất số điện thoại hoặc mã đặt sân");
       return;
     }
 
-    setLoading(true);
+    if (!isSilent) setLoading(true);
     try {
       const res = await fetch(
         `${BASE_URL}/bookings/lookup/?phone=${phoneNumber}&booking_id=${bookingId}`
@@ -204,13 +226,45 @@ const Lookup = () => {
       setResults(data);
       setSearched(true);
     } catch (err) {
-      console.log("Lookup error:", err);
-      setResults([]);
-      setSearched(true);
+      if (!isSilent) {
+        console.log("Lookup error:", err);
+        setResults([]);
+        setSearched(true);
+      }
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
-  };
+  }, [phoneNumber, bookingId, toast]);
+
+  // Realtime Polling & Cross-tab Sync khi đang hiển thị kết quả
+  useEffect(() => {
+    if (!searched || results.length === 0) return;
+
+    const unsub = onSyncEvent((event) => {
+      if (event?.type?.startsWith("booking_")) {
+        handleLookup(true);
+      }
+    });
+
+    const pollTimer = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        handleLookup(true);
+      }
+    }, 4000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        handleLookup(true);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      unsub();
+      clearInterval(pollTimer);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [searched, results.length, handleLookup]);
 
   const getDayOfWeek = (dateString) => {
     const days = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
@@ -313,7 +367,7 @@ const Lookup = () => {
                   booking={booking}
                   formatDateLong={formatDateLong}
                   maskPhone={maskPhone}
-                  onReviewClick={() => setReviewingBooking(booking)}
+                  onReviewClick={() => openReviewModal(booking)}
                 />
               ))}
             </div>
@@ -332,44 +386,147 @@ const Lookup = () => {
 
       {/* Review Modal */}
       {reviewingBooking && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden" style={{ backgroundColor: 'white', borderRadius: '1rem', width: '100%', maxWidth: '28rem', overflow: 'hidden' }}>
-            <div className="p-4 border-b border-slate-200 flex justify-between items-center" style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 className="font-bold text-lg text-slate-900" style={{ fontWeight: 700, fontSize: '1.125rem' }}>Đánh giá sân bóng</h3>
+        <div className="review-modal-overlay" onClick={() => setReviewingBooking(null)}>
+          <div className="review-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="review-modal-header">
+              <div className="review-modal-title-group">
+                <div className="review-modal-icon-badge">
+                  <span className="material-symbols-outlined">rate_review</span>
+                </div>
+                <div>
+                  <h3 className="review-modal-title">Đánh giá sân bóng</h3>
+                  <p className="review-modal-subtitle">Góp ý trải nghiệm để nâng cao chất lượng dịch vụ</p>
+                </div>
+              </div>
               <button
+                type="button"
+                className="review-modal-close"
                 onClick={() => setReviewingBooking(null)}
-                className="text-slate-400 hover:text-slate-600"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
+                aria-label="Đóng modal"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
-            <div className="p-4 md:p-6" style={{ padding: '1.5rem' }}>
+
+            <div className="review-modal-body">
               {submitSuccess ? (
-                <div className="bg-emerald-50 text-emerald-600 p-4 rounded-lg flex items-center gap-2" style={{ backgroundColor: '#ecfdf5', color: '#059669', padding: '1rem', borderRadius: '0.5rem', display: 'flex', gap: '0.5rem' }}>
-                  <span className="material-symbols-outlined">check_circle</span>
-                  Cảm ơn bạn đã gửi đánh giá!
+                <div className="review-success-state">
+                  <div className="review-success-icon-wrap">
+                    <span className="material-symbols-outlined">verified</span>
+                  </div>
+                  <h4>Đã gửi đánh giá thành công!</h4>
+                  <p>Cảm ơn bạn đã đóng góp ý kiến quý báu giúp ban quản lý nâng cao chất lượng sân bóng.</p>
                 </div>
               ) : (
-                <form onSubmit={handleReviewSubmit} className="flex flex-col gap-4" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  {submitError && <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg" style={{ color: '#ef4444', backgroundColor: '#fef2f2', padding: '0.75rem', borderRadius: '0.5rem', fontSize: '0.875rem' }}>{submitError}</div>}
-                  <div>
-                    <label className="block text-sm font-medium mb-1" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Mức độ hài lòng</label>
-                    <select value={rating} onChange={(e) => setRating(e.target.value)} className="w-full border rounded-lg p-2.5" style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '0.625rem' }}>
-                      <option value={5}>⭐⭐⭐⭐⭐ (Rất tuyệt vời)</option>
-                      <option value={4}>⭐⭐⭐⭐ (Tuyệt vời)</option>
-                      <option value={3}>⭐⭐⭐ (Bình thường)</option>
-                      <option value={2}>⭐⭐ (Tạm được)</option>
-                      <option value={1}>⭐ (Tệ)</option>
-                    </select>
+                <form onSubmit={handleReviewSubmit} className="review-form">
+                  {submitError && (
+                    <div className="review-error-banner">
+                      <span className="material-symbols-outlined">error</span>
+                      <span>{submitError}</span>
+                    </div>
+                  )}
+
+                  {/* Field preview card */}
+                  <div className="review-field-preview">
+                    <div className="review-field-avatar">
+                      <span className="material-symbols-outlined">sports_soccer</span>
+                    </div>
+                    <div className="review-field-info">
+                      <h4>{reviewingBooking.fieldName || reviewingBooking.field || "Sân bóng đá"}</h4>
+                      <div className="review-field-meta">
+                        {(reviewingBooking.bookingDate || reviewingBooking.date) && (
+                          <span>
+                            <span className="material-symbols-outlined">calendar_today</span>
+                            {new Date(reviewingBooking.bookingDate || reviewingBooking.date).toLocaleDateString("vi-VN")}
+                          </span>
+                        )}
+                        {(reviewingBooking.timeSlot || reviewingBooking.time) && (
+                          <span>
+                            <span className="material-symbols-outlined">schedule</span>
+                            {reviewingBooking.timeSlot || reviewingBooking.time}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Nhận xét của bạn</label>
-                    <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows="4" className="w-full border rounded-lg p-2.5 resize-none" style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '0.625rem', resize: 'none' }}></textarea>
+
+                  {/* Rating Selector */}
+                  <div className="review-form-group">
+                    <label className="review-field-label">
+                      <span>Mức độ hài lòng</span>
+                      <span
+                        className="review-rating-active-pill"
+                        style={{ color: currentRatingLevel.color, background: currentRatingLevel.bg }}
+                      >
+                        {currentRatingLevel.label}
+                      </span>
+                    </label>
+
+                    <div className="review-stars-wrapper">
+                      <div className="review-stars-list" onMouseLeave={() => setHoverRating(0)}>
+                        {[1, 2, 3, 4, 5].map((star) => {
+                          const isFilled = (hoverRating || rating) >= star;
+                          return (
+                            <button
+                              type="button"
+                              key={star}
+                              className={`review-star-item ${isFilled ? "filled" : ""}`}
+                              onMouseEnter={() => setHoverRating(star)}
+                              onClick={() => setRating(star)}
+                              aria-label={`${star} sao`}
+                            >
+                              <span
+                                className="material-symbols-outlined"
+                                style={{ fontVariationSettings: isFilled ? "'FILL' 1" : "'FILL' 0" }}
+                              >
+                                star
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <span className="review-rating-score-text">
+                        <strong>{hoverRating || rating}</strong>/5
+                      </span>
+                    </div>
+                    <p className="review-level-desc">{currentRatingLevel.desc}</p>
                   </div>
-                  <div className="flex justify-end gap-2" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                    <button type="button" onClick={() => setReviewingBooking(null)} className="px-4 py-2 bg-slate-100 rounded-lg" style={{ padding: '0.5rem 1rem', backgroundColor: '#f1f5f9', border: 'none', borderRadius: '0.5rem', cursor: 'pointer' }}>Hủy</button>
-                    <button type="submit" className="px-4 py-2 text-white bg-primary rounded-lg" style={{ padding: '0.5rem 1rem', backgroundColor: '#29a847', color: 'white', border: 'none', borderRadius: '0.5rem', cursor: 'pointer' }}>Gửi đánh giá</button>
+
+                  {/* Comment Textarea */}
+                  <div className="review-form-group">
+                    <div className="review-label-between">
+                      <label className="review-field-label" htmlFor="lookup-review-comment-input">
+                        Nhận xét của bạn
+                      </label>
+                      <span className="review-counter">{comment.length}/500</span>
+                    </div>
+                    <textarea
+                      id="lookup-review-comment-input"
+                      value={comment}
+                      maxLength={500}
+                      onChange={(e) => setComment(e.target.value)}
+                      rows="4"
+                      placeholder="Hãy chia sẻ thêm về chất lượng mặt cỏ, hệ thống chiếu sáng, bóng thi đấu, phòng thay đồ hoặc thái độ phục vụ..."
+                      className="review-textarea"
+                    />
+                  </div>
+
+                  {/* Actions */}
+                  <div className="review-modal-actions">
+                    <button
+                      type="button"
+                      onClick={() => setReviewingBooking(null)}
+                      className="btn-review-secondary"
+                    >
+                      Hủy bỏ
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn-review-primary"
+                    >
+                      <span className="material-symbols-outlined">send</span>
+                      Gửi đánh giá
+                    </button>
                   </div>
                 </form>
               )}

@@ -11,6 +11,7 @@ import {
 
 import "./users.css";
 import { useToast, ToastContainer } from "../../../components/Toast/Toast";
+import ConfirmModal from "../../../components/ConfirmModal/ConfirmModal";
 import { hasPermission, getCurrentUser } from "../../../utils/permissionUtils";
 import AdminSidebar from "../../../components/AdminSidebar/AdminSidebar";
 
@@ -946,29 +947,131 @@ export default function Users() {
     return true;
   });
 
-  const handleDelete = async (id) => {
-    const isGuest = guestCustomers.some((g) => g.id === id);
-    const targetLabel = isGuest ? "khách vãng lai này" : "người dùng này";
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa ${targetLabel} không?`)) return;
-    try {
-      await deleteUser(id);
-      toast.success("Xóa thành công");
-      loadUsers();
-    } catch {
-      toast.error("Lỗi khi xóa");
+  const handleExportCSV = () => {
+    const isGuest = activeTab === "guests";
+    const dataToExport = isGuest ? filteredGuests : filteredMembers;
+
+    if (!dataToExport || dataToExport.length === 0) {
+      toast.warning("Không có dữ liệu người dùng để xuất");
+      return;
+    }
+
+    if (isGuest) {
+      const headers = [
+        "Mã khách",
+        "Họ và tên",
+        "Số điện thoại",
+        "Email",
+        "Số lượt đặt sân",
+        "Lần đặt gần nhất",
+        "Ngày tạo",
+      ];
+      const rows = dataToExport.map((g) => [
+        `"${g.id}"`,
+        `"${(g.name || "").replace(/"/g, '""')}"`,
+        `"${g.phone || ""}"`,
+        `"${g.email || ""}"`,
+        g.booking_count || 0,
+        g.last_booking ? new Date(g.last_booking).toLocaleDateString("vi-VN") : "",
+        g.created_at ? new Date(g.created_at).toLocaleDateString("vi-VN") : "",
+      ]);
+
+      const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((row) => row.join(","))].join("\r\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Danh_Sach_Khach_Vang_Lai_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("Xuất danh sách khách vãng lai thành công!");
+    } else {
+      const headers = [
+        "Mã người dùng",
+        "Họ và tên",
+        "Email",
+        "Số điện thoại",
+        "Vai trò",
+        "Trạng thái",
+        "Ngày tham gia",
+      ];
+      const rows = dataToExport.map((u) => [
+        `"${u.id}"`,
+        `"${(u.name || "").replace(/"/g, '""')}"`,
+        `"${u.email || ""}"`,
+        `"${u.phone || ""}"`,
+        `"${u.role || ""}"`,
+        `"${u.status === "active" ? "Hoạt động" : "Đã khóa"}"`,
+        u.created_at ? new Date(u.created_at).toLocaleDateString("vi-VN") : "",
+      ]);
+
+      const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((row) => row.join(","))].join("\r\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Danh_Sach_Nguoi_Dung_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("Xuất danh sách người dùng thành công!");
     }
   };
 
-  const handleToggleStatus = async (user) => {
+  const [confirmConfig, setConfirmConfig] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    confirmText: "Xác nhận",
+    cancelText: "Hủy bỏ",
+    type: "danger",
+    onConfirm: () => {},
+  });
+
+  const handleDelete = (id) => {
+    const isGuest = guestCustomers.some((g) => g.id === id);
+    const targetLabel = isGuest ? "khách vãng lai này" : "người dùng này";
+    setConfirmConfig({
+      isOpen: true,
+      title: "Xác nhận xóa tài khoản",
+      message: `Bạn có chắc chắn muốn xóa ${targetLabel} không? Hành động này không thể hoàn tác.`,
+      confirmText: "Xóa tài khoản",
+      cancelText: "Hủy bỏ",
+      type: "danger",
+      onConfirm: async () => {
+        try {
+          await deleteUser(id);
+          toast.success("Xóa thành công");
+          loadUsers();
+        } catch {
+          toast.error("Lỗi khi xóa");
+        }
+      },
+    });
+  };
+
+  const handleToggleStatus = (user) => {
     const action = user.status === "active" ? "khóa" : "mở khóa";
-    if (!window.confirm(`Bạn có muốn ${action} tài khoản "${user.name}" không?`)) return;
-    try {
-      await toggleUserStatus(user.id);
-      toast.success(`Đã ${action} tài khoản thành công!`);
-      loadUsers();
-    } catch {
-      toast.error(`Lỗi khi ${action} tài khoản`);
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: `Xác nhận ${action} tài khoản`,
+      message: `Bạn có chắc chắn muốn ${action} tài khoản "${user.name}" không?`,
+      confirmText: action === "khóa" ? "Khóa tài khoản" : "Mở khóa",
+      cancelText: "Hủy bỏ",
+      type: action === "khóa" ? "danger" : "primary",
+      onConfirm: async () => {
+        try {
+          await toggleUserStatus(user.id);
+          toast.success(`Đã ${action} tài khoản thành công!`);
+          loadUsers();
+        } catch {
+          toast.error(`Lỗi khi ${action} tài khoản`);
+        }
+      },
+    });
   };
 
   return (
@@ -994,7 +1097,7 @@ export default function Users() {
           <div className="page-header">
             <div>
               <span className="users-page-eyebrow">
-                VẬN HÀNH HỆ THỐNG <span>›</span>{" "}
+                VẬN HÀNH CƠ SỞ <span>›</span>{" "}
                 {activeTab === "guests" ? "KHÁCH VÃNG LAI & ĐẶT SÂN" : "THÀNH VIÊN & PHÂN QUYỀN"}
               </span>
               <h2>{activeTab === "guests" ? "Quản lý khách vãng lai" : "Quản lý người dùng"}</h2>
@@ -1005,6 +1108,15 @@ export default function Users() {
               </p>
             </div>
             <div className="header-controls">
+              <button
+                type="button"
+                className="btn-export"
+                onClick={handleExportCSV}
+                title="Xuất file CSV / Excel"
+              >
+                <span className="material-symbols-outlined">download</span>
+                Xuất CSV
+              </button>
               {activeTab === "guests" ? (
                 <button
                   className="btn-add-guest"
@@ -1113,6 +1225,18 @@ export default function Users() {
           showToast={(msg, type) => toast[type || "info"](msg)}
         />
       )}
+
+      {/* MODAL XÁC NHẬN IN-SCREEN */}
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        cancelText={confirmConfig.cancelText}
+        type={confirmConfig.type}
+        onConfirm={confirmConfig.onConfirm}
+        onClose={() => setConfirmConfig((prev) => ({ ...prev, isOpen: false }))}
+      />
     </>
   );
 }

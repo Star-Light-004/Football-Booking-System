@@ -24,6 +24,7 @@ export const DEFAULT_PERMISSIONS = {
     'services_view', 'services_create', 'services_edit',
     'vouchers_view', 'vouchers_create', 'vouchers_edit',
     'users_view',
+    'revenue_view',
     'maintenance_manage', 'cleaning_manage',
   ],
   receptionist: [
@@ -33,6 +34,7 @@ export const DEFAULT_PERMISSIONS = {
     'timeslots_view',
     'services_view',
     'vouchers_view',
+    'users_view',
   ],
   cashier: [
     'dashboard_view',
@@ -42,11 +44,14 @@ export const DEFAULT_PERMISSIONS = {
     'vouchers_view',
   ],
   cleaner: [
+    'dashboard_view',
     'cleaning_manage',
+    'maintenance_manage',
   ],
   service_staff: [
     'dashboard_view',
     'services_view', 'services_create', 'services_edit',
+    'bookings_view',
   ],
   maintenance: [
     'dashboard_view',
@@ -115,26 +120,28 @@ export const getUserPermissions = (user = null) => {
     return ALL_PERMISSION_KEYS;
   }
 
-  // 1. Kiểm tra permissions lưu trực tiếp trong user session
-  if (Array.isArray(currentUser.permissions) && currentUser.permissions.length > 0) {
-    return currentUser.permissions;
-  }
+  // 1. Quyền mặc định hệ thống cho vai trò này (đảm bảo luôn có các quyền nền tảng)
+  const defaultList = DEFAULT_PERMISSIONS[currentUser.role] || [];
 
-  // 2. Tra cứu ma trận quyền trong localStorage
+  // 2. Quyền từ phiên đăng nhập (nếu có)
+  const sessionList = Array.isArray(currentUser.permissions) ? currentUser.permissions : [];
+
+  // 3. Tra cứu ma trận quyền trong localStorage (nếu có tùy biến)
+  let matrixList = [];
   try {
     const storedMatrix = localStorage.getItem("rolePermissions");
     if (storedMatrix) {
       const matrix = JSON.parse(storedMatrix);
       if (matrix && Array.isArray(matrix[currentUser.role])) {
-        return matrix[currentUser.role];
+        matrixList = matrix[currentUser.role];
       }
     }
   } catch {
     // fallback
   }
 
-  // 3. Fallback về mặc định
-  return DEFAULT_PERMISSIONS[currentUser.role] || [];
+  // Gộp tất cả quyền và loại bỏ trùng lặp
+  return Array.from(new Set([...defaultList, ...matrixList, ...sessionList]));
 };
 
 /**
@@ -142,7 +149,14 @@ export const getUserPermissions = (user = null) => {
  */
 export const hasPermission = (permissionKey, user = null) => {
   const currentUser = user || getCurrentUser();
-  if (currentUser?.role === 'admin') return true;
+  if (!currentUser) return false;
+  if (currentUser.role === 'admin') return true;
+
+  // ĐẶC BIỆT: Trang Tổng quan (Dashboard) luôn mở cho tất cả các vai trò quản trị/nhân sự
+  const ADMIN_ROLES = ["admin", "field_owner", "field_manager", "receptionist", "cashier", "cleaner", "service_staff", "maintenance"];
+  if ((permissionKey === 'dashboard' || permissionKey === 'dashboard_view') && ADMIN_ROLES.includes(currentUser.role)) {
+    return true;
+  }
 
   const perms = getUserPermissions(user);
   if (!Array.isArray(perms)) return false;

@@ -29,11 +29,12 @@ const ToastItem = ({ toast, onRemove }) => {
 };
 
 // ─── Container renders all toasts ────────────────────────────────────────────
-export const ToastContainer = ({ toasts = [], onRemove, removeToast }) => {
-  const handleRemove = onRemove || removeToast;
+export const ToastContainer = ({ toasts = [], toast, onRemove, removeToast }) => {
+  const list = toasts && toasts.length > 0 ? toasts : (toast && toast.id ? [toast] : []);
+  const handleRemove = onRemove || removeToast || (() => {});
   return (
     <div className="toast-container">
-      {toasts.map((t) => (
+      {list.map((t) => (
         <ToastItem key={t.id} toast={t} onRemove={handleRemove} />
       ))}
     </div>
@@ -62,7 +63,11 @@ export const useToast = () => {
   toast.warning = (msg, dur) => addToast(msg, "warning", dur);
   toast.info = (msg, dur) => addToast(msg, "info", dur);
 
-  return { toasts, removeToast, toast };
+  const showToast = useCallback((msg, type = "info", dur) => {
+    addToast(msg, type, dur);
+  }, [addToast]);
+
+  return { toasts, removeToast, toast, showToast };
 };
 
 export default ToastItem;
