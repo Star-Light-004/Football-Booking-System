@@ -4086,8 +4086,10 @@ export default function Bookings() {
       broadcastSyncEvent("booking_updated", { id: deletingBooking.id, action: "deleted" });
       setDeletingBooking(null);
       fetchBookings(false);
-    } catch {
-      toast.error("Lỗi khi xóa đơn đặt");
+    } catch (err) {
+      console.error("Lỗi khi xóa đơn đặt:", err);
+      const errMsg = err?.response?.data?.error || "Lỗi khi xóa đơn đặt";
+      toast.error(errMsg);
     } finally {
       setIsDeleting(false);
     }

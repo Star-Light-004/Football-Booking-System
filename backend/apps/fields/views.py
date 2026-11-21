@@ -263,14 +263,51 @@ def delete_football_field(request, id):
         return JsonResponse({"error": "Method not allowed"}, status=405)
 
     try:
-        field = get_object_or_404(FootballFields, id=id)
-        field.delete()
+        from django.db import transaction
+        with transaction.atomic():
+            field = get_object_or_404(FootballFields, id=id)
 
-        return JsonResponse({"message": "Xóa sân thành công"})
+            # Kiểm tra xem sân có lịch đặt không
+            from apps.bookings.models import Bookings
+            if Bookings.objects.filter(field=field).exists():
+                return JsonResponse(
+                    {"error": "Sân đang có lịch đặt của khách, không thể xóa để bảo toàn dữ liệu."},
+                    status=400
+                )
+
+            # Xóa các ràng buộc con không có booking
+            try:
+                from apps.timeslots.models import TimeSlots
+                TimeSlots.objects.filter(field=field).delete()
+            except Exception as ts_err:
+                print("Lỗi xóa timeslots của sân:", ts_err)
+
+            try:
+                from apps.fields.models import FieldSchedules
+                FieldSchedules.objects.filter(field=field).delete()
+            except Exception as fs_err:
+                print("Lỗi xóa field schedules của sân:", fs_err)
+
+            try:
+                from apps.facility.models import PitchCleaning, MaintenanceIssue, LostFoundItem
+                PitchCleaning.objects.filter(field=field).delete()
+                MaintenanceIssue.objects.filter(field=field).delete()
+                LostFoundItem.objects.filter(field=field).update(field=None)
+            except Exception as fac_err:
+                print("Lỗi dọn dẹp facility records của sân:", fac_err)
+
+            try:
+                from apps.reviews.models import Reviews
+                Reviews.objects.filter(field=field).delete()
+            except Exception as r_err:
+                print("Lỗi xóa reviews của sân:", r_err)
+
+            field.delete()
+            return JsonResponse({"message": "Xóa sân thành công"})
 
     except ProtectedError:
         return JsonResponse(
-            {"error": "Sân đang có lịch đặt, không thể xóa"},
+            {"error": "Sân đang có dữ liệu ràng buộc, không thể xóa"},
             status=400
         )
 
@@ -282,8 +319,7 @@ def delete_football_field(request, id):
 
     except Exception as e:
         import traceback
-        print(traceback.format_exc())   # 🔥 QUAN TRỌNG để debug Render
-
+        print(traceback.format_exc())
         return JsonResponse(
             {
                 "error": str(e),

@@ -797,31 +797,91 @@ def update_booking(request, booking_id):
 @api_view(['DELETE', 'POST'])
 def delete_booking(request, booking_id):
     try:
-        booking = Bookings.objects.get(id=booking_id)
+        from django.db import transaction
+        with transaction.atomic():
+            booking = Bookings.objects.get(id=booking_id)
 
-        # 🔹 Hoàn lại tồn kho dịch vụ nếu đơn đã bị trừ kho trước đó
-        try:
-            from apps.servicesadd.views import refund_booking_services_stock
-            refund_booking_services_stock(booking)
-        except Exception as stock_err:
-            print("Lỗi hoàn lại tồn kho khi xóa booking:", stock_err)
+            # 🔹 1. Hoàn lại tồn kho dịch vụ nếu đơn đã bị trừ kho trước đó
+            try:
+                from apps.servicesadd.views import refund_booking_services_stock
+                refund_booking_services_stock(booking)
+            except Exception as stock_err:
+                print("Lỗi hoàn lại tồn kho khi xóa booking:", stock_err)
 
-        # 🔹 Mở lại TimeSlot khi xóa booking
-        try:
-            from apps.timeslots.models import TimeSlots
-            TimeSlots.objects.filter(
-                field_id=booking.field_id,
-                slot_date=booking.booking_date,
-                start_time=booking.start_time
-            ).update(status='available')
-        except Exception as ts_err:
-            print("Lỗi mở lại timeslot khi xóa:", ts_err)
+            # 🔹 2. Mở lại TimeSlot khi xóa booking
+            try:
+                from apps.timeslots.models import TimeSlots
+                TimeSlots.objects.filter(
+                    field_id=booking.field_id,
+                    slot_date=booking.booking_date,
+                    start_time=booking.start_time
+                ).update(status='available')
+            except Exception as ts_err:
+                print("Lỗi mở lại timeslot khi xóa:", ts_err)
 
-        booking.delete()
-        return Response({"message": "Xóa thành công"})
+            # 🔹 3. Giảm booking_count của sân nếu có
+            try:
+                if booking.field and hasattr(booking.field, 'booking_count') and booking.field.booking_count and booking.field.booking_count > 0:
+                    booking.field.booking_count -= 1
+                    booking.field.save()
+            except Exception as fc_err:
+                print("Lỗi giảm booking_count:", fc_err)
+
+            # 🔹 4. Xóa các bản ghi thanh toán liên quan
+            try:
+                from apps.payments.models import Payments
+                Payments.objects.filter(booking_id=booking.id).delete()
+            except Exception as pay_err:
+                print("Lỗi xóa payment liên quan:", pay_err)
+
+            # 🔹 5. Xóa các dịch vụ đã gắn với đơn
+            try:
+                from apps.servicesadd.models import BookingServices
+                BookingServices.objects.filter(booking_id=booking.id).delete()
+            except Exception as bs_err:
+                print("Lỗi xóa booking_services:", bs_err)
+
+            # 🔹 6. Xóa nhật ký đặt sân liên quan
+            try:
+                from apps.bookings.models import BookingLogs
+                BookingLogs.objects.filter(booking_id=booking.id).delete()
+            except Exception as log_err:
+                print("Lỗi xóa booking_logs:", log_err)
+
+            # 🔹 7. Xóa đánh giá liên quan
+            try:
+                from apps.reviews.models import Reviews
+                Reviews.objects.filter(booking_id=booking.id).delete()
+            except Exception as rev_err:
+                print("Lỗi xóa reviews:", rev_err)
+
+            # 🔹 8. Hoàn lại voucher cho khách hàng nếu đơn này có áp dụng voucher
+            try:
+                from apps.vouchers.models import CustomerVoucher
+                CustomerVoucher.objects.filter(used_booking_id=booking.id).update(
+                    used_booking=None, is_used=False, used_at=None, discount_amount=0
+                )
+                CustomerVoucher.objects.filter(source_booking_id=booking.id).update(
+                    source_booking=None
+                )
+            except Exception as vc_err:
+                print("Lỗi hoàn lại voucher:", vc_err)
+
+            # 🔹 9. Gỡ liên kết ca đá trong vệ sinh & đồ thất lạc
+            try:
+                from apps.facility.models import PitchCleaning, LostFoundItem
+                PitchCleaning.objects.filter(booking_id=booking.id).update(booking=None)
+                LostFoundItem.objects.filter(booking_id=booking.id).update(booking=None)
+            except Exception as fac_err:
+                print("Lỗi gỡ facility records:", fac_err)
+
+            booking.delete()
+            return Response({"message": "Xóa thành công"})
     except Bookings.DoesNotExist:
         return Response({"error": "Không tìm thấy booking"}, status=404)
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return Response({"error": str(e)}, status=400)
 
 

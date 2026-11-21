@@ -109,10 +109,18 @@ def service_detail(request, pk):
             return Response({"error": str(e)}, status=400)
 
     elif request.method == 'DELETE':
-        # Optional: delete the file from storage
+        # Gỡ liên kết trong booking_services để không bị chặn bởi khóa ngoại
+        try:
+            BookingServices.objects.filter(service=service).update(service=None)
+        except Exception as bs_err:
+            print("Lỗi gỡ service khỏi booking_services:", bs_err)
+
         if service.image:
-            if os.path.isfile(service.image.path):
-                os.remove(service.image.path)
+            try:
+                if os.path.isfile(service.image.path):
+                    os.remove(service.image.path)
+            except Exception:
+                pass
         service.delete()
         return Response({"message": "Xóa thành công"})
 

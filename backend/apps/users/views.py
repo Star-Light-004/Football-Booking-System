@@ -404,12 +404,49 @@ def toggle_status(request, user_id):
 @api_view(['DELETE'])
 def delete_user(request, user_id):
     try:
-        user = Customers.objects.get(id=user_id)
-        user.delete()
-        return Response({"message": "Xóa thành công"})
+        from django.db import transaction
+        with transaction.atomic():
+            user = Customers.objects.get(id=user_id)
+            
+            # Gỡ liên kết ca đá / giải đấu / thanh toán / dọn dẹp để bảo toàn lịch sử
+            try:
+                from apps.bookings.models import Bookings, TournamentRequests
+                Bookings.objects.filter(customer_id=user.id).update(customer=None)
+                TournamentRequests.objects.filter(customer_id=user.id).update(customer=None)
+            except Exception as b_err:
+                print("Lỗi gỡ user khỏi bookings:", b_err)
+
+            try:
+                from apps.facility.models import PitchCleaning
+                PitchCleaning.objects.filter(cleaner_id=user.id).update(cleaner=None)
+            except Exception as f_err:
+                print("Lỗi gỡ cleaner:", f_err)
+
+            try:
+                from apps.payments.models import Payments
+                Payments.objects.filter(customer_id=user.id).update(customer=None)
+            except Exception as p_err:
+                print("Lỗi gỡ customer khỏi payments:", p_err)
+
+            try:
+                from apps.reviews.models import Reviews
+                Reviews.objects.filter(customer_id=user.id).delete()
+            except Exception as r_err:
+                print("Lỗi xóa reviews của user:", r_err)
+
+            try:
+                from apps.vouchers.models import CustomerVoucher
+                CustomerVoucher.objects.filter(customer_id=user.id).delete()
+            except Exception as v_err:
+                print("Lỗi xóa vouchers của user:", v_err)
+
+            user.delete()
+            return Response({"message": "Xóa thành công"})
     except Customers.DoesNotExist:
         return Response({"error": "Không tìm thấy user"}, status=404)
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return Response({"error": str(e)}, status=400)
 
 
