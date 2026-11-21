@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios from './axiosClient';
 import { BASE_URL } from '../config';
 export const createBooking = async (bookingData) => {
   return await axios.post(`${BASE_URL}/bookings/create/`, bookingData);

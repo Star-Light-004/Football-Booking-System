@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios from './axiosClient';
 import { BASE_URL } from '../config';
 
 const FACILITY_URL = `${BASE_URL}/facility`;

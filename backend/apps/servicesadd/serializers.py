@@ -34,5 +34,5 @@ class BookingServicesSerializer(serializers.ModelSerializer):
         if obj.service and obj.service.image:
             if request:
                 return request.build_absolute_uri(obj.service.image.url)
-            return f"http://127.0.0.1:8000{obj.service.image.url}"
+            return obj.service.image.url
         return None

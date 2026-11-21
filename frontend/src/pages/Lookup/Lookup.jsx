@@ -12,7 +12,7 @@ const RATING_LEVELS = [
   { value: 2, label: "Chưa hài lòng", desc: "Cần cải thiện thêm về mặt cỏ hoặc dịch vụ hỗ trợ.", color: "#ea580c", bg: "#fff7ed" },
   { value: 1, label: "Thất vọng", desc: "Trải nghiệm không tốt, mong sân sớm khắc phục.", color: "#dc2626", bg: "#fef2f2" },
 ];
-import { BASE_URL } from "../../config";
+import { BASE_URL, getFullImageUrl } from "../../config";
 import { useToast, ToastContainer } from "../../components/Toast/Toast";
 import { onSyncEvent } from "../../utils/realtimeSync";
 
@@ -78,7 +78,7 @@ const BookingResultItem = ({ booking, formatDateLong, maskPhone, onReviewClick }
         <section className="lookup-booking-details">
           <div className="lookup-field-heading">
             {booking.fieldImage ? (
-              <img src={booking.fieldImage} alt={booking.fieldName} />
+              <img src={getFullImageUrl(booking.fieldImage)} alt={booking.fieldName} />
             ) : (
               <span className="material-symbols-outlined lookup-field-placeholder">stadium</span>
             )}
@@ -104,7 +104,7 @@ const BookingResultItem = ({ booking, formatDateLong, maskPhone, onReviewClick }
               <div className="lookup-service-list">
                 {services.map((service) => (
                   <span className="lookup-service-chip" key={service.id}>
-                    {service.service_image && <img src={service.service_image} alt="" />}
+                    {service.service_image && <img src={getFullImageUrl(service.service_image)} alt="" />}
                     {service.service_name}{service.shoe_size ? ` · size ${service.shoe_size}` : ""} ×{service.quantity}
                   </span>
                 ))}

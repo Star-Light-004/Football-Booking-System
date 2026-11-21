@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useLocation, Link } from "react-router-dom";
+import { getFullImageUrl } from "../../config";
 import "./BookingSuccess.css";
 
 const formatBookingDate = (dateValue) => {
@@ -178,7 +179,7 @@ const BookingSuccess = () => {
               </div>
               <div className="bs-field-summary">
                 {bookingDetails?.fieldImage ? (
-                  <img src={bookingDetails.fieldImage} alt={bookingDetails.fieldName || "Sân bóng"} />
+                  <img src={getFullImageUrl(bookingDetails.fieldImage)} alt={bookingDetails.fieldName || "Sân bóng"} />
                 ) : (
                   <span className="material-symbols-outlined bs-field-summary__icon">stadium</span>
                 )}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { BASE_URL } from "../../config";
+import { BASE_URL, getFullImageUrl } from "../../config";
 import PageHero from "../../components/PageHero/PageHero";
 import { broadcastSyncEvent, onSyncEvent } from "../../utils/realtimeSync";
 import "./MyBookings.css";
@@ -90,7 +90,7 @@ const BookingServiceRowItems = ({ bookingId }) => {
       {services.map(s => (
         <div key={s.id} className="booking-service-row">
           {s.service_image && (
-            <img src={s.service_image} alt={s.service_name} />
+            <img src={getFullImageUrl(s.service_image)} alt={s.service_name} />
           )}
           <span className="service-tag">
             {s.service_name}{s.shoe_size ? ` - size ${s.shoe_size}` : ''} x{s.quantity}
@@ -457,7 +457,7 @@ const MyBookings = () => {
                   <div className="history-card-main">
                     <div className="history-field-image">
                       {booking.image ? (
-                        <img src={`http://127.0.0.1:8000${booking.image}`} alt={booking.fieldName} />
+                        <img src={getFullImageUrl(booking.image)} alt={booking.fieldName} />
                       ) : (
                         <span className="material-symbols-outlined">stadium</span>
                       )}

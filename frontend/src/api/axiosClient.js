@@ -21,6 +21,9 @@ axiosClient.interceptors.request.use((config) => {
         if (userObj?.id) {
             config.headers['X-User-Id'] = userObj.id;
         }
+        if (config.data instanceof FormData) {
+            delete config.headers['Content-Type'];
+        }
     } catch (e) {
         // bỏ qua nếu parse lỗi
     }
