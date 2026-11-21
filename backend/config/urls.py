@@ -20,9 +20,15 @@ urlpatterns = [
     path('api/facility/', include('apps.facility.urls')),
 ]
 
-# 👇 FIX MEDIA
+def serve_media_cached(request, path, document_root=None):
+    response = serve(request, path, document_root=document_root)
+    if response.status_code == 200:
+        response['Cache-Control'] = 'public, max-age=604800, immutable'
+    return response
+
+# 👇 FIX MEDIA WITH BROWSER CACHING
 urlpatterns += [
-    re_path(r'^media/(?P<path>.*)$', serve, {
+    re_path(r'^media/(?P<path>.*)$', serve_media_cached, {
         'document_root': settings.MEDIA_ROOT,
     }),
 ]
