@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink } from "react-router-dom";
 import { getFields, getFieldDetail, createField, updateField, deleteField } from "../../../api/fieldsApi";
-import { BASE_URL, SERVER_URL } from '../../../config';
+import { BASE_URL, SERVER_URL, getFullImageUrl } from '../../../config';
 import FieldMap from '../../../components/FieldMap/FieldMap';
 import './fields.css';
 import { useToast, ToastContainer } from '../../../components/Toast/Toast';
@@ -86,9 +86,9 @@ function FieldsTable({ fields, onView, onEdit, onDelete }) {
         {fields.map((f) => (
           <div key={f.id} className="field-card">
             <div className="field-card-image">
-              {f.image ? (
+              {f.image || f.image_url ? (
                 <img
-                  src={`${SERVER_URL}${f.image}`}
+                  src={getFullImageUrl(f.image_url || f.image)}
                   alt={f.field_name}
                   onError={(e) => {
                     e.target.style.display = 'none';
@@ -246,7 +246,7 @@ function FieldDetailModal({ initialField, onClose }) {
   const averageRating = reviews.length
     ? (reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / reviews.length).toFixed(1)
     : "0.0";
-  const imageUrl = field?.image_url || (field?.image ? `${SERVER_URL}${field.image}` : "");
+  const imageUrl = getFullImageUrl(field?.image_url || field?.image);
 
   return (
     <div className="modal-overlay field-detail-overlay" onMouseDown={onClose}>
@@ -697,10 +697,10 @@ function EditFieldModal({ field, onClose, onSuccess, showToast }) {
   const [subImage2, setSubImage2] = useState(null);
   const [subImage3, setSubImage3] = useState(null);
 
-  const existingMainImage = field.image_url || (field.image ? `${SERVER_URL}${field.image}` : null);
-  const existingSub1 = field.sub_image_1_url || (field.sub_image_1 ? `${SERVER_URL}${field.sub_image_1}` : null);
-  const existingSub2 = field.sub_image_2_url || (field.sub_image_2 ? `${SERVER_URL}${field.sub_image_2}` : null);
-  const existingSub3 = field.sub_image_3_url || (field.sub_image_3 ? `${SERVER_URL}${field.sub_image_3}` : null);
+  const existingMainImage = getFullImageUrl(field.image_url || field.image) || null;
+  const existingSub1 = getFullImageUrl(field.sub_image_1_url || field.sub_image_1) || null;
+  const existingSub2 = getFullImageUrl(field.sub_image_2_url || field.sub_image_2) || null;
+  const existingSub3 = getFullImageUrl(field.sub_image_3_url || field.sub_image_3) || null;
 
   // Debounced location: chờ 700ms sau khi gõ xong mới geocode
   const [debouncedLocation, setDebouncedLocation] = useState(field.location || "");

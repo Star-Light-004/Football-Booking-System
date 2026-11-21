@@ -4,7 +4,7 @@ import { getBookingServices } from "../../api/servicesApi";
 import { useToast, ToastContainer } from "../../components/Toast/Toast";
 import ConfirmModal from "../../components/ConfirmModal/ConfirmModal";
 import PageHero from "../../components/PageHero/PageHero";
-import { BASE_URL } from "../../config";
+import { BASE_URL, getFullImageUrl } from "../../config";
 import "./BookingDetail.css";
 
 const canCustomerCancel = (status) => {
@@ -13,10 +13,7 @@ const canCustomerCancel = (status) => {
 };
 
 const resolveImgUrl = (urlOrPath) => {
-  if (!urlOrPath) return "";
-  if (urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://")) return urlOrPath;
-  const baseUrl = process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace("/api", "") : "http://localhost:8000";
-  return `${baseUrl}${urlOrPath.startsWith("/") ? "" : "/"}${urlOrPath}`;
+  return getFullImageUrl(urlOrPath);
 };
 
 const formatDateLongVN = (dateStr) => {

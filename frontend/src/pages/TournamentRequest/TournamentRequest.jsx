@@ -11,6 +11,7 @@ import {
 import { createQrPayment, checkPaymentStatus, simulatePaymentTest } from "../../api/paymentsApi";
 import { broadcastSyncEvent, onSyncEvent } from "../../utils/realtimeSync";
 import { useToast, ToastContainer } from "../../components/Toast/Toast";
+import { getFullImageUrl } from "../../config";
 import "./TournamentRequest.css";
 
 // Các khung giờ chuẩn của hệ thống
@@ -171,10 +172,7 @@ const canCancelTournamentTicket = (status) => {
 };
 
 const resolveImgUrl = (urlOrPath) => {
-  if (!urlOrPath) return "";
-  if (urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://")) return urlOrPath;
-  const baseUrl = process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace("/api", "") : "http://localhost:8000";
-  return `${baseUrl}${urlOrPath.startsWith("/") ? "" : "/"}${urlOrPath}`;
+  return getFullImageUrl(urlOrPath);
 };
 
 const TournamentRequest = () => {
@@ -1695,7 +1693,7 @@ const TournamentRequest = () => {
                         <div key={service.id} className={`service-item-card ${qty > 0 ? "selected" : ""}`}>
                           <div className="service-icon-box">
                             {service.image ? (
-                              <img src={service.image} alt={service.name} className="service-image-thumb" />
+                              <img src={getFullImageUrl(service.image)} alt={service.name} className="service-image-thumb" />
                             ) : (
                               <span className="material-symbols-outlined">{service.icon}</span>
                             )}

@@ -12,6 +12,7 @@ import { useToast, ToastContainer } from "../../components/Toast/Toast";
 import ConfirmModal from "../../components/ConfirmModal/ConfirmModal";
 import { broadcastSyncEvent, onSyncEvent } from "../../utils/realtimeSync";
 import { isSlotExpired, getLocalDateString } from "../../utils/timeslotUtils";
+import { getFullImageUrl } from "../../config";
 import "./Booking.css";
 
 const getSlotDurationMinutes = (slot) => {
@@ -1358,7 +1359,7 @@ const Booking = () => {
                 <div className="bk-summary-field__icon">
                   {bookingInfo?.fieldImage ? (
                     <img
-                      src={bookingInfo.fieldImage}
+                      src={getFullImageUrl(bookingInfo.fieldImage)}
                       alt={bookingInfo.fieldName}
                       className="bk-summary-field__thumb"
                     />

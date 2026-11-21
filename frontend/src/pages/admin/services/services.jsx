@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink } from "react-router-dom";
 import { getServices, createBookingService } from "../../../api/servicesApi";
-import axios from "axios";
-import { BASE_URL } from "../../../config";
+import axios from "../../../api/axiosClient";
+import { BASE_URL, getFullImageUrl } from "../../../config";
 import './services.css';
 import { useToast, ToastContainer } from '../../../components/Toast/Toast';
 import AdminSidebar from '../../../components/AdminSidebar/AdminSidebar';
@@ -55,7 +55,7 @@ function ServicesTable({ services, onEdit, onDelete }) {
                   <div className="field-cell">
                     <div className="field-thumb">
                       {s.image ? (
-                        <img src={s.image} alt={s.name} />
+                        <img src={getFullImageUrl(s.image)} alt={s.name} />
                       ) : (
                         <div className="placeholder-icon">
                           <span className="material-symbols-outlined">inventory_2</span>
@@ -445,15 +445,11 @@ function ServiceModal({ service, availableFields, onClose, onSuccess, showToast 
         formData.append('image', imageFile);
       }
 
-      const config = {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      };
-
       if (service) {
-        await axios.put(`${BASE_URL}/services/list/${service.id}/`, formData, config);
+        await axios.put(`${BASE_URL}/services/list/${service.id}/`, formData);
         showToast("Cập nhật thành công", "success");
       } else {
-        await axios.post(`${BASE_URL}/services/list/`, formData, config);
+        await axios.post(`${BASE_URL}/services/list/`, formData);
         showToast("Thêm thành công", "success");
       }
       broadcastSyncEvent("services_updated", { action: service ? "update" : "create" });

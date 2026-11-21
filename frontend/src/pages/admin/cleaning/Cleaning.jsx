@@ -9,7 +9,7 @@ import "../dashboard/dashboard.css";
 import "./Cleaning.css";
 import { LostFoundBookingPanel } from "../bookings/LostFoundPanel";
 import { CleaningStatsPanel, generateSeedCleaningHistory } from "./CleaningStatsPanel";
-import { createLostFoundItem, getLostFoundItems, getCleaningLogs, createCleaningLog, createMaintenanceIssue } from "../../../api/facilityApi";
+import { createLostFoundItem, getLostFoundItems, updateLostFoundItem, getCleaningLogs, createCleaningLog, createMaintenanceIssue } from "../../../api/facilityApi";
 
 function TopHeader({ searchQuery, onSearchChange, onRefresh }) {
   return (
@@ -917,13 +917,31 @@ export default function Cleaning() {
 
   // Cập nhật trạng thái đồ thất lạc (Chưa nhận / Đã trả)
   const handleToggleReturnLostItem = (id) => {
-    const updated = lostFoundItems.map((item) =>
-      item.id === id
-        ? { ...item, status: item.status === "returned" ? "pending" : "returned" }
-        : item
-    );
+    let nextStatus = "returned";
+    let nextReturnedAt = null;
+    const updated = lostFoundItems.map((item) => {
+      if (item.id === id) {
+        nextStatus = item.status === "returned" ? "pending" : "returned";
+        nextReturnedAt = nextStatus === "returned" ? new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) + " hôm nay" : null;
+        return {
+          ...item,
+          status: nextStatus,
+          returnedAt: nextReturnedAt,
+        };
+      }
+      return item;
+    });
     setLostFoundItems(updated);
     localStorage.setItem(LOST_KEY, JSON.stringify(updated));
+
+    // Cập nhật database backend facility
+    try {
+      updateLostFoundItem(id, {
+        status: nextStatus,
+        returned_at: nextReturnedAt,
+      }).catch(() => {});
+    } catch {}
+
     showToast("Đã cập nhật trạng thái đồ thất lạc", "success");
   };
 

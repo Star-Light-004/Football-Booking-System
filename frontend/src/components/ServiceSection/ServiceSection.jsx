@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getServices } from "../../api/servicesApi";
+import { getFullImageUrl } from "../../config";
 import "./ServiceSection.css";
 
 const ServiceSection = ({ fieldId, onServicesChange }) => {
@@ -79,7 +80,7 @@ const ServiceSection = ({ fieldId, onServicesChange }) => {
           <div key={service.id} className="ss-card">
             <div className="ss-image">
               {service.image ? (
-                <img src={service.image} alt={service.name} />
+                <img src={getFullImageUrl(service.image)} alt={service.name} />
               ) : (
                 <div className="ss-placeholder">
                    <span className="material-symbols-outlined">inventory_2</span>

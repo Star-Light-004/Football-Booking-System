@@ -30,6 +30,7 @@ import {
 import { getFields } from "../../../api/fieldsApi";
 import { getServices } from "../../../api/servicesApi";
 import { getUsers } from "../../../api/usersApi";
+import { getFullImageUrl } from "../../../config";
 import { useToast, ToastContainer } from "../../../components/Toast/Toast";
 import { broadcastSyncEvent, onSyncEvent } from "../../../utils/realtimeSync";
 import "../bookings/BookingModals.css";
@@ -1569,7 +1570,7 @@ const Tournaments = () => {
                               <div key={s.id} className={`adm-supply-card ${qty > 0 ? "has-qty" : ""} ${isOutOfStock ? "out-of-stock" : ""}`}>
                                 <div className="adm-supply-img-wrap">
                                   {s.image ? (
-                                    <img src={s.image} alt={s.name} className="adm-supply-img" />
+                                    <img src={getFullImageUrl(s.image)} alt={s.name} className="adm-supply-img" />
                                   ) : (
                                     <span className="material-symbols-outlined adm-supply-placeholder">
                                       {s.category === "Do uong" || s.name?.toLowerCase().includes("nước")
@@ -2327,7 +2328,7 @@ const Tournaments = () => {
                               <div key={s.id} className={`adm-supply-card ${qty > 0 ? "has-qty" : ""} ${isOutOfStock ? "out-of-stock" : ""}`}>
                                 <div className="adm-supply-img-wrap">
                                   {s.image ? (
-                                    <img src={s.image} alt={s.name} className="adm-supply-img" />
+                                    <img src={getFullImageUrl(s.image)} alt={s.name} className="adm-supply-img" />
                                   ) : (
                                     <span className="material-symbols-outlined adm-supply-placeholder">
                                       {s.category === "Do uong" || s.name?.toLowerCase().includes("nước")

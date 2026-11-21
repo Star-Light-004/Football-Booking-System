@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getFields } from '../../api/fieldsApi';
 import timeslotsApi from '../../api/timeslotsApi';
-import { SERVER_URL, BASE_URL } from '../../config';
+import { SERVER_URL, BASE_URL, getFullImageUrl } from '../../config';
 import './AdminScheduleOverview.css';
 
 const currentDate = () => new Date().toLocaleDateString('en-CA');
@@ -12,7 +12,7 @@ const statusMap = {
   Completed: "Hoàn thành",
   Checked_in: "Đã check-in"
 };
-const imageUrl = field => field.image_url || (field.image ? `${SERVER_URL}${field.image}` : '');
+const imageUrl = field => getFullImageUrl(field?.image_url || field?.image || field?.images?.[0]?.image);
 const hour = time => Number(String(time || '00:00').slice(0, 2));
 
 function Services({ bookingId }) {

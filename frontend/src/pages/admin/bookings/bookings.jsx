@@ -5,7 +5,7 @@ import { getFields } from "../../../api/fieldsApi";
 import { getUsers } from "../../../api/usersApi";
 import timeslotsApi from "../../../api/timeslotsApi";
 import notificationsApi from "../../../api/notificationsApi";
-import { BASE_URL, SERVER_URL } from "../../../config";
+import { BASE_URL, SERVER_URL, getFullImageUrl } from "../../../config";
 import AdminScheduleOverview from "../../../components/AdminScheduleOverview/AdminScheduleOverview";
 import { broadcastSyncEvent, onSyncEvent } from "../../../utils/realtimeSync";
 import './bookings.css';
@@ -553,7 +553,7 @@ const BookingServiceRowItems = ({ bookingId, hasNotes }) => {
       {services.map(s => (
         <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: '#ecfdf5', padding: '2px 6px', borderRadius: '4px', border: '1px solid #d1fae5' }}>
           {s.service_image && (
-            <img src={s.service_image} alt={s.service_name} style={{ width: '18px', height: '18px', objectFit: 'cover', borderRadius: '2px' }} />
+            <img src={getFullImageUrl(s.service_image)} alt={s.service_name} style={{ width: '18px', height: '18px', objectFit: 'cover', borderRadius: '2px' }} />
           )}
           <span style={{ fontSize: '11px', fontWeight: '600', color: '#059669', whiteSpace: 'nowrap' }}>
             {s.service_name}{s.shoe_size ? ` - sz${s.shoe_size}` : ''} x{s.quantity}
@@ -966,7 +966,7 @@ function BookingsTable({
 
 /* ── Helpers ── */
 const getUserDisplayName = (u) => u?.name || u?.full_name || u?.username || u?.email || 'Khách hàng';
-const getServiceImg = (img) => !img ? null : (String(img).startsWith('http') ? img : `${SERVER_URL}${img}`);
+const getServiceImg = (img) => !img ? null : getFullImageUrl(img);
 
 /* ── Modern Grid Service Selector ── */
 function ServiceSelector({ availableServices, selectedServices, setSelectedServices, showToast }) {
@@ -3759,19 +3759,31 @@ export default function Bookings() {
   };
 
   const handleToggleLostStatus = (id) => {
+    let nextStatus = "returned";
+    let nextReturnedAt = null;
     const updated = lostItems.map((item) => {
       if (item.id === id) {
-        const nextStatus = item.status === "returned" ? "pending" : "returned";
+        nextStatus = item.status === "returned" ? "pending" : "returned";
+        nextReturnedAt = nextStatus === "returned" ? new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) + " hôm nay" : null;
         return {
           ...item,
           status: nextStatus,
-          returnedAt: nextStatus === "returned" ? new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) + " hôm nay" : null,
+          returnedAt: nextReturnedAt,
         };
       }
       return item;
     });
     setLostItems(updated);
     localStorage.setItem(LOST_KEY, JSON.stringify(updated));
+
+    // Cập nhật database backend facility
+    try {
+      updateLostFoundItem(id, {
+        status: nextStatus,
+        returned_at: nextReturnedAt,
+      }).catch(() => {});
+    } catch {}
+
     broadcastSyncEvent("lost_item_status_changed", { id });
     toast.success("Đã cập nhật trạng thái đồ thất lạc!");
   };

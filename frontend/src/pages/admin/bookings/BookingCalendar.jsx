@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { getBookings } from '../../../api/bookingsApi';
 import { getFields } from '../../../api/fieldsApi';
 import timeslotsApi from '../../../api/timeslotsApi';
-import { SERVER_URL } from '../../../config';
+import { SERVER_URL, getFullImageUrl } from '../../../config';
 import AdminSidebar from '../../../components/AdminSidebar/AdminSidebar';
 import { onSyncEvent } from '../../../utils/realtimeSync';
 import './bookings.css';
@@ -21,7 +21,7 @@ const statusBadgeClass = (status) => ({
 })[String(status).toLowerCase()] || '';
 
 
-const imageUrl = (field) => field.image_url || (field.image ? `${SERVER_URL}${field.image}` : '');
+const imageUrl = (field) => getFullImageUrl(field?.image_url || field?.image || field?.images?.[0]?.image);
 const hour = (time) => Number(String(time || '00:00').slice(0, 2));
 
 function TimeAvailability({ bookings, timeslots }) {

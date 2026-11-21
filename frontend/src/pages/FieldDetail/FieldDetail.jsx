@@ -6,7 +6,7 @@ import { getCustomerBookingLimits } from "../../api/bookingsApi";
 import timeslotsApi from "../../api/timeslotsApi";
 import { validateVoucher, getMyVouchers } from "../../api/vouchersApi";
 import FieldMap from "../../components/FieldMap/FieldMap";
-import { BASE_URL, SERVER_URL } from "../../config";
+import { BASE_URL, SERVER_URL, getFullImageUrl } from "../../config";
 import { useToast, ToastContainer } from "../../components/Toast/Toast";
 import { onSyncEvent } from "../../utils/realtimeSync";
 import { isSlotExpired, getLocalDateString } from "../../utils/timeslotUtils";
@@ -177,9 +177,7 @@ const FieldDetail = () => {
   const [checkingEligibility, setCheckingEligibility] = useState(true);
 
   const resolveImgUrl = useCallback((urlOrPath) => {
-    if (!urlOrPath) return "";
-    if (urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://")) return urlOrPath;
-    return `${SERVER_URL}${urlOrPath}`;
+    return getFullImageUrl(urlOrPath);
   }, []);
 
   // ─── Fetch Field Detail ─────────────────────────────────────────────────
@@ -1055,7 +1053,7 @@ const FieldDetail = () => {
                     <div key={service.id} className={`service-item-card ${qty > 0 ? "selected" : ""}`}>
                       <div className="service-icon-box">
                         {service.image ? (
-                          <img src={service.image} alt={service.name} className="service-image-thumb" />
+                          <img src={getFullImageUrl(service.image)} alt={service.name} className="service-image-thumb" />
                         ) : (
                           <span className="material-symbols-outlined">{service.icon}</span>
                         )}
