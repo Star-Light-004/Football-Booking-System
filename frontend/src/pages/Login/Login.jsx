@@ -34,11 +34,16 @@ const Login = () => {
         password: formData.password
       });
       const userData = res.data.user;
+      const token = res.data.token || userData?.token;
+      if (token) {
+        localStorage.setItem("access_token", token);
+      }
       const ADMIN_ROLES = ["admin", "field_owner", "field_manager", "receptionist", "cashier", "cleaner", "service_staff", "maintenance"];
 
       if (ADMIN_ROLES.includes(userData.role)) {
         // ✅ Tài khoản quản trị: Lưu riêng vào "admin_user", KHÔNG ghi đè "user" của trang khách hàng
         localStorage.setItem("admin_user", JSON.stringify(userData));
+        if (token) localStorage.setItem("admin_access_token", token);
         navigate("/admin/dashboard");
       } else {
         // ✅ Khách hàng: Lưu vào "user" và kích hoạt cập nhật Navbar trang chủ

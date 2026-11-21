@@ -243,8 +243,13 @@ def social_auth(request):
             user.full_name = fullname
             user.save()
 
+    from utils.jwt_utils import generate_jwt_token
+    token = generate_jwt_token(user)
+
     return Response({
         "message": f"Đăng nhập thành công với {provider.capitalize()}",
+        "token": token,
+        "access_token": token,
         "user": {
             "id": str(user.id),
             "fullname": user.full_name,
@@ -253,6 +258,8 @@ def social_auth(request):
             "role": user.role,
             "status": user.status,
             "is_active": user.is_active,
+            "permissions": get_permissions_for_role(user.role),
+            "token": token,
         }
     })
 
@@ -282,8 +289,13 @@ def login(request):
     if not user.is_active:
         return Response({"error": "Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên."}, status=403)
 
+    from utils.jwt_utils import generate_jwt_token
+    token = generate_jwt_token(user)
+
     return Response({
         "message": "Đăng nhập thành công",
+        "token": token,
+        "access_token": token,
         "user": {
             "id":          str(user.id),
             "fullname":    user.full_name,
@@ -292,6 +304,7 @@ def login(request):
             "role":        user.role,
             "status":      user.status,
             "permissions": get_permissions_for_role(user.role),
+            "token":       token,
         }
     })
 

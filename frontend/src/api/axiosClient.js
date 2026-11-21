@@ -8,13 +8,24 @@ const axiosClient = axios.create({
     },
 });
 
-// Tự động gắn role của user hiện tại vào request headers để backend kiểm soát quyền
+// Tự động gắn JWT Token và role của user hiện tại vào request headers để backend kiểm soát quyền
 axiosClient.interceptors.request.use((config) => {
     try {
         const adminRaw = localStorage.getItem('admin_user');
         const userRaw = localStorage.getItem('user');
         const userObj = adminRaw ? JSON.parse(adminRaw) : (userRaw ? JSON.parse(userRaw) : null);
 
+        // 1. Gắn JWT Token chuẩn Authorization: Bearer <token>
+        const token =
+            userObj?.token ||
+            (adminRaw ? localStorage.getItem('admin_access_token') : null) ||
+            localStorage.getItem('access_token');
+
+        if (token) {
+            config.headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        // 2. Gắn kèm role & id để tương thích ngược 100%
         if (userObj?.role) {
             config.headers['X-User-Role'] = userObj.role;
         }
