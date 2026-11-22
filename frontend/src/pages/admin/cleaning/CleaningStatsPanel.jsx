@@ -1,7 +1,7 @@
 import React from "react";
 
 // Dữ liệu mẫu khởi tạo lịch sử dọn dẹp đa ngày (Hôm nay, Tuần này, Tháng này)
-export const generateSeedCleaningHistory = () => {
+export const generateSeedCleaningHistory = (fieldList = []) => {
   const todayStr = new Date().toLocaleDateString("en-CA");
   const now = new Date();
 
@@ -11,12 +11,38 @@ export const generateSeedCleaningHistory = () => {
     return target.toLocaleDateString("en-CA");
   };
 
+  const getFieldInfo = (idx) => {
+    if (fieldList && fieldList.length > 0) {
+      const f = fieldList[idx % fieldList.length];
+      return {
+        name: f.field_name,
+        type: f.field_type || "Sân cỏ nhân tạo",
+      };
+    }
+    const defaults = [
+      { name: "Sân bóng đá Duy Tân", type: "5 vs 5" },
+      { name: "Sân bóng đá Chuyên Việt", type: "5 vs 5" },
+      { name: "Sân Bóng An Phúc", type: "7 vs 7" },
+      { name: "Sân Bóng Paracel - Quang Nguyễn", type: "7 vs 7" },
+      { name: "Sân Bóng Trang Hoàng", type: "11 vs 11" },
+      { name: "Sân bóng đá Trưng Vương - BK8", type: "11 vs 11" },
+    ];
+    return defaults[idx % defaults.length];
+  };
+
+  const f0 = getFieldInfo(0);
+  const f1 = getFieldInfo(1);
+  const f2 = getFieldInfo(2);
+  const f3 = getFieldInfo(3);
+  const f4 = getFieldInfo(4);
+  const f5 = getFieldInfo(5);
+
   return [
     // ── HÔM NAY ──
     {
       id: "cl_seed_1",
-      fieldName: "Sân Liên Chiểu",
-      fieldType: "5 vs 5",
+      fieldName: f0.name,
+      fieldType: f0.type,
       date: todayStr,
       slotTime: "17:00 - 18:00",
       completedAt: "18:05",
@@ -29,8 +55,8 @@ export const generateSeedCleaningHistory = () => {
     },
     {
       id: "cl_seed_2",
-      fieldName: "Sân Hòa Xuân 1",
-      fieldType: "5 vs 5",
+      fieldName: f1.name,
+      fieldType: f1.type,
       date: todayStr,
       slotTime: "16:00 - 17:00",
       completedAt: "17:12",
@@ -43,8 +69,8 @@ export const generateSeedCleaningHistory = () => {
     },
     {
       id: "cl_seed_3",
-      fieldName: "Sân Cẩm Lệ",
-      fieldType: "7 vs 7",
+      fieldName: f2.name,
+      fieldType: f2.type,
       date: todayStr,
       slotTime: "15:30 - 16:30",
       completedAt: "16:40",
@@ -57,8 +83,8 @@ export const generateSeedCleaningHistory = () => {
     },
     {
       id: "cl_seed_4",
-      fieldName: "Sân Hải Châu",
-      fieldType: "7 vs 7",
+      fieldName: f3.name,
+      fieldType: f3.type,
       date: todayStr,
       slotTime: "14:00 - 15:00",
       completedAt: "15:08",
@@ -73,8 +99,8 @@ export const generateSeedCleaningHistory = () => {
     // ── TUẦN NÀY (Các ngày trước) ──
     {
       id: "cl_seed_5",
-      fieldName: "Sân Thanh Khê",
-      fieldType: "11 vs 11",
+      fieldName: f4.name,
+      fieldType: f4.type,
       date: getOffsetDateStr(1),
       slotTime: "19:00 - 20:30",
       completedAt: "20:45",
@@ -87,8 +113,8 @@ export const generateSeedCleaningHistory = () => {
     },
     {
       id: "cl_seed_6",
-      fieldName: "Sân Ngũ Hành Sơn",
-      fieldType: "11 vs 11",
+      fieldName: f5.name,
+      fieldType: f5.type,
       date: getOffsetDateStr(2),
       slotTime: "17:30 - 19:00",
       completedAt: "19:15",
@@ -101,8 +127,8 @@ export const generateSeedCleaningHistory = () => {
     },
     {
       id: "cl_seed_7",
-      fieldName: "Sân Liên Chiểu",
-      fieldType: "5 vs 5",
+      fieldName: f0.name,
+      fieldType: f0.type,
       date: getOffsetDateStr(2),
       slotTime: "20:00 - 21:00",
       completedAt: "21:10",
@@ -115,8 +141,8 @@ export const generateSeedCleaningHistory = () => {
     },
     {
       id: "cl_seed_8",
-      fieldName: "Sân Hòa Xuân 1",
-      fieldType: "5 vs 5",
+      fieldName: f1.name,
+      fieldType: f1.type,
       date: getOffsetDateStr(3),
       slotTime: "18:00 - 19:00",
       completedAt: "19:10",
@@ -129,8 +155,8 @@ export const generateSeedCleaningHistory = () => {
     },
     {
       id: "cl_seed_9",
-      fieldName: "Sân Cẩm Lệ",
-      fieldType: "7 vs 7",
+      fieldName: f2.name,
+      fieldType: f2.type,
       date: getOffsetDateStr(4),
       slotTime: "16:00 - 17:30",
       completedAt: "17:42",
@@ -143,8 +169,8 @@ export const generateSeedCleaningHistory = () => {
     },
     {
       id: "cl_seed_10",
-      fieldName: "Sân Hải Châu",
-      fieldType: "7 vs 7",
+      fieldName: f3.name,
+      fieldType: f3.type,
       date: getOffsetDateStr(5),
       slotTime: "19:30 - 21:00",
       completedAt: "21:15",
@@ -159,8 +185,8 @@ export const generateSeedCleaningHistory = () => {
     // ── THÁNG NÀY (Các ngày trước đó) ──
     {
       id: "cl_seed_11",
-      fieldName: "Sân Thanh Khê",
-      fieldType: "11 vs 11",
+      fieldName: f4.name,
+      fieldType: f4.type,
       date: getOffsetDateStr(8),
       slotTime: "18:00 - 19:30",
       completedAt: "19:40",
@@ -173,8 +199,8 @@ export const generateSeedCleaningHistory = () => {
     },
     {
       id: "cl_seed_12",
-      fieldName: "Sân Liên Chiểu",
-      fieldType: "5 vs 5",
+      fieldName: f0.name,
+      fieldType: f0.type,
       date: getOffsetDateStr(10),
       slotTime: "17:00 - 18:00",
       completedAt: "18:10",
@@ -187,8 +213,8 @@ export const generateSeedCleaningHistory = () => {
     },
     {
       id: "cl_seed_13",
-      fieldName: "Sân Cẩm Lệ",
-      fieldType: "7 vs 7",
+      fieldName: f2.name,
+      fieldType: f2.type,
       date: getOffsetDateStr(12),
       slotTime: "19:00 - 20:30",
       completedAt: "20:45",
@@ -201,8 +227,8 @@ export const generateSeedCleaningHistory = () => {
     },
     {
       id: "cl_seed_14",
-      fieldName: "Sân Hòa Xuân 1",
-      fieldType: "5 vs 5",
+      fieldName: f1.name,
+      fieldType: f1.type,
       date: getOffsetDateStr(15),
       slotTime: "16:00 - 17:00",
       completedAt: "17:15",
@@ -215,8 +241,8 @@ export const generateSeedCleaningHistory = () => {
     },
     {
       id: "cl_seed_15",
-      fieldName: "Sân Ngũ Hành Sơn",
-      fieldType: "11 vs 11",
+      fieldName: f5.name,
+      fieldType: f5.type,
       date: getOffsetDateStr(18),
       slotTime: "16:30 - 18:00",
       completedAt: "18:15",
@@ -232,6 +258,7 @@ export const generateSeedCleaningHistory = () => {
 
 export function CleaningStatsPanel({
   fields = [],
+  bookings = [],
   cleaningStatus = {},
   cleaningHistory = [],
   lostFoundItems = [],
@@ -326,6 +353,26 @@ export function CleaningStatsPanel({
     const curStatus = cleaningStatus[field.id] || cleaningStatus[field.field_name] || {};
     const isClean = !curStatus.status || curStatus.status === "clean";
 
+    // Kiểm tra xem sân có ca đang thi đấu ngay lúc này không
+    const currentMins = now.getHours() * 60 + now.getMinutes();
+    const isOngoingNow = bookings.some((b) => {
+      const matchName =
+        String(b.field || "").toLowerCase().trim() === String(field.field_name || "").toLowerCase().trim() ||
+        String(b.field_id || "") === String(field.id);
+      const isToday = String(b.date || b.booking_date || "").slice(0, 10) === todayStr;
+      const statusLower = String(b.status || "").toLowerCase();
+      if (!matchName || !isToday || statusLower === "cancelled" || statusLower === "completed") return false;
+
+      const timeParts = String(b.time || "").split("-");
+      if (timeParts.length < 2) return false;
+      const startMatch = timeParts[0].trim().match(/^(\d{1,2}):(\d{2})/);
+      const endMatch = timeParts[1].trim().match(/^(\d{1,2}):(\d{2})/);
+      if (!startMatch || !endMatch) return false;
+      const startMins = parseInt(startMatch[1], 10) * 60 + parseInt(startMatch[2], 10);
+      const endMins = parseInt(endMatch[1], 10) * 60 + parseInt(endMatch[2], 10);
+      return currentMins >= startMins && currentMins < endMins;
+    });
+
     return {
       field,
       total: fTotal,
@@ -333,6 +380,7 @@ export function CleaningStatsPanel({
       urgent: fUrgent,
       latest,
       isClean,
+      isOngoingNow,
       curStatus,
       percentage: totalCleaned > 0 ? Math.round((fTotal / totalCleaned) * 100) : 0,
     };
@@ -584,20 +632,25 @@ export function CleaningStatsPanel({
 
                     {/* Cột 6: Trạng thái hiện tại */}
                     <td className="text-right">
-                      {item.isClean ? (
-                        <span className="current-status-pill pill-clean">
-                          <span className="material-symbols-outlined">check_circle</span>
-                          Sạch sẽ
+                      {item.isOngoingNow ? (
+                        <span className="current-status-pill pill-ongoing" style={{ background: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe" }}>
+                          <span className="material-symbols-outlined">sports_soccer</span>
+                          Đang thi đấu
                         </span>
-                      ) : item.curStatus.status === "in_progress" ? (
+                      ) : !item.isClean && item.curStatus.status === "in_progress" ? (
                         <span className="current-status-pill pill-progress">
                           <span className="material-symbols-outlined">hourglass_top</span>
                           Đang dọn
                         </span>
-                      ) : (
+                      ) : !item.isClean || item.curStatus.status === "needs_clean" ? (
                         <span className="current-status-pill pill-urgent">
                           <span className="material-symbols-outlined">priority_high</span>
                           Cần dọn
+                        </span>
+                      ) : (
+                        <span className="current-status-pill pill-clean">
+                          <span className="material-symbols-outlined">check_circle</span>
+                          Sạch sẽ
                         </span>
                       )}
                     </td>

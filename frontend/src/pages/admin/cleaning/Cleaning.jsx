@@ -117,7 +117,21 @@ export default function Cleaning() {
       const savedLost = localStorage.getItem(LOST_KEY);
       if (savedLost) setLostFoundItems(JSON.parse(savedLost));
       const savedHistory = localStorage.getItem(HISTORY_KEY);
-      if (savedHistory) setCleaningHistory(JSON.parse(savedHistory));
+      if (savedHistory) {
+        try {
+          const parsed = JSON.parse(savedHistory);
+          const hasObsolete = parsed.some(h => h.fieldName && (h.fieldName.includes("Liên Chiểu") || h.fieldName.includes("Cẩm Lệ") || h.fieldName.includes("Hòa Xuân")));
+          if (hasObsolete) {
+            const seed = generateSeedCleaningHistory(fields);
+            setCleaningHistory(seed);
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(seed));
+          } else {
+            setCleaningHistory(parsed);
+          }
+        } catch {
+          setCleaningHistory(JSON.parse(savedHistory));
+        }
+      }
       if (!silent) {
         showToast("Đã làm mới dữ liệu vệ sinh", "info");
       }
@@ -326,15 +340,40 @@ export default function Cleaning() {
           setCleaningLogs(mappedLogs);
           localStorage.setItem(LOGS_KEY, JSON.stringify(mappedLogs));
         } else {
+          const f0 = fieldList[0]?.field_name || "Sân bóng đá Duy Tân";
+          const f1 = fieldList[1]?.field_name || "Sân bóng đá Chuyên Việt";
+          const f2 = fieldList[2]?.field_name || "Sân Bóng An Phúc";
           const savedLogs = localStorage.getItem(LOGS_KEY);
           if (savedLogs) {
-            setCleaningLogs(JSON.parse(savedLogs));
+            try {
+              const parsed = JSON.parse(savedLogs);
+              const hasObsolete = parsed.some(l => l.fieldName && (l.fieldName.includes("Liên Chiểu") || l.fieldName.includes("Cẩm Lệ") || l.fieldName.includes("Hòa Xuân")));
+              if (hasObsolete) {
+                const freshLogs = [
+                  { id: 1, fieldName: f0, time: "16:45", statusText: "Đã dọn xong sau ca", cleaner: "Nguyễn Văn Hùng" },
+                  { id: 2, fieldName: f1, time: "15:20", statusText: "Đã vệ sinh mặt sân & nhặt bóng", cleaner: "Trần Thị Mai" },
+                  { id: 3, fieldName: f2, time: "14:00", statusText: "Dọn dẹp tổng thể", cleaner: "Lê Quốc Bảo" },
+                ];
+                setCleaningLogs(freshLogs);
+                localStorage.setItem(LOGS_KEY, JSON.stringify(freshLogs));
+              } else {
+                setCleaningLogs(parsed);
+              }
+            } catch {
+              setCleaningLogs([
+                { id: 1, fieldName: f0, time: "16:45", statusText: "Đã dọn xong sau ca", cleaner: "Nguyễn Văn Hùng" },
+                { id: 2, fieldName: f1, time: "15:20", statusText: "Đã vệ sinh mặt sân & nhặt bóng", cleaner: "Trần Thị Mai" },
+                { id: 3, fieldName: f2, time: "14:00", statusText: "Dọn dẹp tổng thể", cleaner: "Lê Quốc Bảo" },
+              ]);
+            }
           } else {
-            setCleaningLogs([
-              { id: 1, fieldName: "Sân Liên Chiểu", time: "16:45", statusText: "Đã dọn xong sau ca", cleaner: "Nhân viên vệ sinh" },
-              { id: 2, fieldName: "Sân Cẩm Lệ", time: "15:20", statusText: "Đã vệ sinh mặt sân & nhặt bóng", cleaner: "Nhân viên vệ sinh" },
-              { id: 3, fieldName: "Sân Hòa Xuân 1", time: "14:00", statusText: "Dọn dẹp tổng thể", cleaner: "Nhân viên vệ sinh" },
-            ]);
+            const freshLogs = [
+              { id: 1, fieldName: f0, time: "16:45", statusText: "Đã dọn xong sau ca", cleaner: "Nguyễn Văn Hùng" },
+              { id: 2, fieldName: f1, time: "15:20", statusText: "Đã vệ sinh mặt sân & nhặt bóng", cleaner: "Trần Thị Mai" },
+              { id: 3, fieldName: f2, time: "14:00", statusText: "Dọn dẹp tổng thể", cleaner: "Lê Quốc Bảo" },
+            ];
+            setCleaningLogs(freshLogs);
+            localStorage.setItem(LOGS_KEY, JSON.stringify(freshLogs));
           }
         }
 
@@ -375,14 +414,22 @@ export default function Cleaning() {
         const savedHistory = localStorage.getItem(HISTORY_KEY);
         if (savedHistory) {
           try {
-            setCleaningHistory(JSON.parse(savedHistory));
+            const parsed = JSON.parse(savedHistory);
+            const hasObsolete = parsed.some(h => h.fieldName && (h.fieldName.includes("Liên Chiểu") || h.fieldName.includes("Cẩm Lệ") || h.fieldName.includes("Hòa Xuân")));
+            if (hasObsolete || !parsed.length) {
+              const seed = generateSeedCleaningHistory(fieldList);
+              setCleaningHistory(seed);
+              localStorage.setItem(HISTORY_KEY, JSON.stringify(seed));
+            } else {
+              setCleaningHistory(parsed);
+            }
           } catch {
-            const seed = generateSeedCleaningHistory();
+            const seed = generateSeedCleaningHistory(fieldList);
             setCleaningHistory(seed);
             localStorage.setItem(HISTORY_KEY, JSON.stringify(seed));
           }
         } else {
-          const seed = generateSeedCleaningHistory();
+          const seed = generateSeedCleaningHistory(fieldList);
           setCleaningHistory(seed);
           localStorage.setItem(HISTORY_KEY, JSON.stringify(seed));
         }
@@ -536,17 +583,19 @@ export default function Cleaning() {
       };
     });
 
+    // 1. Ca đang diễn ra ngay lúc này
+    const ongoingBooking = parsedBookings.find((b) => b.isOngoing) || null;
+
+    // 2. Các ca đã kết thúc hôm nay
     const endedBookings = parsedBookings.filter((b) => b.isEnded);
     const recentEndedBooking = endedBookings.length > 0 ? endedBookings[endedBookings.length - 1] : null;
     const hasEndedBookingToday = endedBookings.length > 0;
 
-    // Các ca đá hôm nay chưa kết thúc giờ đá và không bị hủy
-    const activeBookings = parsedBookings.filter(
-      (b) => !b.isEnded && String(b.status || "").toLowerCase() !== "cancelled"
+    // 3. Ca tiếp theo trong tương lai hôm nay (chưa bắt đầu)
+    const futureBookings = parsedBookings.filter(
+      (b) => !b.isEnded && !b.isOngoing && currentMins < b.startMins && String(b.status || "").toLowerCase() !== "cancelled"
     );
-
-    // Ca tiếp theo gần nhất theo thời gian hôm nay
-    const nextBooking = activeBookings.length > 0 ? activeBookings[0] : null;
+    const nextBooking = futureBookings.length > 0 ? futureBookings[0] : null;
     const isNextBookingCleaned = isFieldClean;
     const hasActiveUncleanedBooking = !isFieldClean && Boolean(nextBooking);
 
@@ -558,28 +607,33 @@ export default function Cleaning() {
     ) : true;
     const needsCleanAfterMatch = fieldCleaningStatus.status === "needs_clean" || (recentEndedBooking && !isEndedBookingCleaned);
 
-    let urgencyLevel = "free"; // "urgent" | "ready" | "upcoming" | "later" | "free"
-    let statusText = "Đã dọn sạch sẽ - Sẵn sàng đón khách";
+    let urgencyLevel = "free"; // "urgent" | "ongoing" | "ready" | "free"
+    let statusText = "Đã dọn sạch sẽ — Sẵn sàng đón khách";
 
     if (needsCleanAfterMatch) {
       urgencyLevel = "urgent";
       statusText = fieldCleaningStatus.cleaningReason === "urgent"
         ? "Cần dọn gấp (Quản lý đặt sân báo hoàn thành)"
-        : `Ca ${recentEndedBooking?.time || ""} kết thúc - Cần dọn gấp!`;
+        : `Ca ${recentEndedBooking?.time || ""} vừa kết thúc — Cần dọn dẹp!`;
+    } else if (ongoingBooking) {
+      urgencyLevel = "ongoing";
+      statusText = `Đang diễn ra ca: ${ongoingBooking.time} • Khách: ${ongoingBooking.name}`;
     } else if (nextBooking) {
       urgencyLevel = "ready";
-      statusText = `Đã dọn sẵn sàng đón ca ${nextBooking.time}`;
+      statusText = `Sẵn sàng đón ca: ${nextBooking.time} • Khách: ${nextBooking.name}`;
     } else {
       urgencyLevel = "ready";
-      statusText = "Đã dọn sạch sẽ - Sẵn sàng đón khách";
+      statusText = "Đã dọn sạch sẽ — Sẵn sàng đón khách";
     }
 
     // Nút Đã dọn xong: CHỈ hiện khi ca đá hoàn thành cần dọn (needsCleanAfterMatch) hoặc đang dọn (in_progress).
-    // Khi đang thời gian chờ tới ca tiếp theo (sân sạch, chờ khách vào) -> BỎ NÚT ĐÃ DỌN XONG!
     const showDoneButton = needsCleanAfterMatch || fieldCleaningStatus.status === "in_progress";
 
     return {
+      ongoingBooking,
+      isOngoing: Boolean(ongoingBooking),
       nextBooking,
+      futureBookings,
       isNextBookingCleaned,
       hasActiveUncleanedBooking,
       recentEndedBooking,
@@ -1018,39 +1072,39 @@ export default function Cleaning() {
             </div>
           </div>
 
-          {/* Thẻ KPI Thống kê Vệ sinh */}
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-card-header">
-                <div className="stat-icon green">
-                  <span className="material-symbols-outlined">check_circle</span>
-                </div>
-                <span className="stat-badge badge-green">Sẵn sàng đón khách</span>
+          {/* 3 Ô chỉ số tổng quan vệ sinh sân (Đồng bộ kiểu dáng với trang Bảo trì sân) */}
+          <div className="maintenance-kpi-grid">
+            <div className="kpi-stat-box box-green">
+              <div className="kpi-stat-info">
+                <span className="kpi-stat-label">Sân sạch sẽ</span>
+                <span className="kpi-stat-number">{cleanCount} / {fields.length} sân</span>
+                <span className="kpi-stat-sub">Sẵn sàng đón khách thi đấu</span>
               </div>
-              <p className="stat-label">Sân sạch sẽ</p>
-              <p className="stat-value">{cleanCount} <span style={{ fontSize: "0.9rem", color: "#64748b" }}>/ {fields.length} sân</span></p>
+              <div className="kpi-stat-icon-wrap bg-green">
+                <span className="material-symbols-outlined">check_circle</span>
+              </div>
             </div>
 
-            <div className="stat-card">
-              <div className="stat-card-header">
-                <div className="stat-icon green">
-                  <span className="material-symbols-outlined">task_alt</span>
-                </div>
-                <span className="stat-badge badge-green">Đã hoàn thành</span>
+            <div className="kpi-stat-box box-blue">
+              <div className="kpi-stat-info">
+                <span className="kpi-stat-label">Ca đã dọn trong ngày</span>
+                <span className="kpi-stat-number">{cleanedMatchesTodayCount} ca</span>
+                <span className="kpi-stat-sub">Đã hoàn thành vệ sinh</span>
               </div>
-              <p className="stat-label">Ca đã dọn thành công trong ngày</p>
-              <p className="stat-value">{cleanedMatchesTodayCount} <span style={{ fontSize: "0.9rem", color: "#64748b" }}>ca</span></p>
+              <div className="kpi-stat-icon-wrap bg-blue">
+                <span className="material-symbols-outlined">task_alt</span>
+              </div>
             </div>
 
-            <div className="stat-card">
-              <div className="stat-card-header">
-                <div className="stat-icon red">
-                  <span className="material-symbols-outlined">priority_high</span>
-                </div>
-                <span className="stat-badge badge-red">Cần dọn ngay</span>
+            <div className="kpi-stat-box box-red">
+              <div className="kpi-stat-info">
+                <span className="kpi-stat-label">Chờ dọn sau ca</span>
+                <span className="kpi-stat-number">{needsCleanCount} sân</span>
+                <span className="kpi-stat-sub">Cần nhân viên dọn dẹp ngay</span>
               </div>
-              <p className="stat-label">Chờ dọn sau ca</p>
-              <p className="stat-value">{needsCleanCount} <span style={{ fontSize: "0.9rem", color: "#64748b" }}>sân</span></p>
+              <div className="kpi-stat-icon-wrap bg-red">
+                <span className="material-symbols-outlined">priority_high</span>
+              </div>
             </div>
           </div>
 
@@ -1099,6 +1153,7 @@ export default function Cleaning() {
           {activeTab === "stats" ? (
             <CleaningStatsPanel
               fields={fields}
+              bookings={bookings}
               cleaningStatus={cleaningStatus}
               cleaningHistory={cleaningHistory}
               lostFoundItems={lostFoundItems}
@@ -1168,163 +1223,151 @@ export default function Cleaning() {
                     const showLostButtonOnPitch = !showDoneButton && hasCleanedSession;
 
                     return (
-                      <div key={field.id} className={`cleaning-item-card status-${isFieldNeedClean ? "needs_clean" : current.status}`}>
-                        {/* Header của thẻ sân - đồng bộ với giao diện thẻ sân Bảo trì */}
-                        <div className="cleaning-item-header">
-                          <div style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
+                      <div key={field.id} className={`cleaning-item-card status-${isFieldNeedClean ? "needs_clean" : schedule.isOngoing ? "ongoing" : current.status}`}>
+                        {/* Ô 1: Header của thẻ sân - Đồng bộ kiểu dáng với trang Bảo trì sân */}
+                        <div className="pitch-card-top">
+                          <div className="pitch-card-title-group">
                             <span
-                              className="material-symbols-outlined"
+                              className="material-symbols-outlined pitch-card-icon"
                               style={{
-                                fontSize: "1.25rem",
-                                color: "#059669",
-                                background: "#ecfdf5",
-                                padding: "0.45rem",
-                                borderRadius: "0.6rem",
-                                border: "1px solid #a7f3d0",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                justifyContent: "center",
+                                color: isFieldNeedClean ? "#ef4444" : isInProgress ? "#d97706" : schedule.isOngoing ? "#2563eb" : "#059669",
+                                background: isFieldNeedClean ? "#fef2f2" : isInProgress ? "#fffbeb" : schedule.isOngoing ? "#eff6ff" : "#ecfdf5",
                               }}
                             >
-                              sports_soccer
+                              {isFieldNeedClean ? "warning" : isInProgress ? "cleaning_services" : schedule.isOngoing ? "sports_soccer" : "sports_soccer"}
                             </span>
-                            <div>
-                              <h4 className="cleaning-item-name">{field.field_name}</h4>
-                              <span className="cleaning-item-type">{field.field_type || "Sân cỏ nhân tạo"}</span>
+                            <div className="pitch-card-title-wrap">
+                              <h4 className="pitch-card-name">{field.field_name}</h4>
+                              <span className="pitch-card-sub">{field.field_type || "Sân cỏ nhân tạo"}</span>
                             </div>
                           </div>
                           <span
-                            className={`cleaning-status-badge ${isFieldNeedClean ? "badge-needs_clean" : isClean ? "badge-clean" : "badge-in_progress"}`}
-                            style={isFieldNeedClean ? { background: "#fee2e2", color: "#dc2626", border: "1px solid #fca5a5", fontWeight: 700 } : {}}
+                            className={`cleaning-status-badge ${
+                              isFieldNeedClean
+                                ? "badge-needs_clean"
+                                : isInProgress
+                                ? "badge-in_progress"
+                                : schedule.isOngoing
+                                ? "badge-ongoing"
+                                : "badge-clean"
+                            }`}
                           >
-                            {isFieldNeedClean ? "Cần dọn gấp" : isInProgress ? "Đang dọn" : "Sạch sẽ"}
+                            {isFieldNeedClean
+                              ? "Cần dọn dẹp"
+                              : isInProgress
+                              ? "Đang dọn"
+                              : schedule.isOngoing
+                              ? "Đang thi đấu"
+                              : "Sạch sẽ"}
                           </span>
                         </div>
 
-                        {/* Khối Thông tin ca tiếp theo hoặc Trạng thái đã dọn sạch sẽ */}
-                        {isFieldNeedClean ? (
-                          <div
-                            className="cleaning-countdown-banner urgency-urgent"
-                            style={{
-                              background: "#fff1f2",
-                              border: "1px solid #fecdd3",
-                              borderRadius: "8px",
-                              padding: "0.65rem 0.85rem",
-                            }}
+                        {/* Ô 2: Khối Tình trạng ca đá & Vệ sinh riêng biệt (Đúng giờ thực tế hiện tại) */}
+                        <div className={`cleaning-facility-box ${isFieldNeedClean ? "box-needs-clean" : schedule.isOngoing ? "box-ongoing" : isInProgress ? "box-in-progress" : "box-clean"}`}>
+                          {isFieldNeedClean ? (
+                            <>
+                              <div className="facility-box-label label-urgent">
+                                <span className="material-symbols-outlined">warning</span>
+                                <span>Cần vệ sinh sau ca đá:</span>
+                              </div>
+                              <div className="facility-box-value value-urgent">
+                                <span>{schedule.recentEndedBooking?.time ? `Ca ${schedule.recentEndedBooking.time}` : "Ca vừa kết thúc"} • Cần dọn rác &amp; kiểm tra mặt sân</span>
+                              </div>
+                            </>
+                          ) : isInProgress ? (
+                            <>
+                              <div className="facility-box-label label-warning">
+                                <span className="material-symbols-outlined">cleaning_services</span>
+                                <span>Nhân viên đang dọn dẹp:</span>
+                              </div>
+                              <div className="facility-box-value value-warning">
+                                <span>Đang tiến hành dọn dẹp ({durationCurrent} phút)</span>
+                              </div>
+                            </>
+                          ) : schedule.isOngoing ? (
+                            <>
+                              <div className="facility-box-label label-ongoing">
+                                <span className="material-symbols-outlined">sports_soccer</span>
+                                <span>Trận đấu đang diễn ra:</span>
+                                <span className="tag-ongoing-countdown">Còn {schedule.ongoingBooking.remainingOngoingMins}p</span>
+                              </div>
+                              <div className="facility-box-value value-ongoing">
+                                <span>Ca {schedule.ongoingBooking.time} • Khách: <strong>{schedule.ongoingBooking.name}</strong></span>
+                              </div>
+                            </>
+                          ) : schedule.nextBooking ? (
+                            <>
+                              <div className="facility-box-label label-upcoming">
+                                <span className="material-symbols-outlined">schedule</span>
+                                <span>Ca thi đấu tiếp theo:</span>
+                                <span className="tag-upcoming-countdown">Sau {schedule.nextBooking.minutesLeft}p</span>
+                              </div>
+                              <div className="facility-box-value value-upcoming">
+                                <span>Ca {schedule.nextBooking.time} • Khách: <strong>{schedule.nextBooking.name}</strong></span>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="facility-box-label label-good">
+                                <span className="material-symbols-outlined">verified</span>
+                                <span>Tình trạng sân:</span>
+                              </div>
+                              <div className="facility-box-value value-good">
+                                <span>Đạt chuẩn sạch sẽ — Sẵn sàng đón khách</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Ô 3: Thanh công cụ các nút bấm thao tác riêng biệt */}
+                        <div className="pitch-actions-toolbar">
+                          {/* Nút 1: Xem chi tiết */}
+                          <button
+                            type="button"
+                            className="btn-pitch-action btn-pitch-detail"
+                            title="Xem chi tiết lịch thi đấu, checklist và thông tin sân"
+                            onClick={() => openDetailModal(field)}
                           >
-                            <div style={{ display: "flex", alignItems: "flex-start", gap: "0.65rem" }}>
-                              <span
-                                className="material-symbols-outlined"
-                                style={{ color: "#dc2626", fontSize: "1.35rem", marginTop: "2px" }}
-                              >
-                                warning
-                              </span>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem", flexWrap: "wrap", marginBottom: "4px" }}>
-                                  <strong style={{ color: "#991b1b", fontSize: "0.92rem" }}>
-                                    {schedule.recentEndedBooking?.time || current.completedMatch?.time
-                                      ? `Ca ${schedule.recentEndedBooking?.time || current.completedMatch?.time} — Báo dọn gấp!`
-                                      : "Báo dọn vệ sinh khẩn cấp!"}
-                                  </strong>
-                                  <span
-                                    style={{
-                                      fontSize: "0.75rem",
-                                      color: "#991b1b",
-                                      background: "#fee2e2",
-                                      padding: "2px 7px",
-                                      borderRadius: "6px",
-                                      fontWeight: 600,
-                                    }}
-                                  >
-                                    Giờ báo: {current.reportedTime || current.start_time || (schedule.recentEndedBooking?.end_time) || "Vừa xong"}
-                                  </span>
-                                </div>
-                                <div style={{ fontSize: "0.82rem", color: "#475569", marginBottom: "4px" }}>
-                                  Người báo: <strong style={{ color: "#1e293b" }}>{current.reportedBy || current.cleanerName || "Quản lý đặt sân"}</strong>
-                                  {(schedule.recentEndedBooking?.name || current.completedMatch?.name) ? (
-                                    <span> • Khách: <strong>{schedule.recentEndedBooking?.name || current.completedMatch?.name}</strong></span>
-                                  ) : null}
-                                </div>
-                                <div style={{ fontSize: "0.8rem", color: "#b91c1c", background: "#fef2f2", padding: "5px 9px", borderRadius: "6px", border: "1px dashed #fca5a5" }}>
-                                  Tình trạng: <strong>{current.notes || current.status_text || current.completedMatch?.reason || "Cần vệ sinh mặt sân & thu gom rác"}</strong>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ) : schedule.nextBooking ? (
-                          <div className="cleaning-countdown-banner urgency-ready clean-ready-single-banner">
-                            <div className="clean-ready-banner-inner" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", flexWrap: "wrap", gap: "0.5rem" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                <span className="material-symbols-outlined clean-ready-icon" style={{ color: "#16a34a" }}>check_circle</span>
-                                <span className="clean-ready-text">
-                                  Chờ ca tới: <strong>{schedule.nextBooking.time}</strong>
-                                  {schedule.nextBooking.name ? ` • Khách: ${schedule.nextBooking.name}` : ""}
-                                </span>
-                              </div>
-                              <span style={{ fontSize: "0.75rem", background: "#dcfce7", color: "#15803d", padding: "2px 8px", borderRadius: "10px", fontWeight: 600 }}>
-                                {schedule.nextBooking.minutesLeft > 0 ? `Còn ${schedule.nextBooking.minutesLeft}p` : "Sẵn sàng đón khách"}
-                              </span>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="cleaning-countdown-banner urgency-ready clean-ready-single-banner">
-                            <div className="clean-ready-banner-inner">
-                              <span className="material-symbols-outlined clean-ready-icon" style={{ color: "#16a34a" }}>check_circle</span>
-                              <span className="clean-ready-text">Đã dọn sạch sẽ — Sẵn sàng đón khách</span>
-                            </div>
-                          </div>
-                        )}
+                            <span className="material-symbols-outlined">visibility</span>
+                            <span>Xem chi tiết</span>
+                          </button>
 
-                        {/* Footer & Actions: Tinh gọn, 3 nút nằm trên 1 hàng */}
-                        <div className="cleaning-item-footer" style={{ borderTop: "1px dashed #e2e8f0", paddingTop: "0.65rem", marginTop: "0.5rem" }}>
-                          <div className="pitch-actions-toolbar" style={{ display: "flex", alignItems: "center", gap: "0.35rem", flexWrap: "nowrap", width: "100%" }}>
-                            {/* Nút 1: Xem chi tiết */}
+                          {/* Nút 2: Đã dọn xong (khi cần dọn dẹp) */}
+                          {showDoneButton && (
                             <button
                               type="button"
-                              className="btn-pitch-action btn-pitch-detail"
-                              title="Xem chi tiết lịch thi đấu, checklist và thông tin sân"
-                              onClick={() => openDetailModal(field)}
+                              className="btn-pitch-action btn-pitch-done"
+                              onClick={() => handleUpdateStatus(field.id, field.field_name, "clean")}
+                              title="Xác nhận đã dọn dẹp xong sân bóng"
                             >
-                              <span className="material-symbols-outlined">visibility</span>
-                              <span>Xem chi tiết</span>
+                              <span className="material-symbols-outlined">check_circle</span>
+                              <span>Đã dọn xong</span>
                             </button>
+                          )}
 
-                            {/* Nút 2: Đã dọn xong (khi cần dọn) HOẶC Đồ quên (khi đã dọn xong) */}
-                            {showDoneButton && (
-                              <button
-                                type="button"
-                                className="btn-pitch-action btn-pitch-done"
-                                onClick={() => handleUpdateStatus(field.id, field.field_name, "clean")}
-                                title="Bấm khi đã dọn dẹp xong sân bóng"
-                              >
-                                <span className="material-symbols-outlined">check_circle</span>
-                                <span>Đã dọn xong</span>
-                              </button>
-                            )}
-
-                            {showLostButtonOnPitch && (
-                              <button
-                                type="button"
-                                className="btn-pitch-action btn-pitch-lost"
-                                title="Ghi nhận đồ đạc khách để quên sau ca đá trên sân này"
-                                onClick={() => openLostModal(field)}
-                              >
-                                <span className="material-symbols-outlined">luggage</span>
-                                <span>Đồ quên</span>
-                              </button>
-                            )}
-
-                            {/* Nút 3: Báo hỏng sân */}
+                          {/* Nút 3: Đồ quên */}
+                          {showLostButtonOnPitch && (
                             <button
                               type="button"
-                              className="btn-pitch-action btn-pitch-issue"
-                              title="Báo hư hỏng thiết bị, cơ sở vật chất sân"
-                              onClick={() => openReportModal(field)}
+                              className="btn-pitch-action btn-pitch-lost"
+                              title="Ghi nhận đồ đạc khách để quên sau ca đá"
+                              onClick={() => openLostModal(field)}
                             >
-                              <span className="material-symbols-outlined">handyman</span>
-                              <span>Báo hỏng</span>
+                              <span className="material-symbols-outlined">luggage</span>
+                              <span>Đồ quên</span>
                             </button>
-                          </div>
+                          )}
+
+                          {/* Nút 4: Báo hỏng sân sang kỹ thuật */}
+                          <button
+                            type="button"
+                            className="btn-pitch-action btn-pitch-issue"
+                            title="Báo cáo hỏng hóc cơ sở vật chất sân cho Kỹ thuật"
+                            onClick={() => openReportModal(field)}
+                          >
+                            <span className="material-symbols-outlined">handyman</span>
+                            <span>Báo hỏng</span>
+                          </button>
                         </div>
                       </div>
                     );

@@ -601,12 +601,12 @@ function BookingsTable({
           <thead>
             <tr>
               <th style={{ width: "9%" }}>Mã đơn</th>
-              <th style={{ width: "18%" }}>Khách hàng</th>
-              <th style={{ width: "12%" }}>Sân bóng</th>
+              <th style={{ width: "17%" }}>Khách hàng</th>
+              <th style={{ width: "14%" }}>Sân bóng</th>
               <th style={{ width: "13%" }}>Thời gian</th>
-              <th style={{ width: "12%" }}>Dịch vụ &amp; Ghi chú</th>
-              <th className="right" style={{ width: "14%" }}>Tổng tiền</th>
-              <th className="center" style={{ width: "11%" }}>Trạng thái</th>
+              <th style={{ width: "11%" }}>Dịch vụ &amp; Ghi chú</th>
+              <th className="right" style={{ width: "13%" }}>Tổng tiền</th>
+              <th className="center" style={{ width: "12%" }}>Trạng thái</th>
               <th className="right" style={{ width: "11%" }}>Thao tác</th>
             </tr>
           </thead>
@@ -674,7 +674,17 @@ function BookingsTable({
 
                   {/* Sân */}
                   <td>
-                    <span className="field-name" style={{ fontWeight: 600, color: "#1e293b" }}>
+                    <span
+                      className="field-name"
+                      style={{
+                        fontWeight: 600,
+                        color: "#1e293b",
+                        display: "block",
+                        wordBreak: "break-word",
+                        whiteSpace: "normal",
+                        lineHeight: 1.35,
+                      }}
+                    >
                       {b.field}
                     </span>
                   </td>

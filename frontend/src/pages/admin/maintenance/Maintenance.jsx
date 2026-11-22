@@ -69,6 +69,80 @@ const formatDateTime = (val) => {
   }
 };
 
+// Phân tích chi tiết mô tả sự cố để hiển thị thông tin rõ ràng, không bị dồn dính:
+// 1. Khung giờ ca thi đấu (nếu có)
+// 2. Phân loại lỗi cụ thể (trong ngoặc nếu có)
+// 3. Ghi chú hư hỏng thực tế (tách xuống dòng riêng)
+const parseIssueDescription = (item) => {
+  let timeShift = item.bookingTime || null;
+  let subCategory = null;
+  let note = "";
+
+  let rawDesc = String(item.description || item.issueDetail || "").trim();
+
+  // 1. Tách khung giờ dạng "[Ca 18:00 - 19:00]"
+  const caMatch = rawDesc.match(/\[Ca\s+([^\]]+)\]/i);
+  if (caMatch) {
+    if (!timeShift) {
+      timeShift = caMatch[1].trim();
+    }
+    rawDesc = rawDesc.replace(/\[Ca\s+[^\]]+\]\s*/i, "").trim();
+  }
+
+  // 2. Nếu có dấu ":" ngăn cách giữa tên hạng mục/chi tiết lỗi và ghi chú thực tế
+  if (rawDesc.includes(":")) {
+    const colonIdx = rawDesc.indexOf(":");
+    const prefix = rawDesc.substring(0, colonIdx).trim();
+    const rest = rawDesc.substring(colonIdx + 1).trim();
+
+    // Tìm chi tiết lỗi trong ngoặc đơn ở phần prefix, ví dụ: "(Rách lưới chắn, xô lệch rào)"
+    const parenMatch = prefix.match(/\(([^)]+)\)/);
+    if (parenMatch) {
+      subCategory = parenMatch[1].trim();
+    }
+
+    note = rest;
+  } else {
+    // Không có dấu ":"
+    const parenMatch = rawDesc.match(/\(([^)]+)\)/);
+    if (parenMatch) {
+      subCategory = parenMatch[1].trim();
+      note = rawDesc.replace(/\([^)]+\)/, "").trim();
+    } else {
+      note = rawDesc;
+    }
+  }
+
+  // Nếu note trùng với category thì bỏ qua
+  const cat = String(item.category || "").trim();
+  if (cat && note.toLowerCase() === cat.toLowerCase()) {
+    note = "";
+  }
+
+  return {
+    timeShift,
+    subCategory,
+    note: note || (subCategory ? "" : "Cần kiểm tra kỹ thuật"),
+  };
+};
+
+// Hiển thị đầy đủ tất cả các mức độ ưu tiên (Khẩn cấp, Cao, Bình thường, Thấp)
+const renderPriorityBadge = (priority) => {
+  const p = String(priority || "Bình thường").trim();
+  const pLower = p.toLowerCase();
+
+  if (pLower.includes("khẩn cấp")) {
+    return <span className="priority-badge priority-urgent">Khẩn cấp</span>;
+  }
+  if (pLower.includes("cao")) {
+    return <span className="priority-badge priority-high">Cao</span>;
+  }
+  if (pLower.includes("thấp")) {
+    return <span className="priority-badge priority-low">Thấp</span>;
+  }
+  return <span className="priority-badge priority-normal">Bình thường</span>;
+};
+
 function TopHeader({ searchQuery, onSearchChange, onAddIssue, onRefresh, loading }) {
   return (
     <header className="top-header">
@@ -128,7 +202,6 @@ export default function Maintenance() {
     category: "Đèn chiếu sáng cao áp",
     priority: "Khẩn cấp",
     description: "",
-    estimatedCost: "",
     reportedBy: "Bộ phận kỹ thuật",
   });
 
@@ -255,15 +328,6 @@ export default function Maintenance() {
     );
   };
 
-  // Tính tổng chi phí bảo trì dự kiến của sân
-  const getPitchEstimatedCost = (pitch) => {
-    const active = getPitchActiveIssues(pitch);
-    return active.reduce(
-      (sum, i) => sum + (parseFloat(i.estimatedCost || i.estimated_cost) || 0),
-      0
-    );
-  };
-
   // Khóa / Mở sân đón khách
   const handleToggleMaintenance = async (field) => {
     const isNowAvailable = field.is_available === false;
@@ -306,19 +370,16 @@ export default function Maintenance() {
     );
   };
 
-  // Mở modal xác nhận sửa xong: hiển thị thông báo xác nhận và chi phí dự kiến để nhập
+  // Mở modal xác nhận sửa xong: hiển thị thông báo xác nhận để nhập chi phí thực tế
   const openRepairModal = (field, specificIssue = null) => {
     setRepairingField(field);
     setRepairingIssue(specificIssue);
 
     let defaultCost = 0;
-    if (specificIssue) {
-      defaultCost = parseFloat(specificIssue.estimatedCost || specificIssue.estimated_cost) || 0;
-    } else {
-      defaultCost = getPitchEstimatedCost(field);
+    if (specificIssue && specificIssue.cost) {
+      defaultCost = parseFloat(specificIssue.cost) || 0;
     }
 
-    // Tự động điền chi phí dự kiến đã định dạng với dấu chấm để người dùng dễ kiểm tra/sửa đổi
     setActualCostInput(defaultCost > 0 ? formatDotNumber(defaultCost) : "");
     setShowRepairModal(true);
   };
@@ -423,8 +484,6 @@ export default function Maintenance() {
       (f) => (f.field_name || "").toLowerCase() === (newIssue.fieldName || "").toLowerCase()
     );
 
-    const estCost = parseDotNumber(newIssue.estimatedCost);
-
     const item = {
       id: Date.now(),
       field: matchedField?.id || null,
@@ -432,7 +491,6 @@ export default function Maintenance() {
       category: newIssue.category,
       description: newIssue.description,
       priority: newIssue.priority,
-      estimatedCost: estCost,
       cost: 0,
       reportedBy: newIssue.reportedBy || "Bộ phận kỹ thuật",
       status: "pending",
@@ -450,7 +508,6 @@ export default function Maintenance() {
         category: newIssue.category,
         description: newIssue.description,
         priority: newIssue.priority,
-        estimated_cost: estCost,
         status: "pending",
         reported_by_name: item.reportedBy,
       })
@@ -467,13 +524,12 @@ export default function Maintenance() {
     broadcastSyncEvent("maintenance_issue_reported", item);
 
     setShowCreateModal(false);
-    setNewIssue((prev) => ({ ...prev, description: "", estimatedCost: "" }));
+    setNewIssue((prev) => ({ ...prev, description: "" }));
     showToast("Đã tạo phiếu bảo trì sân thành công", "success");
   };
 
   // Mở modal sửa phiếu
   const openEditModal = (issue) => {
-    const rawEst = issue.estimatedCost || issue.estimated_cost || 0;
     const rawAct = issue.cost || 0;
 
     setEditingIssue({
@@ -482,7 +538,6 @@ export default function Maintenance() {
       category: issue.category || "Đèn chiếu sáng cao áp",
       priority: issue.priority || "Khẩn cấp",
       description: issue.description || "",
-      estimatedCost: rawEst > 0 ? formatDotNumber(rawEst) : "",
       cost: rawAct > 0 ? formatDotNumber(rawAct) : "",
       status: issue.status || "pending",
     });
@@ -497,7 +552,6 @@ export default function Maintenance() {
       return;
     }
 
-    const estCost = parseDotNumber(editingIssue.estimatedCost);
     const actCost = parseDotNumber(editingIssue.cost);
 
     const updated = issues.map((item) => {
@@ -508,7 +562,6 @@ export default function Maintenance() {
           category: editingIssue.category,
           priority: editingIssue.priority,
           description: editingIssue.description,
-          estimatedCost: estCost,
           cost: actCost,
           status: editingIssue.status,
         };
@@ -525,7 +578,6 @@ export default function Maintenance() {
         category: editingIssue.category,
         priority: editingIssue.priority,
         description: editingIssue.description,
-        estimated_cost: estCost,
         cost: actCost,
         status: editingIssue.status,
       }).catch(() => {});
@@ -567,10 +619,9 @@ export default function Maintenance() {
 
   const maintenanceFields = fields.filter((f) => f.is_available === false);
   const fixingIssues = issues.filter((i) => i.status !== "done" && i.status !== "resolved");
-  const totalAllEstCost = issues.reduce(
-    (sum, i) => sum + (parseFloat(i.estimatedCost || i.estimated_cost) || 0),
-    0
-  );
+  const totalActualCost = issues
+    .filter((i) => i.status === "done" || i.status === "resolved")
+    .reduce((sum, i) => sum + (parseFloat(i.cost) || 0), 0);
 
   const filteredIssues = issues.filter(
     (i) =>
@@ -637,7 +688,6 @@ export default function Maintenance() {
             ...prev,
             fieldName: fields[0]?.field_name || "",
             description: "",
-            estimatedCost: "",
           }));
           setShowCreateModal(true);
         }}
@@ -651,13 +701,10 @@ export default function Maintenance() {
         <div className="content-area">
           {/* Header Trang */}
           <div className="page-heading">
-            <div className="page-heading-copy">
-              <span className="dashboard-eyebrow">
-                QUẢN TRỊ KỸ THUẬT <span>›</span> BẢO TRÌ &amp; CƠ SỞ VẬT CHẤT
-              </span>
+            <div className="page-heading-left">
               <h2>Bảo trì &amp; Quản lý Thiết bị Sân</h2>
-              <p>
-                Tiếp nhận báo hỏng từ vệ sinh sân, theo dõi chi phí dự kiến, quản lý phiếu bảo trì và trạng thái từng sân bóng.
+              <p className="page-subheading" style={{ color: "#64748b", fontSize: "0.82rem", margin: "0.2rem 0 0 0" }}>
+                Giám sát tình trạng cơ sở vật chất, khóa sân và điều phối sửa chữa trang thiết bị.
               </p>
             </div>
             <div className="dashboard-heading-actions">
@@ -669,7 +716,6 @@ export default function Maintenance() {
                     ...prev,
                     fieldName: fields[0]?.field_name || "",
                     description: "",
-                    estimatedCost: "",
                   }));
                   setShowCreateModal(true);
                 }}
@@ -680,52 +726,43 @@ export default function Maintenance() {
             </div>
           </div>
 
-          {/* Thẻ KPI Thống kê Bảo trì - Nằm trên 2 tab theo yêu cầu của user */}
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-card-header">
-                <div className="stat-icon amber">
-                  <span className="material-symbols-outlined">construction</span>
-                </div>
-                <span className="stat-badge badge-amber">{maintenanceFields.length} sân tạm khóa</span>
+          {/* 3 Ô chỉ số tổng quan (0 sân tạm khóa, 3 sự cố cần sửa, Thực chi: 200.000 đ) */}
+          <div className="maintenance-kpi-grid">
+            <div className="kpi-stat-box box-amber">
+              <div className="kpi-stat-info">
+                <span className="kpi-stat-label">Sân đang tạm khóa</span>
+                <span className="kpi-stat-number">{maintenanceFields.length} sân</span>
+                <span className="kpi-stat-sub">Tạm dừng đón khách bảo trì</span>
               </div>
-              <p className="stat-label">Sân đang khóa bảo trì</p>
-              <p className="stat-value">
-                {maintenanceFields.length}{" "}
-                <span style={{ fontSize: "0.9rem", color: "#64748b" }}>/ {fields.length} sân</span>
-              </p>
+              <div className="kpi-stat-icon-wrap bg-amber">
+                <span className="material-symbols-outlined">lock</span>
+              </div>
             </div>
 
-            <div className="stat-card">
-              <div className="stat-card-header">
-                <div className="stat-icon red">
-                  <span className="material-symbols-outlined">warning</span>
-                </div>
-                <span className="stat-badge badge-red">Chờ xử lý / Đang sửa</span>
+            <div className="kpi-stat-box box-red">
+              <div className="kpi-stat-info">
+                <span className="kpi-stat-label">Sự cố cần sửa</span>
+                <span className="kpi-stat-number">{fixingIssues.length} sự cố</span>
+                <span className="kpi-stat-sub">Chờ kỹ thuật xử lý</span>
               </div>
-              <p className="stat-label">Sự cố đang xử lý</p>
-              <p className="stat-value">
-                {fixingIssues.length}{" "}
-                <span style={{ fontSize: "0.9rem", color: "#64748b" }}>phiếu</span>
-              </p>
+              <div className="kpi-stat-icon-wrap bg-red">
+                <span className="material-symbols-outlined">engineering</span>
+              </div>
             </div>
 
-            <div className="stat-card">
-              <div className="stat-card-header">
-                <div className="stat-icon green">
-                  <span className="material-symbols-outlined">payments</span>
-                </div>
-                <span className="stat-badge badge-green">Dự kiến chi phí</span>
+            <div className="kpi-stat-box box-green">
+              <div className="kpi-stat-info">
+                <span className="kpi-stat-label">Tổng chi phí thực tế</span>
+                <span className="kpi-stat-number">{formatCurrency(totalActualCost)} đ</span>
+                <span className="kpi-stat-sub">Thực chi hoàn tất sửa chữa</span>
               </div>
-              <p className="stat-label">Tổng chi phí bảo trì dự kiến</p>
-              <p className="stat-value">
-                {formatCurrency(totalAllEstCost)}{" "}
-                <span style={{ fontSize: "0.9rem", color: "#64748b" }}>đ</span>
-              </p>
+              <div className="kpi-stat-icon-wrap bg-green">
+                <span className="material-symbols-outlined">payments</span>
+              </div>
             </div>
           </div>
 
-          {/* Tabs chuyển đổi giữa Quản lý bảo trì sân và Thống kê bảo trì - Nằm dưới 3 ô thông tin */}
+          {/* Tabs chuyển đổi giữa Quản lý bảo trì sân và Thống kê bảo trì */}
           <div className="maintenance-tabs-bar">
             <button
               type="button"
@@ -758,14 +795,13 @@ export default function Maintenance() {
             />
           ) : (
             <>
-
           {/* Bảng Quản lý Trạng thái & Thông tin từng sân */}
           <div className="maintenance-board-card">
             <div className="board-header">
               <div>
-                <h3 className="chart-title">Thông tin bảo trì &amp; Trạng thái từng sân</h3>
+                <h3 className="chart-title">Trạng thái kỹ thuật từng sân</h3>
                 <p className="chart-subtitle">
-                  Sân có sự cố / phiếu bảo trì sẽ hiển thị <strong>chấm đỏ</strong>. Bấm "Sửa xong" để gỡ chấm đỏ và hoàn tất.
+                  Theo dõi trạng thái kỹ thuật và điều khiển khóa/mở đón khách từng sân.
                 </p>
               </div>
               <span className="count-pill">{fields.length} sân cơ sở</span>
@@ -777,7 +813,6 @@ export default function Maintenance() {
                 const pitchIssues = getPitchIssues(f);
                 const activePitchIssues = getPitchActiveIssues(f);
                 const hasActiveIssue = activePitchIssues.length > 0;
-                const estCost = getPitchEstimatedCost(f);
 
                 return (
                   <div
@@ -786,101 +821,81 @@ export default function Maintenance() {
                       hasActiveIssue ? "has-issues" : isUnderMaintenance ? "under-maintenance" : "available"
                     }`}
                   >
-                    <div style={{ width: "100%" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                        <div className="toggle-card-info">
-                          <span className="material-symbols-outlined toggle-card-icon">
-                            {hasActiveIssue ? "report" : isUnderMaintenance ? "engineering" : "sports_soccer"}
-                          </span>
-                          <div>
-                            <h4 className="toggle-card-name">
-                              {f.field_name}
-                              {/* Chấm đỏ hiển thị khi sân có phiếu báo trì */}
-                              {hasActiveIssue && (
-                                <span
-                                  className="red-dot-indicator pulse"
-                                  title={`${activePitchIssues.length} phiếu báo hỏng đang chờ sửa!`}
-                                />
-                              )}
-                            </h4>
-                            <span className="toggle-card-type">{f.field_type || "Sân cỏ nhân tạo"}</span>
-                          </div>
-                        </div>
-
-                        <div className="toggle-action-box">
-                          {hasActiveIssue ? (
-                            <span className="issue-count-badge red">
-                              <span className="material-symbols-outlined" style={{ fontSize: "0.85rem" }}>
-                                warning
-                              </span>
-                              {activePitchIssues.length} sự cố cần sửa
-                            </span>
-                          ) : (
-                            <span className="issue-count-badge green">
-                              <span className="material-symbols-outlined" style={{ fontSize: "0.85rem" }}>
-                                verified
-                              </span>
-                              Hoạt động tốt
-                            </span>
-                          )}
+                    {/* Ô 1: Tiêu đề sân, icon và nút khóa */}
+                    <div className="pitch-card-top">
+                      <div className="pitch-card-title-group">
+                        <span className="material-symbols-outlined pitch-card-icon">
+                          {hasActiveIssue ? "report" : isUnderMaintenance ? "engineering" : "sports_soccer"}
+                        </span>
+                        <div className="pitch-card-title-wrap">
+                          <h4 className="pitch-card-name">
+                            <span>{f.field_name}</span>
+                            {hasActiveIssue && (
+                              <span
+                                className="red-dot-indicator pulse"
+                                title={`${activePitchIssues.length} phiếu báo hỏng đang chờ sửa!`}
+                              />
+                            )}
+                          </h4>
+                          <span className="pitch-card-sub">{f.field_type || "Sân cỏ nhân tạo"}</span>
                         </div>
                       </div>
 
-                      {/* Tình trạng kỹ thuật thiết bị */}
-                      <div className="pitch-facility-status-box">
-                        <div className="status-box-main">
-                          <span className="facility-status-lbl">
-                            <span className="material-symbols-outlined" style={{ fontSize: "0.95rem" }}>
-                              {hasActiveIssue ? "construction" : "verified"}
-                            </span>
-                            {hasActiveIssue ? "Cần khắc phục:" : "Tình trạng kỹ thuật:"}
-                          </span>
-                          <span className={`facility-status-tag ${hasActiveIssue ? "is-issue" : "is-good"}`}>
-                            {hasActiveIssue ? (activePitchIssues[0]?.category || "Có sự cố đang hỏng") : "Đạt chuẩn phục vụ ca đá"}
-                          </span>
-                        </div>
+                      <button
+                        type="button"
+                        className={`btn-toggle-switch ${isUnderMaintenance ? "btn-resume" : "btn-stop"}`}
+                        onClick={() => handleToggleMaintenance(f)}
+                        title={isUnderMaintenance ? "Mở khóa cho khách đặt" : "Khóa sân bảo trì"}
+                      >
+                        <span className="material-symbols-outlined">
+                          {isUnderMaintenance ? "lock_open" : "lock"}
+                        </span>
+                        <span>{isUnderMaintenance ? "Mở khóa" : "Khóa"}</span>
+                      </button>
+                    </div>
+
+                    {/* Ô 2: Khối tình trạng kỹ thuật thiết bị riêng biệt */}
+                    <div className="pitch-facility-box">
+                      <div className="facility-box-label">
+                        <span className="material-symbols-outlined">
+                          {hasActiveIssue ? "construction" : "verified"}
+                        </span>
+                        <span>{hasActiveIssue ? "Cần khắc phục sự cố:" : "Tình trạng kỹ thuật:"}</span>
                       </div>
-
-                      {/* Các nút thao tác Xem chi tiết và Sửa xong */}
-                      <div className="pitch-actions-toolbar">
-                        {/* Không hiển thị (0) khi không có phiếu nào và giữ trên 1 hàng */}
-                        <button
-                          type="button"
-                          className="btn-pitch-action btn-pitch-detail"
-                          onClick={() => openPitchDetailModal(f)}
-                          title="Xem chi tiết các phiếu bảo trì của sân này"
-                        >
-                          <span className="material-symbols-outlined" style={{ fontSize: "1rem" }}>visibility</span>
-                          <span style={{ whiteSpace: "nowrap" }}>
-                            Xem chi tiết{pitchIssues.length > 0 ? ` (${pitchIssues.length})` : ""}
-                          </span>
-                        </button>
-
-                        {/* Nếu sân nào có báo bảo trì mới hiển thị nút sửa xong */}
-                        {hasActiveIssue && (
-                          <button
-                            type="button"
-                            className="btn-pitch-action btn-pitch-done"
-                            onClick={() => openRepairModal(f)}
-                            title="Xác nhận đã sửa xong tất cả sự cố của sân này"
-                          >
-                            <span className="material-symbols-outlined" style={{ fontSize: "1rem" }}>check_circle</span>
-                            <span style={{ whiteSpace: "nowrap" }}>Sửa xong</span>
-                          </button>
+                      <div className={`facility-box-value ${hasActiveIssue ? "is-issue" : "is-good"}`}>
+                        {hasActiveIssue ? (
+                          activePitchIssues.length > 1
+                            ? `${activePitchIssues[0]?.category || "Sự cố"} (+${activePitchIssues.length - 1} khác)`
+                            : activePitchIssues[0]?.category || "Có sự cố cần xử lý"
+                        ) : (
+                          "Đạt chuẩn phục vụ ca đá"
                         )}
+                      </div>
+                    </div>
 
+                    {/* Ô 3: Thanh công cụ các nút bấm thao tác riêng biệt */}
+                    <div className="pitch-actions-toolbar">
+                      <button
+                        type="button"
+                        className="btn-pitch-action btn-pitch-detail"
+                        onClick={() => openPitchDetailModal(f)}
+                        title="Xem chi tiết các phiếu bảo trì của sân này"
+                      >
+                        <span className="material-symbols-outlined">visibility</span>
+                        <span>Xem chi tiết{pitchIssues.length > 0 ? ` (${pitchIssues.length})` : ""}</span>
+                      </button>
+
+                      {hasActiveIssue && (
                         <button
                           type="button"
-                          className={`btn-toggle-switch ${isUnderMaintenance ? "btn-resume" : "btn-stop"}`}
-                          onClick={() => handleToggleMaintenance(f)}
-                          title={isUnderMaintenance ? "Mở khóa cho khách đặt" : "Khóa sân bảo trì"}
+                          className="btn-pitch-action btn-pitch-done"
+                          onClick={() => openRepairModal(f)}
+                          title="Xác nhận đã sửa xong tất cả sự cố của sân này"
                         >
-                          <span className="material-symbols-outlined">
-                            {isUnderMaintenance ? "lock_open" : "lock"}
-                          </span>
-                          <span style={{ whiteSpace: "nowrap" }}>{isUnderMaintenance ? "Mở khóa" : "Khóa"}</span>
+                          <span className="material-symbols-outlined">check_circle</span>
+                          <span>Sửa xong</span>
                         </button>
-                      </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -889,12 +904,12 @@ export default function Maintenance() {
           </div>
 
           {/* Danh sách Sự cố Kỹ thuật & Phiếu bảo trì */}
-          <div className="bookings-card" style={{ marginTop: "1.75rem" }}>
+          <div className="bookings-card" style={{ marginTop: "1rem" }}>
             <div className="bookings-header">
               <div>
                 <h3>Danh sách phiếu sự cố &amp; Bảo trì thiết bị ({filteredIssues.length})</h3>
                 <p style={{ margin: "2px 0 0", fontSize: "0.8rem", color: "#64748b" }}>
-                  Bao gồm các sự cố báo từ Vệ sinh sân sau ca đá và do Kỹ thuật viên tự lập.
+                  Bao gồm các sự cố tiếp nhận từ Vệ sinh sân và do Kỹ thuật viên tự lập.
                 </p>
               </div>
 
@@ -908,7 +923,6 @@ export default function Maintenance() {
                       ...prev,
                       fieldName: fields[0]?.field_name || "",
                       description: "",
-                      estimatedCost: "",
                     }));
                     setShowCreateModal(true);
                   }}
@@ -919,137 +933,116 @@ export default function Maintenance() {
             </div>
 
             <div className="table-wrapper">
-              <table>
+              <table className="maintenance-table-optimized">
                 <thead>
                   <tr>
-                    <th style={{ minWidth: 140 }}>Sân bóng</th>
-                    <th style={{ minWidth: 160 }}>Hạng mục</th>
-                    <th style={{ minWidth: 140 }}>Nguồn &amp; Người báo</th>
-                    <th style={{ minWidth: 200 }}>Mô tả chi tiết</th>
-                    <th style={{ minWidth: 100 }}>Mức độ</th>
-                    <th style={{ minWidth: 130 }}>Chi phí dự kiến</th>
-                    <th style={{ minWidth: 130 }}>Chi phí thực tế</th>
-                    <th style={{ minWidth: 130 }}>Thời gian</th>
-                    <th className="text-right" style={{ minWidth: 170 }}>Tiến độ &amp; Thao tác</th>
+                    <th style={{ width: "20%" }}>Sân bóng &amp; Thời gian</th>
+                    <th style={{ width: "18%" }}>Hạng mục &amp; Mức độ</th>
+                    <th style={{ width: "28%" }}>Mô tả chi tiết sự cố</th>
+                    <th className="text-right" style={{ width: "12%" }}>Chi phí thực tế</th>
+                    <th className="text-center" style={{ width: "12%" }}>Trạng thái</th>
+                    <th className="text-right" style={{ width: "10%" }}>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredIssues.map((item) => {
                     const isDone = item.status === "done" || item.status === "resolved";
                     const isFixing = item.status === "fixing";
-                    const reporter = item.reportedBy || item.reported_by_name || "Kỹ thuật";
-                    const isFromCleaning =
-                      reporter.toLowerCase().includes("vệ sinh") ||
-                      reporter.toLowerCase().includes("dọn dẹp");
-                    const isFromBooking =
-                      reporter.toLowerCase().includes("đặt sân") ||
-                      Boolean(item.bookingId);
-
-                    const estCost = parseFloat(item.estimatedCost || item.estimated_cost) || 0;
                     const actCost = parseFloat(item.cost) || 0;
+                    const isUrgent = item.priority === "Khẩn cấp" || item.priority === "Cao";
 
                     return (
                       <tr key={item.id}>
+                        {/* 1. Sân bóng và thời gian tạo (xuống dòng tự nhiên nếu tên dài) */}
                         <td>
-                          <strong className="field-name">{item.fieldName || item.field_name || "Sân"}</strong>
-                        </td>
-                        <td>
-                          <span className="category-pill">
-                            <span className="material-symbols-outlined">hardware</span>
-                            {item.category}
-                          </span>
-                        </td>
-                        <td>
-                          {isFromCleaning ? (
-                            <span className="source-tag cleaning-source" title="Báo hỏng từ bộ phận vệ sinh sau ca đá">
-                              <span className="material-symbols-outlined">cleaning_services</span>
-                              Từ vệ sinh sân
+                          <div className="pitch-info-stack">
+                            <strong className="field-name-title">{item.fieldName || item.field_name || "Sân"}</strong>
+                            <span className="field-time-sub">
+                              <span className="material-symbols-outlined time-icon">schedule</span>
+                              {formatDateTime(item.createdAt || item.created_at || "Vừa xong")}
                             </span>
-                          ) : isFromBooking ? (
-                            <span className="source-tag booking-source" style={{ background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a" }} title="Báo sự cố khẩn cấp từ Quản lý đặt sân">
-                              <span className="material-symbols-outlined" style={{ color: "#d97706" }}>stadium</span>
-                              Quản lý đặt sân
+                          </div>
+                        </td>
+
+                        {/* 2. Hạng mục và mức độ ưu tiên (hiển thị đầy đủ tất cả các mức độ) */}
+                        <td>
+                          <div className="cat-priority-stack">
+                            <span className="category-pill">
+                              <span className="material-symbols-outlined">hardware</span>
+                              {item.category}
                             </span>
-                          ) : (
-                            <span className="source-tag tech-source" title="Do bộ phận kỹ thuật lập">
-                              <span className="material-symbols-outlined">build</span>
-                              {reporter}
-                            </span>
-                          )}
+                            {renderPriorityBadge(item.priority)}
+                          </div>
                         </td>
-                        <td style={{ maxWidth: 280 }}>
-                          <span className="issue-desc" title={item.description}>
-                            {item.description}
-                          </span>
-                        </td>
+
+                        {/* 3. Mô tả sự cố (khung giờ ca, phân loại hư hỏng và ghi chú chi tiết xuống dòng riêng biệt) */}
                         <td>
-                          <span
-                            className={`priority-badge priority-${
-                              item.priority === "Khẩn cấp" || item.priority === "Cao" ? "high" : "normal"
-                            }`}
-                          >
-                            {item.priority}
-                          </span>
+                          {(() => {
+                            const parsed = parseIssueDescription(item);
+                            return (
+                              <div className="issue-desc-block">
+                                {(parsed.timeShift || parsed.subCategory) && (
+                                  <div className="desc-meta-row">
+                                    {parsed.timeShift && (
+                                      <span className="desc-time-badge" title={`Phát hiện trong ca ${parsed.timeShift}`}>
+                                        <span className="material-symbols-outlined time-mini-icon">schedule</span>
+                                        Ca {parsed.timeShift}
+                                      </span>
+                                    )}
+                                    {parsed.subCategory && (
+                                      <span className="desc-subcat-badge" title="Chi tiết sự cố hư hỏng">
+                                        {parsed.subCategory}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                                {parsed.note && (
+                                  <div className="desc-note-line">
+                                    <span>{parsed.note}</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </td>
-                        <td>
-                          <strong style={{ color: estCost > 0 ? "#e11d48" : "#64748b" }}>
-                            {formatCurrency(estCost)} đ
-                          </strong>
-                        </td>
-                        <td>
-                          <span style={{ color: actCost > 0 ? "#059669" : "#94a3b8", fontWeight: 600 }}>
+
+                        {/* 4. Chi phí thực tế */}
+                        <td className="text-right">
+                          <span className="cost-val-text" style={{ color: actCost > 0 ? "#059669" : "#94a3b8" }}>
                             {actCost > 0 ? `${formatCurrency(actCost)} đ` : "—"}
                           </span>
                         </td>
-                        <td>
-                          <span className="booking-time">
-                            {item.createdAt || item.created_at || "Vừa xong"}
-                          </span>
-                        </td>
-                        <td className="text-right">
-                          <div className="table-actions-cell">
-                            {isDone ? (
-                              <span className="badge confirmed" style={{ marginRight: 6 }}>
-                                <span className="badge-dot" /> Đã sửa xong
-                              </span>
-                            ) : (
-                              <>
-                                {!isFixing && (
-                                  <button
-                                    type="button"
-                                    className="btn-tbl-action btn-start-fix"
-                                    onClick={() => handleUpdateIssueStatus(item.id, "fixing")}
-                                    title="Chuyển sang trạng thái đang sửa"
-                                  >
-                                    Đang sửa
-                                  </button>
-                                )}
-                                <button
-                                  type="button"
-                                  className="btn-tbl-action btn-complete-fix"
-                                  onClick={() => {
-                                    const matchedF = fields.find(
-                                      (f) =>
-                                        (f.field_name || "").toLowerCase() ===
-                                        (item.fieldName || item.field_name || "").toLowerCase()
-                                    );
-                                    openRepairModal(matchedF || { field_name: item.fieldName }, item);
-                                  }}
-                                  title="Xác nhận sửa xong và ghi nhận chi phí"
-                                >
-                                  Sửa xong
-                                </button>
-                              </>
-                            )}
 
-                            {/* Nút sửa phiếu */}
+                        {/* 5. Trạng thái */}
+                        <td className="text-center">
+                          {isDone ? (
+                            <span className="badge-status-pill pill-done">
+                              <span className="badge-dot" /> Đã sửa xong
+                            </span>
+                          ) : isFixing ? (
+                            <span className="badge-status-pill pill-fixing">
+                              <span className="material-symbols-outlined status-pill-icon">engineering</span>
+                              Đang sửa
+                            </span>
+                          ) : (
+                            <span className="badge-status-pill pill-pending">
+                              <span className="material-symbols-outlined status-pill-icon">schedule</span>
+                              Chờ xử lý
+                            </span>
+                          )}
+                        </td>
+
+                        {/* 6. Thao tác (ngòi bút đầy đủ chức năng và nút xóa) */}
+                        <td className="text-right">
+                          <div className="table-actions-cell" style={{ justifyContent: "flex-end" }}>
+                            {/* Nút sửa phiếu (ngòi bút đầy đủ chức năng cập nhật tiến độ, chi phí, nội dung) */}
                             <button
                               type="button"
                               className="btn-tbl-action btn-edit"
                               onClick={() => openEditModal(item)}
-                              title="Chỉnh sửa thông tin phiếu bảo trì"
+                              title="Chỉnh sửa chi tiết, trạng thái & chi phí bảo trì"
                             >
-                              <span className="material-symbols-outlined" style={{ fontSize: "0.9rem" }}>
+                              <span className="material-symbols-outlined" style={{ fontSize: "1rem" }}>
                                 edit
                               </span>
                             </button>
@@ -1061,7 +1054,7 @@ export default function Maintenance() {
                               onClick={() => handleDeleteIssue(item.id)}
                               title="Xóa phiếu bảo trì"
                             >
-                              <span className="material-symbols-outlined" style={{ fontSize: "0.9rem" }}>
+                              <span className="material-symbols-outlined" style={{ fontSize: "1rem" }}>
                                 delete
                               </span>
                             </button>
@@ -1072,7 +1065,7 @@ export default function Maintenance() {
                   })}
                   {!filteredIssues.length && (
                     <tr>
-                      <td colSpan="9" style={{ textAlign: "center", padding: "2.5rem", color: "#64748b" }}>
+                      <td colSpan="6" style={{ textAlign: "center", padding: "2.5rem", color: "#64748b" }}>
                         Hiện không có sự cố kỹ thuật nào phù hợp với bộ lọc tìm kiếm.
                       </td>
                     </tr>
@@ -1168,22 +1161,6 @@ export default function Maintenance() {
                       value={newIssue.reportedBy}
                       onChange={(e) => setNewIssue({ ...newIssue, reportedBy: e.target.value })}
                     />
-                  </div>
-
-                  <div className="form-group col-span-2">
-                    <label>Số tiền bảo trì dự kiến (VNĐ)</label>
-                    <div className="formatted-currency-input-wrapper">
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="VD: 500.000"
-                        value={newIssue.estimatedCost}
-                        onChange={(e) =>
-                          setNewIssue({ ...newIssue, estimatedCost: formatDotNumber(e.target.value) })
-                        }
-                      />
-                      <span className="currency-unit-suffix">VNĐ</span>
-                    </div>
                   </div>
 
                   <div className="form-group col-span-2">
@@ -1323,8 +1300,6 @@ export default function Maintenance() {
                     reporter.toLowerCase().includes("vệ sinh") ||
                     reporter.toLowerCase().includes("dọn dẹp");
 
-                  const estCost =
-                    parseFloat(ticket.estimatedCost || ticket.estimated_cost) || 0;
                   const actCost = parseFloat(ticket.cost) || 0;
 
                   return (
@@ -1397,11 +1372,6 @@ export default function Maintenance() {
                       </div>
 
                       <div className="ticket-cost-info">
-                        {estCost > 0 && (
-                          <span className="cost-est-tag">
-                            Chi phí dự kiến: <strong>{formatCurrency(estCost)} đ</strong>
-                          </span>
-                        )}
                         {isDone ? (
                           <span className="cost-act-tag">
                             Chi phí thực tế: <strong>{formatCurrency(actCost)} đ</strong>
@@ -1571,25 +1541,6 @@ export default function Maintenance() {
                   </div>
 
                   <div className="form-group">
-                    <label>Chi phí dự kiến (VNĐ)</label>
-                    <div className="formatted-currency-input-wrapper">
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="0"
-                        value={editingIssue.estimatedCost}
-                        onChange={(e) =>
-                          setEditingIssue({
-                            ...editingIssue,
-                            estimatedCost: formatDotNumber(e.target.value),
-                          })
-                        }
-                      />
-                      <span className="currency-unit-suffix">VNĐ</span>
-                    </div>
-                  </div>
-
-                  <div className="form-group">
                     <label>Chi phí thực tế (VNĐ)</label>
                     <div className="formatted-currency-input-wrapper">
                       <input
@@ -1694,19 +1645,6 @@ export default function Maintenance() {
                     </>
                   )}
                 </p>
-              </div>
-
-              {/* Hiển thị chi phí dự kiến cần bảo trì */}
-              <div className="repair-est-highlight">
-                <span>Chi phí bảo trì dự kiến:</span>
-                <strong>
-                  {formatCurrency(
-                    repairingIssue
-                      ? parseFloat(repairingIssue.estimatedCost || repairingIssue.estimated_cost) || 0
-                      : getPitchEstimatedCost(repairingField)
-                  )}{" "}
-                  đ
-                </strong>
               </div>
 
               <div className="form-group">

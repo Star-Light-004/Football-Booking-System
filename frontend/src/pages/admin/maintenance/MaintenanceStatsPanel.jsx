@@ -147,10 +147,6 @@ export function MaintenanceStatsPanel({
     (sum, i) => sum + (parseFloat(i.cost) || 0),
     0
   );
-  const totalEstimatedCost = filteredHistory.reduce(
-    (sum, i) => sum + (parseFloat(i.estimatedCost || i.estimated_cost) || 0),
-    0
-  );
 
   const completionRate = totalIssues > 0 ? Math.round((doneIssues / totalIssues) * 100) : 100;
 
@@ -361,7 +357,7 @@ export function MaintenanceStatsPanel({
           </div>
           <p className="kpi-label">Tổng chi phí sửa chữa thực tế</p>
           <div className="kpi-subtext">
-            <span>Dự kiến ban đầu: <strong>{formatCurrency(totalEstimatedCost)} đ</strong></span>
+            <span>Áp dụng cho: <strong>{rangeTitle}</strong></span>
           </div>
         </div>
       </div>
@@ -467,8 +463,13 @@ export function MaintenanceStatsPanel({
 
                     {/* Cột 6: Trạng thái sân hiện tại */}
                     <td className="text-right">
-                      {item.hasActiveIssue ? (
-                        <span className="pitch-status-pill status-uncleaned" style={{ background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" }}>
+                      {item.field?.is_available === false ? (
+                        <span className="pitch-status-pill status-locked" style={{ background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: "14px", marginRight: "4px" }}>lock</span>
+                          Đang tạm khóa
+                        </span>
+                      ) : item.hasActiveIssue ? (
+                        <span className="pitch-status-pill status-uncleaned" style={{ background: "#fff7ed", color: "#ea580c", border: "1px solid #fed7aa" }}>
                           <span className="dot pulse red" />
                           Có sự cố ({item.pending})
                         </span>
@@ -576,9 +577,6 @@ export function MaintenanceStatsPanel({
                     </div>
 
                     <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-                      <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
-                        Dự kiến: <strong>{formatCurrency(h.estimatedCost || h.estimated_cost)} đ</strong>
-                      </span>
                       <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#059669" }}>
                         Thực chi: {formatCurrency(h.cost)} đ
                       </span>

@@ -57,13 +57,7 @@ function TopHeader({ onExport, searchTerm, onSearchChange, onRefresh, loading })
 function SummaryCards({ summary, selectedPeriod = 'all' }) {
   const growthRate = summary?.growth_pct ?? 0;
   const isPositiveGrowth = growthRate >= 0;
-  const expectedRevenue = summary?.expected_revenue || 0;
   const totalRevenue = summary?.total_revenue || 0;
-
-  // Tính tỷ lệ đạt mục tiêu doanh thu (so với dự kiến)
-  const targetPct = expectedRevenue > 0
-    ? Math.min(100, Math.round((totalRevenue / expectedRevenue) * 100))
-    : 100;
 
   const periodBadge =
     selectedPeriod === 'today'
@@ -88,7 +82,7 @@ function SummaryCards({ summary, selectedPeriod = 'all' }) {
       : 'Tổng doanh thu thực tế';
 
   return (
-    <div className="summary-grid">
+    <div className="summary-grid three-cards">
       {/* 1. Doanh thu thực tế */}
       <div className="card-actual">
         <div className="card-content">
@@ -112,31 +106,7 @@ function SummaryCards({ summary, selectedPeriod = 'all' }) {
         <div className="card-blob" />
       </div>
 
-      {/* 2. Doanh thu dự kiến */}
-      <div className="card-white">
-        <div>
-          <div className="card-header">
-            <div className="card-icon-wrap green-light">
-              <span className="material-symbols-outlined" style={{ color: 'var(--color-secondary)' }}>
-                insights
-              </span>
-            </div>
-            <span className="card-badge green-soft">Kỳ vọng</span>
-          </div>
-          <p className="card-label">Doanh thu dự kiến</p>
-          <h3 className="card-value">
-            {formatCurrency(expectedRevenue)} <span className="unit">đ</span>
-          </h3>
-        </div>
-        <div className="progress-wrap">
-          <div className="progress-track">
-            <div className="progress-fill" style={{ width: `${targetPct}%` }} />
-          </div>
-          <span className="progress-pct">{targetPct}% đạt</span>
-        </div>
-      </div>
-
-      {/* 3. Doanh thu tháng này & Tăng trưởng */}
+      {/* 2. Doanh thu tháng này & Tăng trưởng */}
       <div className="card-white">
         <div>
           <div className="card-header">
@@ -159,7 +129,7 @@ function SummaryCards({ summary, selectedPeriod = 'all' }) {
         </p>
       </div>
 
-      {/* 4. Giá trị trung bình đơn & Lượt đặt */}
+      {/* 3. Giá trị trung bình đơn & Lượt đặt */}
       <div className="card-white">
         <div>
           <div className="card-header">
@@ -533,18 +503,13 @@ function MaintenanceSummaryCards({ issues, totalRevenue }) {
     .filter((i) => i.status === 'done' || i.status === 'resolved')
     .reduce((sum, i) => sum + (parseFloat(i.cost) || 0), 0);
 
-  const estimatedCost = issues.reduce(
-    (sum, i) => sum + (parseFloat(i.estimatedCost || i.estimated_cost) || 0),
-    0
-  );
-
   const doneCount = issues.filter((i) => i.status === 'done' || i.status === 'resolved').length;
   const activeCount = issues.filter((i) => i.status !== 'done' && i.status !== 'resolved').length;
 
   const costRatio = totalRevenue > 0 ? ((actualCost / totalRevenue) * 100).toFixed(1) : '0';
 
   return (
-    <div className="summary-grid">
+    <div className="summary-grid three-cards">
       {/* 1. Tổng chi phí bảo trì thực tế */}
       <div className="card-actual" style={{ background: 'linear-gradient(135deg, #b91c1c 0%, #dc2626 100%)' }}>
         <div className="card-content">
@@ -568,39 +533,7 @@ function MaintenanceSummaryCards({ issues, totalRevenue }) {
         <div className="card-blob" />
       </div>
 
-      {/* 2. Tổng chi phí dự kiến */}
-      <div className="card-white">
-        <div>
-          <div className="card-header">
-            <div className="card-icon-wrap amber-light">
-              <span className="material-symbols-outlined" style={{ color: '#d97706' }}>
-                request_quote
-              </span>
-            </div>
-            <span className="card-badge amber-soft">Kế hoạch</span>
-          </div>
-          <p className="card-label">Tổng chi phí bảo trì dự kiến</p>
-          <h3 className="card-value">
-            {formatCurrency(estimatedCost)} <span className="unit">đ</span>
-          </h3>
-        </div>
-        <div className="progress-wrap">
-          <div className="progress-track">
-            <div
-              className="progress-fill"
-              style={{
-                width: `${estimatedCost > 0 ? Math.min(100, Math.round((actualCost / estimatedCost) * 100)) : 100}%`,
-                background: '#d97706',
-              }}
-            />
-          </div>
-          <span className="progress-pct">
-            {estimatedCost > 0 ? Math.round((actualCost / estimatedCost) * 100) : 0}% chi
-          </span>
-        </div>
-      </div>
-
-      {/* 3. Tình trạng phiếu bảo trì */}
+      {/* 2. Tình trạng phiếu bảo trì */}
       <div className="card-white">
         <div>
           <div className="card-header">
@@ -621,7 +554,7 @@ function MaintenanceSummaryCards({ issues, totalRevenue }) {
         </p>
       </div>
 
-      {/* 4. Tỷ lệ chi phí bảo trì / Doanh thu */}
+      {/* 3. Tỷ lệ chi phí bảo trì / Doanh thu */}
       <div className="card-white">
         <div>
           <div className="card-header">
@@ -650,16 +583,15 @@ function MaintenanceAnalytics({ issues, fieldsList }) {
   const pitchStats = useMemo(() => {
     const map = {};
     fieldsList.forEach((f) => {
-      map[f.field_name] = { name: f.field_name, actualCost: 0, estimatedCost: 0, count: 0 };
+      map[f.field_name] = { name: f.field_name, actualCost: 0, count: 0 };
     });
 
     issues.forEach((i) => {
       const pName = i.fieldName || i.field_name || 'Khác';
       if (!map[pName]) {
-        map[pName] = { name: pName, actualCost: 0, estimatedCost: 0, count: 0 };
+        map[pName] = { name: pName, actualCost: 0, count: 0 };
       }
       map[pName].actualCost += parseFloat(i.cost) || 0;
-      map[pName].estimatedCost += parseFloat(i.estimatedCost || i.estimated_cost) || 0;
       map[pName].count += 1;
     });
 
@@ -674,10 +606,9 @@ function MaintenanceAnalytics({ issues, fieldsList }) {
     issues.forEach((i) => {
       const cat = i.category || 'Khác';
       if (!map[cat]) {
-        map[cat] = { name: cat, actualCost: 0, estimatedCost: 0, count: 0 };
+        map[cat] = { name: cat, actualCost: 0, count: 0 };
       }
       map[cat].actualCost += parseFloat(i.cost) || 0;
-      map[cat].estimatedCost += parseFloat(i.estimatedCost || i.estimated_cost) || 0;
       map[cat].count += 1;
     });
     return Object.values(map).sort((a, b) => b.actualCost - a.actualCost);
@@ -735,7 +666,7 @@ function MaintenanceAnalytics({ issues, fieldsList }) {
                   <span>{c.name}</span>
                   <span>
                     <strong>{formatCurrency(c.actualCost)} đ</strong>{' '}
-                    <small style={{ color: '#64748b' }}>(DK: {formatCurrency(c.estimatedCost)} đ)</small>
+                    <small style={{ color: '#94a3b8' }}>({c.count} phiếu)</small>
                   </span>
                 </div>
                 <div className="breakdown-progress-track">
@@ -786,7 +717,7 @@ function MaintenanceTable({ issues, searchTerm }) {
         <div>
           <h4>Tất cả thông tin bảo trì &amp; Chi phí phát sinh ({filtered.length})</h4>
           <p className="tx-subtitle">
-            Hồ sơ chi tiết từng phiếu sửa chữa, nguồn báo hỏng, dự kiến và chi phí thực tế
+            Hồ sơ chi tiết từng phiếu sửa chữa, nguồn báo hỏng và chi phí thực tế
           </p>
         </div>
 
@@ -832,9 +763,7 @@ function MaintenanceTable({ issues, searchTerm }) {
               <th>Mô tả sự cố</th>
               <th>Nguồn báo</th>
               <th>Mức độ</th>
-              <th>Chi phí dự kiến</th>
               <th>Chi phí thực tế</th>
-              <th>Chênh lệch</th>
               <th>Thời gian báo</th>
               <th>Ngày hoàn thành</th>
               <th className="right">Trạng thái</th>
@@ -843,7 +772,7 @@ function MaintenanceTable({ issues, searchTerm }) {
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan="12" style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
+                <td colSpan="10" style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
                   <span className="material-symbols-outlined" style={{ fontSize: 36, display: 'block', marginBottom: 8 }}>
                     construction
                   </span>
@@ -858,9 +787,7 @@ function MaintenanceTable({ issues, searchTerm }) {
                   reporter.toLowerCase().includes('vệ sinh') ||
                   reporter.toLowerCase().includes('dọn dẹp');
 
-                const estCost = parseFloat(item.estimatedCost || item.estimated_cost) || 0;
                 const actCost = parseFloat(item.cost) || 0;
-                const diff = actCost - estCost;
 
                 return (
                   <tr key={item.id}>
@@ -905,29 +832,9 @@ function MaintenanceTable({ issues, searchTerm }) {
                       </span>
                     </td>
                     <td>
-                      <span style={{ fontWeight: 600, color: '#475569' }}>
-                        {formatCurrency(estCost)} đ
-                      </span>
-                    </td>
-                    <td>
                       <span style={{ fontWeight: 700, color: actCost > 0 ? '#b91c1c' : '#94a3b8' }}>
                         {actCost > 0 ? `${formatCurrency(actCost)} đ` : '0 đ'}
                       </span>
-                    </td>
-                    <td>
-                      {isDone && estCost > 0 ? (
-                        diff <= 0 ? (
-                          <span style={{ color: '#059669', fontSize: '0.78rem', fontWeight: 600 }}>
-                            Tiết kiệm {formatCurrency(Math.abs(diff))}đ
-                          </span>
-                        ) : (
-                          <span style={{ color: '#dc2626', fontSize: '0.78rem', fontWeight: 600 }}>
-                            + {formatCurrency(diff)}đ
-                          </span>
-                        )
-                      ) : (
-                        <span style={{ color: '#94a3b8' }}>—</span>
-                      )}
                     </td>
                     <td>
                       <span className="tx-date">{item.createdAt || item.created_at || 'Vừa xong'}</span>
@@ -1153,7 +1060,6 @@ export default function Revenue() {
         'Mô tả sự cố',
         'Người báo cáo',
         'Mức độ ưu tiên',
-        'Chi phí dự kiến (VNĐ)',
         'Chi phí thực tế (VNĐ)',
         'Ngày báo cáo',
         'Ngày hoàn thành',
@@ -1161,7 +1067,6 @@ export default function Revenue() {
       ];
 
       const rows = list.map((item) => {
-        const estCost = parseFloat(item.estimatedCost || item.estimated_cost) || 0;
         const actCost = parseFloat(item.cost) || 0;
         const isDone = item.status === 'done' || item.status === 'resolved';
 
@@ -1172,7 +1077,6 @@ export default function Revenue() {
           `"${(item.description || '').replace(/"/g, '""')}"`,
           `"${item.reportedBy || item.reported_by_name || ''}"`,
           `"${item.priority || ''}"`,
-          estCost,
           actCost,
           `"${item.createdAt || item.created_at || ''}"`,
           `"${item.resolvedAt || (isDone ? 'Đã hoàn thành' : '')}"`,
@@ -1463,7 +1367,7 @@ export default function Revenue() {
                       <strong>Xuất Excel (.csv)</strong>
                       <small>
                         {activeTab === 'maintenance'
-                          ? 'Đầy đủ danh sách sự cố, chi phí dự kiến & thực tế'
+                          ? 'Đầy đủ danh sách sự cố & chi phí thực tế'
                           : 'Đầy đủ danh sách hóa đơn, tương thích Excel và Google Sheets'}
                       </small>
                     </div>

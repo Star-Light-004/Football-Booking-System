@@ -228,7 +228,7 @@
   box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
 }
 
-/* ─── Summary Grid (4 Cards) ─── */
+/* ─── Summary Grid (4 Cards / 3 Cards) ─── */
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -236,9 +236,22 @@
   margin-bottom: 2rem;
 }
 
+.summary-grid.three-cards {
+  grid-template-columns: repeat(3, 1fr);
+}
+
 @media (max-width: 1200px) {
   .summary-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .summary-grid.three-cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .summary-grid.three-cards {
+    grid-template-columns: 1fr;
   }
 }
 
