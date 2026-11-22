@@ -99,3 +99,4 @@ def get_authenticated_user(request):
         return Customers.objects.filter(id=fallback_id, is_active=True).first()
 
     return None
+

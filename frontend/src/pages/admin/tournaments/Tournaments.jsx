@@ -852,16 +852,31 @@ const Tournaments = () => {
     toast.success(`Đã sao chép ${label}!`);
   };
 
-  // Helper render json or list
+  // Helper render json or list safely
   const parseJsonSafe = (raw) => {
     if (!raw) return [];
     if (Array.isArray(raw)) return raw;
-    try {
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [raw];
-    } catch {
-      return [raw];
+    if (typeof raw !== "string") return [String(raw)];
+    let s = raw.trim();
+    if (s.startsWith("[") && s.endsWith("]")) {
+      try {
+        const parsed = JSON.parse(s);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {
+        try {
+          const parsed = JSON.parse(s.replace(/'/g, '"'));
+          if (Array.isArray(parsed)) return parsed;
+        } catch {}
+      }
+      const matches = s.slice(1, -1).match(/'([^']+)'|"([^"]+)"/g);
+      if (matches) {
+        return matches.map((m) => m.replace(/['"]/g, "").trim()).filter(Boolean);
+      }
     }
+    if (s.includes(",")) {
+      return s.split(",").map((x) => x.trim()).filter(Boolean);
+    }
+    return [s];
   };
 
   return (
@@ -1025,10 +1040,10 @@ const Tournaments = () => {
                 <table className="adm-tour-table">
                   <thead>
                     <tr>
-                      <th style={{ width: "24%" }}>Mã &amp; Tên giải đấu</th>
-                      <th style={{ width: "16%" }}>Người liên hệ</th>
+                      <th style={{ width: "23%" }}>Mã &amp; Tên giải đấu</th>
+                      <th style={{ width: "15%" }}>Người liên hệ</th>
                       <th style={{ width: "15%" }}>Thời gian thi đấu</th>
-                      <th style={{ width: "14%" }}>Sân &amp; Quy mô</th>
+                      <th style={{ width: "16%" }}>Sân &amp; Quy mô</th>
                       <th style={{ width: "17%" }}>Ngân sách &amp; Thanh toán</th>
                       <th style={{ width: "14%" }}>Trạng thái</th>
                       <th className="center" style={{ width: "80px" }}>Thao tác</th>

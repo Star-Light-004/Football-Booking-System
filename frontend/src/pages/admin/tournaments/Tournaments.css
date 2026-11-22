@@ -554,20 +554,23 @@
 .tour-fields-cell {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  align-items: flex-start;
 }
 
 .teams-badge {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   font-size: 0.74rem;
   font-weight: 700;
-  color: #2563eb;
-  background: #eff6ff;
-  padding: 1px 6px;
+  color: #0369a1;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  padding: 2px 7px;
   border-radius: 4px;
   width: fit-content;
+  line-height: 1.3;
 }
 
 .teams-badge .material-symbols-outlined { font-size: 0.9rem; }
@@ -580,12 +583,17 @@
 
 .field-tag {
   background: #f1f5f9;
-  color: #475569;
-  font-size: 0.7rem;
+  color: #334155;
+  font-size: 0.72rem;
   font-weight: 600;
-  padding: 1px 5px;
+  padding: 2px 6px;
   border-radius: 4px;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+  display: inline-block;
+  line-height: 1.3;
 }
 
 .field-tag.more {

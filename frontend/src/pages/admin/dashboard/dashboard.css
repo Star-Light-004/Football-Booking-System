@@ -900,30 +900,93 @@ tbody td {
 .revenue-card {
   display: flex;
   align-items: center;
-  min-height: 145px;
+  min-height: auto;
   grid-column: auto;
-  padding: 1.35rem 1.65rem;
-  border-radius: 0.85rem;
-  background: linear-gradient(110deg, #047857, #066b51 62%, #075f4c);
-  box-shadow: 0 5px 16px rgba(5, 95, 70, 0.17);
+  padding: 0.85rem 1.35rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.18);
+  margin-bottom: 1.25rem;
+  color: #fff;
 }
 
 .revenue-card .revenue-content {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr);
+  display: flex;
   align-items: center;
-  gap: 1.35rem;
+  justify-content: space-between;
   width: 100%;
+  gap: 1.5rem;
 }
 
-.revenue-card .rev-header { grid-column: 1; margin: 0 0 0.45rem; }
-.revenue-card .rev-header .material-symbols-outlined { color: #d1fae5; font-size: 1.35rem; }
-.revenue-card .rev-label { font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
-.revenue-card .rev-main { grid-column: 1; grid-row: 2; font-size: 2.25rem; line-height: 1.1; font-weight: 800; }
-.revenue-card .rev-main span { font-size: 1.05rem; }
-.revenue-card .rev-divider { grid-column: 2; grid-row: 1 / span 2; margin: 0; padding: 0 0 0 1.35rem; border-top: 0; border-left: 1px solid rgba(255,255,255,0.25); }
-.revenue-card .rev-sub-label { font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
-.revenue-card .rev-sub-value { font-size: 1.75rem; font-weight: 800; }
+.revenue-card .rev-col {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex: 1;
+}
+
+.revenue-card .rev-icon-box {
+  width: 40px;
+  height: 40px;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.revenue-card .rev-icon-box .material-symbols-outlined {
+  color: #fff;
+  font-size: 1.35rem;
+}
+
+.revenue-card .rev-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.revenue-card .rev-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #d1fae5;
+  margin: 0;
+}
+
+.revenue-card .rev-amount-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.revenue-card .rev-val {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+}
+
+.revenue-card .rev-currency {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #a7f3d0;
+}
+
+.revenue-card .rev-detail {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.revenue-card .rev-separator {
+  width: 1px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
 .revenue-card .blob1,
 .revenue-card .blob2 { display: none; }
 

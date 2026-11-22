@@ -123,13 +123,27 @@ const STATUS_CONFIG = {
 const parseListField = (val) => {
   if (!val) return [];
   if (Array.isArray(val)) return val;
-  try {
-    const parsed = JSON.parse(val);
-    if (Array.isArray(parsed)) return parsed;
-    return [String(parsed)];
-  } catch {
-    return [String(val)];
+  if (typeof val !== "string") return [String(val)];
+  let s = val.trim();
+  if (s.startsWith("[") && s.endsWith("]")) {
+    try {
+      const parsed = JSON.parse(s);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      try {
+        const parsed = JSON.parse(s.replace(/'/g, '"'));
+        if (Array.isArray(parsed)) return parsed;
+      } catch {}
+    }
+    const matches = s.slice(1, -1).match(/'([^']+)'|"([^"]+)"/g);
+    if (matches) {
+      return matches.map((m) => m.replace(/['"]/g, "").trim()).filter(Boolean);
+    }
   }
+  if (s.includes(",")) {
+    return s.split(",").map((x) => x.trim()).filter(Boolean);
+  }
+  return [s];
 };
 
 const formatDateVN = (dateStr) => {

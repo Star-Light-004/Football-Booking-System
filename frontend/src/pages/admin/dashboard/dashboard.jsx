@@ -84,22 +84,36 @@ function RevenueCard({ todayRevenue = 0, monthRevenue = 0 }) {
   return (
     <div className="revenue-card">
       <div className="revenue-content">
-        <div className="rev-header">
-          <p className="rev-label">Doanh thu hôm nay</p>
-          <span className="material-symbols-outlined">payments</span>
+        <div className="rev-col rev-col-today">
+          <div className="rev-icon-box">
+            <span className="material-symbols-outlined">payments</span>
+          </div>
+          <div className="rev-info">
+            <span className="rev-label">Doanh thu hôm nay</span>
+            <div className="rev-amount-wrap">
+              <strong className="rev-val">{formatCompact(todayRevenue)}</strong>
+              <span className="rev-currency">VND</span>
+              <span className="rev-detail">({Number(todayRevenue).toLocaleString('vi-VN')}đ)</span>
+            </div>
+          </div>
         </div>
-        <p className="rev-main">
-          {formatCompact(todayRevenue)} <span>VND ({Number(todayRevenue).toLocaleString('vi-VN')}đ)</span>
-        </p>
-        <div className="rev-divider">
-          <p className="rev-sub-label">Tháng này</p>
-          <p className="rev-sub-value">
-            {formatCompact(monthRevenue)} <span>VND ({Number(monthRevenue).toLocaleString('vi-VN')}đ)</span>
-          </p>
+
+        <div className="rev-separator" />
+
+        <div className="rev-col rev-col-month">
+          <div className="rev-icon-box">
+            <span className="material-symbols-outlined">calendar_month</span>
+          </div>
+          <div className="rev-info">
+            <span className="rev-label">Doanh thu tháng này</span>
+            <div className="rev-amount-wrap">
+              <strong className="rev-val">{formatCompact(monthRevenue)}</strong>
+              <span className="rev-currency">VND</span>
+              <span className="rev-detail">({Number(monthRevenue).toLocaleString('vi-VN')}đ)</span>
+            </div>
+          </div>
         </div>
       </div>
-      <div className="blob1" />
-      <div className="blob2" />
     </div>
   );
 }
