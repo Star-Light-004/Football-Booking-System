@@ -55,8 +55,8 @@
 
 .bs-step--active .bs-step__marker {
 	color: #fff;
-	border-color: #052e2b;
-	background: #052e2b;
+	border-color: #059669;
+	background: #059669;
 	box-shadow: 0 0 0 3px #bbf7d0;
 }
 
@@ -129,10 +129,11 @@
 	align-items: center;
 	gap: 10px;
 	flex: 0 0 auto;
-	padding: 10px 13px;
-	border: 1px solid #fde68a;
+	padding: 10px 14px;
+	border: 1.5px solid #cbd5e1;
 	border-radius: 10px;
-	background: #fffbeb;
+	background: #ffffff;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .bs-code-chip > .material-symbols-outlined {
@@ -141,8 +142,8 @@
 	width: 34px;
 	height: 34px;
 	border-radius: 8px;
-	color: #b45309;
-	background: #fef3c7;
+	color: #059669;
+	background: #ecfdf5;
 	font-size: 19px;
 }
 
@@ -153,15 +154,16 @@
 }
 
 .bs-code-chip small {
-	color: #92400e;
-	font-size: 0.62rem;
-	font-weight: 600;
+	color: #475569;
+	font-size: 0.64rem;
+	font-weight: 700;
+	text-transform: uppercase;
 }
 
 .bs-code-chip strong {
-	color: #111827;
-	font-size: 0.9rem;
-	font-weight: 800;
+	color: #0f172a;
+	font-size: 1.05rem;
+	font-weight: 900;
 	overflow-wrap: anywhere;
 }
 
@@ -368,8 +370,11 @@
 }
 
 .bs-confirmed-tag {
-	border: 0;
-	background: #059669;
+	border: 1px solid rgba(255, 255, 255, 0.4);
+	color: #064e3b;
+	background: #ffffff;
+	font-weight: 800;
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 }
 
 .bs-details-content {
@@ -381,22 +386,27 @@
 	flex-direction: column;
 	gap: 3px;
 	margin-bottom: 14px;
-	padding: 12px;
-	border: 1px solid #dcfce7;
+	padding: 12px 14px;
+	border: 1.5px solid #cbd5e1;
 	border-radius: 8px;
-	background: #f0fdf4;
+	background: #ffffff;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .bs-reference-block span,
 .bs-detail-row > span {
-	color: #64748b;
-	font-size: 0.65rem;
+	color: #475569;
+	font-size: 0.68rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
 }
 
 .bs-reference-block strong {
-	color: #047857;
-	font-size: 1.15rem;
-	font-weight: 800;
+	color: #0f172a;
+	font-size: 1.3rem;
+	font-weight: 900;
+	letter-spacing: 0.5px;
 	overflow-wrap: anywhere;
 }
 
@@ -479,7 +489,7 @@
 }
 
 .bs-appointment-cell:nth-child(2) strong {
-	color: #059669;
+	color: #0f172a;
 }
 
 .bs-amenities {

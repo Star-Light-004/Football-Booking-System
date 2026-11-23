@@ -203,24 +203,26 @@
 
 .search-field__input,
 .search-field__select {
-  width: 100%;
-  padding: 9px 12px 9px 36px;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 0.88rem;
-  font-family: inherit;
-  color: #374151;
-  background: #f9fafb;
-  transition: border-color 0.2s;
-  outline: none;
-  appearance: none;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 10px 14px 10px 38px !important;
+  border: 1.5px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+  font-size: 0.88rem !important;
+  font-family: inherit !important;
+  color: #1e293b !important;
+  background-color: #f8fafc !important;
+  transition: all 0.2s ease !important;
+  outline: none !important;
+  appearance: none !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
 }
 
 .search-field__input:focus,
 .search-field__select:focus {
-  border-color: #16a34a;
-  background: #fff;
-  box-shadow: 0 0 0 3px rgba(22,163,74,0.08);
+  border-color: #16a34a !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15) !important;
 }
 
 .search-field__icon {

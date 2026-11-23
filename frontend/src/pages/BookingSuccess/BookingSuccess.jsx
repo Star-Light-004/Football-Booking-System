@@ -54,9 +54,9 @@ const BookingSuccess = () => {
             <span className="bs-step__marker"><span className="material-symbols-outlined">check</span></span>
             <span className="bs-step__label">2. Thông tin & thanh toán</span>
           </div>
-          <span className="bs-step__line" />
-          <div className="bs-step bs-step--active">
-            <span className="bs-step__marker">3</span>
+          <span className="bs-step__line bs-step__line--complete" />
+          <div className="bs-step bs-step--complete bs-step--active">
+            <span className="bs-step__marker"><span className="material-symbols-outlined">check</span></span>
             <span className="bs-step__label">3. Nhận mã QR sân</span>
           </div>
         </nav>

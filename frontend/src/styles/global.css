@@ -44,6 +44,35 @@ select,
 textarea {
   font-family: inherit;
   font-size: inherit;
+  box-sizing: border-box;
+}
+
+/* Chuẩn hóa giao diện form input toàn hệ thống chống lỗi hiển thị raw input */
+input[type="text"],
+input[type="search"],
+input[type="email"],
+input[type="password"],
+input[type="tel"],
+input[type="number"],
+input[type="date"] {
+  border-radius: 8px;
+  border: 1.5px solid #cbd5e1;
+  outline: none;
+  background-color: #f8fafc;
+  color: #1e293b;
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+}
+
+input[type="text"]:focus,
+input[type="search"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="tel"]:focus,
+input[type="number"]:focus,
+input[type="date"]:focus {
+  border-color: #16a34a;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12);
 }
 
 h1, h2, h3, h4, h5, h6 {

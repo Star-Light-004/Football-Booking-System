@@ -113,7 +113,16 @@ export default function Cleaning() {
       const savedStatus = localStorage.getItem(STORAGE_KEY);
       if (savedStatus) setCleaningStatus(JSON.parse(savedStatus));
       const savedLogs = localStorage.getItem(LOGS_KEY);
-      if (savedLogs) setCleaningLogs(JSON.parse(savedLogs));
+      if (savedLogs) {
+        try {
+          const parsed = JSON.parse(savedLogs);
+          const hasObsolete = parsed.some(l => l.fieldName && (l.fieldName.includes("Liên Chiểu") || l.fieldName.includes("Cẩm Lệ") || l.fieldName.includes("Hòa Xuân") || l.fieldName.includes("Ngũ Hành Sơn")));
+          if (!hasObsolete) setCleaningLogs(parsed);
+          else localStorage.removeItem(LOGS_KEY);
+        } catch {
+          localStorage.removeItem(LOGS_KEY);
+        }
+      }
       const savedLost = localStorage.getItem(LOST_KEY);
       if (savedLost) setLostFoundItems(JSON.parse(savedLost));
       const savedHistory = localStorage.getItem(HISTORY_KEY);
@@ -328,9 +337,9 @@ export default function Cleaning() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(statusObj));
         setCleaningStatus(statusObj);
 
-        // Load Nhật ký dọn dẹp từ Backend DB
-        if (backendLogs.length > 0) {
-          const mappedLogs = backendLogs.slice(0, 10).map((l) => ({
+        // Load Nhật ký dọn dẹp hôm nay từ Backend DB (Chỉ hiển thị các ca thực tế hôm nay)
+        if (todayBackendLogs.length > 0) {
+          const mappedLogs = todayBackendLogs.slice(0, 10).map((l) => ({
             id: l.id,
             fieldName: l.field_name || l.fieldName || "Sân bóng",
             time: l.start_time || (l.created_at ? new Date(l.created_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "Vừa xong"),
@@ -340,41 +349,9 @@ export default function Cleaning() {
           setCleaningLogs(mappedLogs);
           localStorage.setItem(LOGS_KEY, JSON.stringify(mappedLogs));
         } else {
-          const f0 = fieldList[0]?.field_name || "Sân bóng đá Duy Tân";
-          const f1 = fieldList[1]?.field_name || "Sân bóng đá Chuyên Việt";
-          const f2 = fieldList[2]?.field_name || "Sân Bóng An Phúc";
-          const savedLogs = localStorage.getItem(LOGS_KEY);
-          if (savedLogs) {
-            try {
-              const parsed = JSON.parse(savedLogs);
-              const hasObsolete = parsed.some(l => l.fieldName && (l.fieldName.includes("Liên Chiểu") || l.fieldName.includes("Cẩm Lệ") || l.fieldName.includes("Hòa Xuân")));
-              if (hasObsolete) {
-                const freshLogs = [
-                  { id: 1, fieldName: f0, time: "16:45", statusText: "Đã dọn xong sau ca", cleaner: "Nguyễn Văn Hùng" },
-                  { id: 2, fieldName: f1, time: "15:20", statusText: "Đã vệ sinh mặt sân & nhặt bóng", cleaner: "Trần Thị Mai" },
-                  { id: 3, fieldName: f2, time: "14:00", statusText: "Dọn dẹp tổng thể", cleaner: "Lê Quốc Bảo" },
-                ];
-                setCleaningLogs(freshLogs);
-                localStorage.setItem(LOGS_KEY, JSON.stringify(freshLogs));
-              } else {
-                setCleaningLogs(parsed);
-              }
-            } catch {
-              setCleaningLogs([
-                { id: 1, fieldName: f0, time: "16:45", statusText: "Đã dọn xong sau ca", cleaner: "Nguyễn Văn Hùng" },
-                { id: 2, fieldName: f1, time: "15:20", statusText: "Đã vệ sinh mặt sân & nhặt bóng", cleaner: "Trần Thị Mai" },
-                { id: 3, fieldName: f2, time: "14:00", statusText: "Dọn dẹp tổng thể", cleaner: "Lê Quốc Bảo" },
-              ]);
-            }
-          } else {
-            const freshLogs = [
-              { id: 1, fieldName: f0, time: "16:45", statusText: "Đã dọn xong sau ca", cleaner: "Nguyễn Văn Hùng" },
-              { id: 2, fieldName: f1, time: "15:20", statusText: "Đã vệ sinh mặt sân & nhặt bóng", cleaner: "Trần Thị Mai" },
-              { id: 3, fieldName: f2, time: "14:00", statusText: "Dọn dẹp tổng thể", cleaner: "Lê Quốc Bảo" },
-            ];
-            setCleaningLogs(freshLogs);
-            localStorage.setItem(LOGS_KEY, JSON.stringify(freshLogs));
-          }
+          // Hôm nay chưa có lượt dọn dẹp nào: để mảng rỗng để hiển thị thông báo chính xác
+          setCleaningLogs([]);
+          localStorage.removeItem(LOGS_KEY);
         }
 
         // Load Đồ thất lạc từ backend CSDL hoặc localStorage
@@ -1292,7 +1269,8 @@ export default function Cleaning() {
                                 <span className="tag-ongoing-countdown">Còn {schedule.ongoingBooking.remainingOngoingMins}p</span>
                               </div>
                               <div className="facility-box-value value-ongoing">
-                                <span>Ca {schedule.ongoingBooking.time} • Khách: <strong>{schedule.ongoingBooking.name}</strong></span>
+                                <div className="cleaning-shift-time">Ca {schedule.ongoingBooking.time}</div>
+                                <div className="cleaning-shift-customer">Khách: <strong>{schedule.ongoingBooking.name}</strong></div>
                               </div>
                             </>
                           ) : schedule.nextBooking ? (
@@ -1303,7 +1281,8 @@ export default function Cleaning() {
                                 <span className="tag-upcoming-countdown">Sau {schedule.nextBooking.minutesLeft}p</span>
                               </div>
                               <div className="facility-box-value value-upcoming">
-                                <span>Ca {schedule.nextBooking.time} • Khách: <strong>{schedule.nextBooking.name}</strong></span>
+                                <div className="cleaning-shift-time">Ca {schedule.nextBooking.time}</div>
+                                <div className="cleaning-shift-customer">Khách: <strong>{schedule.nextBooking.name}</strong></div>
                               </div>
                             </>
                           ) : (
