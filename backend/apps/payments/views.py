@@ -272,8 +272,21 @@ def sepay_webhook(request):
     """
     Endpoint tiếp nhận Webhook biến động số dư từ SePay
     Tự động nhận diện thanh toán dựa trên nội dung chuyển khoản chứa mã đơn 'BK...'
+    Bảo mật:
+    1. Kiểm tra SEPAY_API_KEY qua Authorization header nếu được cấu hình.
+    2. Kiểm tra số tiền chuyển (transferAmount) >= số tiền của đơn đặt sân / giải đấu.
+    3. Chặn xử lý lặp lại (Idempotency) nếu giao dịch đã được xác nhận.
     """
     try:
+        # ── 1. Kiểm tra API Key xác thực từ SePay Webhook ─────────────────────
+        sepay_api_key = os.environ.get('SEPAY_API_KEY', '').strip()
+        if sepay_api_key:
+            auth_header = request.headers.get('Authorization') or request.META.get('HTTP_AUTHORIZATION', '')
+            expected_auth = f"Apikey {sepay_api_key}"
+            if auth_header.strip() != expected_auth and auth_header.strip() != sepay_api_key:
+                print("--- [SEPAY WEBHOOK BLOCKED] Unauthorized: Khóa xác thực không khớp ---")
+                return Response({"error": "Unauthorized: Khóa API SePay không hợp lệ"}, status=status.HTTP_401_UNAUTHORIZED)
+
         payload = request.data
         print("--- [SEPAY WEBHOOK RECEIVED] ---")
         print(payload)
@@ -285,8 +298,19 @@ def sepay_webhook(request):
             return Response({"success": True, "message": "Bỏ qua giao dịch tiền ra"}, status=status.HTTP_200_OK)
 
         content = str(payload.get('content') or payload.get('description') or '')
-        transfer_amount = payload.get('transferAmount') or 0
+        try:
+            transfer_amount = float(payload.get('transferAmount') or 0)
+        except (ValueError, TypeError):
+            transfer_amount = 0.0
+
         sepay_transaction_id = str(payload.get('id') or payload.get('referenceCode') or '')
+
+        # Chặn trùng lặp theo sepay_transaction_id nếu đã lưu
+        if sepay_transaction_id and Payments.objects.filter(transaction_id=sepay_transaction_id, status__in=['Paid', 'Completed', 'Success']).exists():
+            return Response({
+                "success": True,
+                "message": f"Giao dịch SePay {sepay_transaction_id} đã được xử lý trước đó (Idempotent)."
+            }, status=status.HTTP_200_OK)
 
         # 1. Kiểm tra nếu là giải đấu (mã TR...)
         match_tr = re.search(r'TR[_\-]?([A-Za-z0-9]{6,12})', content, re.IGNORECASE)
@@ -298,10 +322,24 @@ def sepay_webhook(request):
                     target_tour = t
                     break
             if target_tour:
+                # ── Kiểm tra idempotency cho giải đấu ───────────────
+                if str(target_tour.payment_status).lower() in ['paid', 'completed']:
+                    return Response({"success": True, "message": "Giải đấu đã thanh toán trước đó"}, status=status.HTTP_200_OK)
+
                 now = timezone.now()
                 total = float(target_tour.estimated_budget or 0)
                 is_deposit = (target_tour.payment_method == 'deposit')
-                amt = float(transfer_amount or (round(total * 0.5) if is_deposit else total))
+                expected_amt = float(target_tour.deposit_amount or round(total * 0.5)) if is_deposit else total
+
+                # ── Kiểm tra số tiền chuyển thực tế ────────────────
+                if transfer_amount > 0 and transfer_amount < expected_amt:
+                    print(f"[SEPAY CẢNH BÁO] Giải đấu {target_tour.id}: Chuyển {transfer_amount}đ, thiếu so với yêu cầu {expected_amt}đ")
+                    return Response({
+                        "success": False,
+                        "error": f"Số tiền chuyển ({transfer_amount:,.0f}đ) chưa đủ số tiền yêu cầu ({expected_amt:,.0f}đ)."
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+                amt = transfer_amount if transfer_amount > 0 else expected_amt
 
                 target_tour.payment_status = 'Deposit_Paid' if is_deposit else 'Paid'
                 target_tour.paid_amount = amt
@@ -320,7 +358,6 @@ def sepay_webhook(request):
                 }, status=status.HTTP_200_OK)
 
         # 2. Tìm mã đơn BK... trong nội dung chuyển khoản (Ví dụ: BK9F8A12 hoặc BK-9F8A12)
-        # Hỗ trợ cả BK in hoa lẫn thường, độ dài từ 6 đến 12 ký tự hex/alphanumeric
         match = re.search(r'BK[_\-]?([A-Za-z0-9]{6,12})', content, re.IGNORECASE)
         
         target_booking = None
@@ -328,7 +365,6 @@ def sepay_webhook(request):
 
         if match:
             matched_code = match.group(1).upper()
-            # Tìm booking có UUID bắt đầu bằng matched_code
             for b in Bookings.objects.all().order_by('-created_at')[:100]:
                 if str(b.id).replace('-', '').upper().startswith(matched_code) or str(b.id)[:8].upper() == matched_code:
                     target_booking = b
@@ -350,8 +386,28 @@ def sepay_webhook(request):
                 "message": f"Không tìm thấy mã đơn đặt sân trong nội dung: '{content}'"
             }, status=status.HTTP_200_OK)
 
-        # Cập nhật Payment
         payment = Payments.objects.filter(booking=target_booking).first()
+
+        # ── Kiểm tra idempotency cho đơn đặt sân ─────────────────────────────
+        if target_booking.status in ['Confirmed', 'Checked_in', 'Completed'] and payment and str(payment.status).lower() in ['paid', 'completed', 'success']:
+            return Response({
+                "success": True,
+                "message": "Đơn đặt sân này đã được thanh toán và xác nhận trước đó (Idempotent).",
+                "booking_id": str(target_booking.id)
+            }, status=status.HTTP_200_OK)
+
+        # ── So sánh số tiền chuyển với giá trị đơn hàng ────────────────────────
+        expected_booking_amount = float(payment.amount if payment and payment.amount else (target_booking.total_price or 0))
+        if transfer_amount > 0 and transfer_amount < expected_booking_amount:
+            print(f"[SEPAY CẢNH BÁO] Đơn {target_booking.id}: Chuyển {transfer_amount}đ, thiếu so với giá trị đơn {expected_booking_amount}đ")
+            return Response({
+                "success": False,
+                "error": f"Số tiền chuyển ({transfer_amount:,.0f}đ) chưa đủ thanh toán đơn hàng ({expected_booking_amount:,.0f}đ)."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        final_paid_amount = transfer_amount if transfer_amount > 0 else expected_booking_amount
+
+        # Cập nhật Payment
         now = timezone.now()
         paid_val = get_status_val('completed')
 
@@ -360,13 +416,14 @@ def sepay_webhook(request):
                 id=uuid.uuid4(),
                 booking=target_booking,
                 customer=target_booking.customer,
-                amount=transfer_amount or target_booking.total_price or 0,
+                amount=final_paid_amount,
                 payment_method='Chuyển khoản SePay',
                 status=paid_val,
                 transaction_id=sepay_transaction_id or matched_code,
                 payment_date=now
             )
         else:
+            payment.amount = final_paid_amount
             payment.status = paid_val
             payment.transaction_id = sepay_transaction_id or payment.transaction_id or matched_code
             payment.payment_date = now
@@ -421,8 +478,24 @@ def simulate_payment_test(request):
     """
     API giả lập thanh toán thành công tức thì (Dành riêng cho Test/Demo đồ án)
     Hỗ trợ cả đơn đặt sân thường lẫn đơn giải đấu.
+    Bảo mật:
+    - Nếu chạy trên Production (settings.DEBUG = False), bắt buộc phải có JWT Token của Admin/Nhân viên.
+    - Chặn hoàn toàn người ngoài hoặc khách vãng lai tự ý gọi giả lập thanh toán.
     """
     try:
+        from django.conf import settings
+        from utils.jwt_utils import get_authenticated_user
+
+        # Kiểm tra điều kiện bảo mật:
+        # Nếu DEBUG = False (Deploy thực tế), bắt buộc người gọi phải là Admin/Nhân viên
+        if not getattr(settings, 'DEBUG', False):
+            caller = get_authenticated_user(request)
+            allowed_roles = ['admin', 'manager', 'field_manager', 'staff']
+            if not caller or getattr(caller, 'role', '') not in allowed_roles:
+                return Response({
+                    "error": "Truy cập bị từ chối: API giả lập thanh toán chỉ được phép sử dụng trong môi trường phát triển (DEBUG=True) hoặc yêu cầu quyền Quản trị viên."
+                }, status=status.HTTP_403_FORBIDDEN)
+
         data = request.data
         booking_id = data.get('booking_id')
         tournament_id = data.get('tournament_id') or data.get('tournament_request_id')
@@ -530,8 +603,18 @@ def get_revenue_analytics(request):
     - month (tùy chọn)
     - field_id (tùy chọn)
     - start_date & end_date (tùy chọn)
+    Bảo mật: Yêu cầu JWT Token có quyền 'revenue_view' hoặc vai trò 'admin'.
     """
     try:
+        from utils.jwt_utils import get_authenticated_user
+        from apps.users.permissions import check_role_has_permission
+
+        caller = get_authenticated_user(request)
+        if not caller:
+            return Response({"error": "Yêu cầu đăng nhập: Vui lòng cung cấp JWT Token hợp lệ."}, status=status.HTTP_401_UNAUTHORIZED)
+        if caller.role != 'admin' and not check_role_has_permission(caller.role, 'revenue_view'):
+            return Response({"error": "Truy cập bị từ chối: Tài khoản không có quyền xem báo cáo doanh thu."}, status=status.HTTP_403_FORBIDDEN)
+
         now = timezone.now()
         current_year = now.year
         current_month = now.month

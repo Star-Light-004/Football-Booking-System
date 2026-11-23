@@ -1,6 +1,6 @@
 from functools import wraps
 from rest_framework.response import Response
-from .views import get_permissions_for_role
+from utils.jwt_utils import get_authenticated_user
 
 MODULE_PREFIX_MAP = {
     'dashboard': ['dashboard', 'dashboard_view'],
@@ -24,6 +24,7 @@ def check_role_has_permission(role, required_permission):
     if role == 'admin':
         return True
 
+    from .views import get_permissions_for_role
     perms = get_permissions_for_role(role)
     if not isinstance(perms, list):
         return False
@@ -43,30 +44,62 @@ def check_role_has_permission(role, required_permission):
     return False
 
 
-def permission_required(permission_key):
+def require_role(*allowed_roles):
     """
-    Decorator cho Django REST Framework API views để kiểm tra quyền của request.
-    Đọc role từ HTTP header 'X-User-Role' hoặc request.user.
+    Decorator kiểm tra vai trò người dùng xác thực qua JWT.
     """
     def decorator(view_func):
         @wraps(view_func)
         def _wrapped_view(request, *args, **kwargs):
-            # 1. Lấy role từ HTTP Header hoặc request.user
-            role = (
-                request.META.get('HTTP_X_USER_ROLE')
-                or getattr(getattr(request, 'user', None), 'role', None)
-            )
+            user = get_authenticated_user(request)
+            if not user:
+                return Response({
+                    "error": "Yêu cầu đăng nhập: Vui lòng cung cấp JWT Token hợp lệ để thực hiện thao tác này."
+                }, status=401)
 
-            # Nếu không truyền role (ví dụ client gọi public hoặc hệ thống nội bộ), cho phép hoặc kiểm tra nếu view yêu cầu
-            if not role:
+            # Admin luôn được phép
+            if user.role == 'admin':
+                request.authenticated_user = user
                 return view_func(request, *args, **kwargs)
 
-            if not check_role_has_permission(role, permission_key):
+            if user.role not in allowed_roles:
+                return Response({
+                    "error": f"Truy cập bị từ chối: Yêu cầu vai trò {', '.join(allowed_roles)} (Vai trò hiện tại: {user.role})."
+                }, status=403)
+
+            request.authenticated_user = user
+            return view_func(request, *args, **kwargs)
+        return _wrapped_view
+    return decorator
+
+
+def permission_required(permission_key):
+    """
+    Decorator cho Django REST Framework API views để kiểm tra quyền của request.
+    Xác thực chữ ký JWT trước khi lấy vai trò của người dùng.
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        def _wrapped_view(request, *args, **kwargs):
+            user = get_authenticated_user(request)
+            if not user:
+                return Response({
+                    "error": "Yêu cầu đăng nhập: Vui lòng cung cấp JWT Token hợp lệ để thực hiện thao tác này."
+                }, status=401)
+
+            # Gán user đã xác thực vào request
+            request.authenticated_user = user
+
+            # Admin có toàn quyền
+            if user.role == 'admin':
+                return view_func(request, *args, **kwargs)
+
+            if not check_role_has_permission(user.role, permission_key):
                 return Response(
                     {
                         "error": "Truy cập bị từ chối: Tài khoản không có quyền thao tác tính năng này.",
                         "required_permission": permission_key,
-                        "current_role": role,
+                        "current_role": user.role,
                     },
                     status=403
                 )
@@ -74,4 +107,3 @@ def permission_required(permission_key):
             return view_func(request, *args, **kwargs)
         return _wrapped_view
     return decorator
-

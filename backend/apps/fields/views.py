@@ -262,6 +262,15 @@ def delete_football_field(request, id):
     if request.method != "DELETE":
         return JsonResponse({"error": "Method not allowed"}, status=405)
 
+    from utils.jwt_utils import get_authenticated_user
+    from apps.users.permissions import check_role_has_permission
+
+    caller = get_authenticated_user(request)
+    if not caller:
+        return JsonResponse({"error": "Yêu cầu đăng nhập: Vui lòng cung cấp JWT Token hợp lệ."}, status=401)
+    if caller.role != 'admin' and not check_role_has_permission(caller.role, 'fields_delete'):
+        return JsonResponse({"error": "Truy cập bị từ chối: Tài khoản không có quyền xóa sân bóng."}, status=403)
+
     try:
         from django.db import transaction
         with transaction.atomic():

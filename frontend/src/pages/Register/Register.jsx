@@ -259,7 +259,7 @@ const Register = () => {
   };
 
   // ── Xử lý lưu kết quả đăng ký mạng xã hội từ tài khoản máy người dùng ───────
-  const completeSocialRegistration = async (provider, email, fullname) => {
+  const completeSocialRegistration = async (provider, email, fullname, access_token) => {
     try {
       setIsSocialLoading(true);
       toast.info(`Đang tạo tài khoản với thông tin ${provider === "google" ? "Google" : "Facebook"} của bạn...`);
@@ -267,7 +267,8 @@ const Register = () => {
       const res = await socialAuth({
         provider,
         email: email.trim().toLowerCase(),
-        fullname: fullname ? fullname.trim() : undefined
+        fullname: fullname ? fullname.trim() : undefined,
+        access_token: access_token || undefined
       });
 
       const userData = res.data.user;
@@ -319,7 +320,7 @@ const Register = () => {
               const googleUser = await googleInfoRes.json();
 
               if (googleUser?.email) {
-                await completeSocialRegistration("google", googleUser.email, googleUser.name);
+                await completeSocialRegistration("google", googleUser.email, googleUser.name, tokenResponse.access_token);
               } else {
                 toast.error("Không tìm thấy email của tài khoản Google này!");
               }

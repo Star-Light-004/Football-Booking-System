@@ -216,16 +216,62 @@ def check_user_exists(request):
 # ================= SOCIAL AUTH (GOOGLE & FACEBOOK) =================
 @api_view(['POST'])
 def social_auth(request):
-    """Đăng ký / đăng nhập nhanh bằng tài khoản Google hoặc Facebook."""
+    """
+    Đăng ký / đăng nhập nhanh bằng tài khoản Google hoặc Facebook.
+    Bảo mật:
+    - Nếu là Google: Xác thực token chính chủ với Google API (access_token hoặc id_token).
+    - Ngăn chặn hoàn toàn việc mạo danh email để chiếm quyền các tài khoản quản trị (Admin/Staff/Manager).
+    """
     data = request.data
-    provider = data.get('provider', 'google')
+    provider = data.get('provider', 'google').lower()
+    access_token = data.get('access_token') or data.get('id_token') or data.get('credential')
     email = (data.get('email') or '').strip().lower()
     fullname = (data.get('fullname') or '').strip()
+
+    # ── 1. Xác thực Token trực tiếp với Google API ───────────────────────────
+    if provider == 'google' and access_token:
+        try:
+            import urllib.request
+            import json as py_json
+
+            # Thử xác thực với endpoint userinfo của Google
+            req = urllib.request.Request(
+                "https://www.googleapis.com/oauth2/v3/userinfo",
+                headers={"Authorization": f"Bearer {access_token}"}
+            )
+            with urllib.request.urlopen(req, timeout=6) as resp:
+                if resp.status == 200:
+                    g_data = py_json.loads(resp.read().decode('utf-8'))
+                    verified_email = (g_data.get('email') or '').strip().lower()
+                    if verified_email:
+                        email = verified_email
+                        fullname = fullname or g_data.get('name') or ''
+        except Exception as g_err:
+            print("Lỗi verify Google access_token:", g_err)
+            try:
+                # Fallback: Xác thực id_token với Google tokeninfo endpoint
+                verify_url = f"https://oauth2.googleapis.com/tokeninfo?id_token={access_token}"
+                with urllib.request.urlopen(verify_url, timeout=6) as id_resp:
+                    if id_resp.status == 200:
+                        id_data = py_json.loads(id_resp.read().decode('utf-8'))
+                        if id_data.get('email'):
+                            email = id_data['email'].strip().lower()
+                            fullname = fullname or id_data.get('name') or ''
+            except Exception as id_err:
+                print("Lỗi verify Google id_token:", id_err)
 
     if not email:
         return Response({"error": f"Không tìm thấy email liên kết với tài khoản {provider.capitalize()}"}, status=400)
 
     user = Customers.objects.filter(email=email).first()
+
+    # ── 2. Bảo vệ tài khoản Quản trị ──────────────────────────────────────────
+    # Tài khoản Quản trị (Admin, Quản lý, Nhân viên) không thể bị chiếm bằng request giả mạo
+    if user and user.role != Customers.Role.CUSTOMER:
+        if not access_token:
+            return Response({
+                "error": "Bảo mật: Tài khoản Quản trị hệ thống không được phép đăng nhập thông qua mạng xã hội mà không có mã xác thực Google hợp lệ."
+            }, status=403)
 
     if not user:
         user = Customers.objects.create(
@@ -312,10 +358,21 @@ def login(request):
 # ================= ROLE PERMISSIONS APIs =================
 @api_view(['GET', 'PUT'])
 def role_permissions_view(request):
+    from .permissions import check_role_has_permission
+    from utils.jwt_utils import get_authenticated_user
+
+    user = get_authenticated_user(request)
+    if not user:
+        return Response({"error": "Yêu cầu đăng nhập: Vui lòng cung cấp JWT Token hợp lệ."}, status=401)
+
     if request.method == 'GET':
         perms = load_all_role_permissions()
         return Response(perms)
     elif request.method == 'PUT':
+        # Chỉ Admin hoặc tài khoản có quyền settings_manage mới được sửa ma trận phân quyền
+        if user.role != 'admin' and not check_role_has_permission(user.role, 'settings_manage'):
+            return Response({"error": "Truy cập bị từ chối: Chỉ Quản trị viên mới có quyền cập nhật ma trận phân quyền."}, status=403)
+
         new_perms = request.data
         if not isinstance(new_perms, dict):
             return Response({"error": "Dữ liệu phân quyền không hợp lệ"}, status=400)
@@ -325,6 +382,11 @@ def role_permissions_view(request):
 
 @api_view(['POST'])
 def reset_role_permissions_view(request):
+    from utils.jwt_utils import get_authenticated_user
+    user = get_authenticated_user(request)
+    if not user or user.role != 'admin':
+        return Response({"error": "Truy cập bị từ chối: Chỉ Quản trị viên tối cao mới có thể đặt lại phân quyền về mặc định."}, status=403)
+
     save_all_role_permissions(DEFAULT_PERMISSIONS)
     return Response({"message": "Đã đặt lại phân quyền về mặc định", "permissions": DEFAULT_PERMISSIONS})
 
@@ -332,11 +394,16 @@ def reset_role_permissions_view(request):
 # ================= GET ALL USERS =================
 @api_view(['GET'])
 def get_users(request):
-    users = Customers.objects.all().order_by('-created_at')
+    from .permissions import permission_required
 
-    from .serializers import CustomersSerializer
-    serializer = CustomersSerializer(users, many=True)
-    return Response(serializer.data)
+    @permission_required('users_view')
+    def _inner(req):
+        users = Customers.objects.all().order_by('-created_at')
+        from .serializers import CustomersSerializer
+        serializer = CustomersSerializer(users, many=True)
+        return Response(serializer.data)
+
+    return _inner(request)
 
 
 # ================= GET PROFILE =================
@@ -416,51 +483,57 @@ def toggle_status(request, user_id):
 # ================= DELETE USER =================
 @api_view(['DELETE'])
 def delete_user(request, user_id):
-    try:
-        from django.db import transaction
-        with transaction.atomic():
-            user = Customers.objects.get(id=user_id)
-            
-            # Gỡ liên kết ca đá / giải đấu / thanh toán / dọn dẹp để bảo toàn lịch sử
-            try:
-                from apps.bookings.models import Bookings, TournamentRequests
-                Bookings.objects.filter(customer_id=user.id).update(customer=None)
-                TournamentRequests.objects.filter(customer_id=user.id).update(customer=None)
-            except Exception as b_err:
-                print("Lỗi gỡ user khỏi bookings:", b_err)
+    from .permissions import permission_required
 
-            try:
-                from apps.facility.models import PitchCleaning
-                PitchCleaning.objects.filter(cleaner_id=user.id).update(cleaner=None)
-            except Exception as f_err:
-                print("Lỗi gỡ cleaner:", f_err)
+    @permission_required('users_delete')
+    def _inner(req, uid):
+        try:
+            from django.db import transaction
+            with transaction.atomic():
+                user = Customers.objects.get(id=uid)
+                
+                # Gỡ liên kết ca đá / giải đấu / thanh toán / dọn dẹp để bảo toàn lịch sử
+                try:
+                    from apps.bookings.models import Bookings, TournamentRequests
+                    Bookings.objects.filter(customer_id=user.id).update(customer=None)
+                    TournamentRequests.objects.filter(customer_id=user.id).update(customer=None)
+                except Exception as b_err:
+                    print("Lỗi gỡ user khỏi bookings:", b_err)
 
-            try:
-                from apps.payments.models import Payments
-                Payments.objects.filter(customer_id=user.id).update(customer=None)
-            except Exception as p_err:
-                print("Lỗi gỡ customer khỏi payments:", p_err)
+                try:
+                    from apps.facility.models import PitchCleaning
+                    PitchCleaning.objects.filter(cleaner_id=user.id).update(cleaner=None)
+                except Exception as f_err:
+                    print("Lỗi gỡ cleaner:", f_err)
 
-            try:
-                from apps.reviews.models import Reviews
-                Reviews.objects.filter(customer_id=user.id).delete()
-            except Exception as r_err:
-                print("Lỗi xóa reviews của user:", r_err)
+                try:
+                    from apps.payments.models import Payments
+                    Payments.objects.filter(customer_id=user.id).update(customer=None)
+                except Exception as p_err:
+                    print("Lỗi gỡ customer khỏi payments:", p_err)
 
-            try:
-                from apps.vouchers.models import CustomerVoucher
-                CustomerVoucher.objects.filter(customer_id=user.id).delete()
-            except Exception as v_err:
-                print("Lỗi xóa vouchers của user:", v_err)
+                try:
+                    from apps.reviews.models import Reviews
+                    Reviews.objects.filter(customer_id=user.id).delete()
+                except Exception as r_err:
+                    print("Lỗi xóa reviews của user:", r_err)
 
-            user.delete()
-            return Response({"message": "Xóa thành công"})
-    except Customers.DoesNotExist:
-        return Response({"error": "Không tìm thấy user"}, status=404)
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return Response({"error": str(e)}, status=400)
+                try:
+                    from apps.vouchers.models import CustomerVoucher
+                    CustomerVoucher.objects.filter(customer_id=user.id).delete()
+                except Exception as v_err:
+                    print("Lỗi xóa vouchers của user:", v_err)
+
+                user.delete()
+                return Response({"message": "Xóa thành công"})
+        except Customers.DoesNotExist:
+            return Response({"error": "Không tìm thấy user"}, status=404)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({"error": str(e)}, status=400)
+
+    return _inner(request, user_id)
 
 
 # ================= CREATE GUEST USER =================

@@ -118,232 +118,244 @@ def create_booking(request):
 
         customer_id = customer.id
 
-        # 🔹 2. RÀNG BUỘC: Khách hàng chỉ được đặt tối đa 3 khung giờ khác nhau của 1 ngày của 1 sân
-        # Đếm số khung giờ khách hàng đã đặt trước đó tại sân này trong ngày (trừ các đơn đã hủy)
-        active_statuses = ['Confirmed', 'Pending', 'Checked_in', 'Completed']
-        existing_same_field_bks = Bookings.objects.filter(
-            customer_id=customer_id,
-            field_id=field_id,
-            booking_date=booking_date,
-            status__in=active_statuses
-        )
-        existing_count = existing_same_field_bks.count()
-        if existing_count + len(parsed_slots) > 3:
-            return Response({
-                "error": f"Bạn chỉ được đặt tối đa 3 khung giờ khác nhau của 1 ngày của 1 sân. Bạn đã đặt {existing_count} khung giờ tại sân này trong ngày {booking_date.strftime('%d/%m/%Y')}."
-            }, status=400)
+        # ── BẢO MẬT & ĐỒNG THỜI: Bọc toàn bộ kiểm tra và tạo đơn trong transaction.atomic()
+        # kết hợp select_for_update() để khóa hàng, chống Race Condition khi 2 người cùng đặt 1 sân tại 1 tích tắc.
+        from django.db import transaction
+        with transaction.atomic():
+            # Khóa hàng sân bóng để tuần tự hóa các yêu cầu đặt sân trên cùng sân này
+            field_obj = FootballFields.objects.select_for_update().get(id=field_id)
 
-        # 🔹 3. RÀNG BUỘC: Đã đặt khung giờ nào ở sân này thì không được đặt tiếp ở khung giờ đó ở sân khác
-        # Kiểm tra xem khách hàng này đã có đơn đặt ở sân khác trong cùng ngày với bất kỳ khung giờ nào bị trùng không
-        for slot in parsed_slots:
-            other_field_conflict = Bookings.objects.filter(
-                customer_id=customer_id,
-                booking_date=booking_date,
-                start_time__lt=slot["end_time"],
-                end_time__gt=slot["start_time"],
-                status__in=active_statuses
-            ).exclude(field_id=field_id).select_related('field').first()
-
-            if other_field_conflict:
-                f_name = other_field_conflict.field.field_name if other_field_conflict.field else "sân khác"
-                st_str = slot["start_time"].strftime("%H:%M")
-                et_str = slot["end_time"].strftime("%H:%M")
-                return Response({
-                    "error": f"Bạn đã đặt khung giờ {st_str} - {et_str} tại {f_name} trong ngày {booking_date.strftime('%d/%m/%Y')}. Không thể đặt tiếp khung giờ đó ở sân này."
-                }, status=400)
-
-        # 🔹 4. Kiểm tra xem các khung giờ này đã có ai khác đặt trước tại sân này chưa
-        for slot in parsed_slots:
-            slot_already_booked = Bookings.objects.filter(
-                field_id=field_id,
-                booking_date=booking_date,
-                start_time__lt=slot["end_time"],
-                end_time__gt=slot["start_time"],
-                status__in=active_statuses
-            ).exists()
-            if slot_already_booked:
-                st_str = slot["start_time"].strftime("%H:%M")
-                et_str = slot["end_time"].strftime("%H:%M")
-                return Response({
-                    "error": f"Khung giờ {st_str} - {et_str} tại sân này đã có người đặt. Vui lòng chọn khung giờ khác."
-                }, status=400)
-
-        # 🔹 Kiểm tra các slot đã chọn có bị khóa / bảo trì không
-        try:
-            from apps.timeslots.models import TimeSlots
-            for s in parsed_slots:
-                ts_check = TimeSlots.objects.filter(
-                    field_id=field_id,
-                    slot_date=booking_date,
-                    start_time=s["start_time"]
-                ).first()
-                if ts_check and str(ts_check.status).strip().lower() == 'blocked':
-                    return Response({
-                        "error": f"Khung giờ {s['start_time'].strftime('%H:%M')} - {s['end_time'].strftime('%H:%M')} tại sân này hiện đang bị khóa hoặc bảo trì."
-                    }, status=400)
-        except Exception as e:
-            print("Lỗi kiểm tra slot blocked:", e)
-
-        notes_val = data.get("notes") or ""
-
-        # 🔹 Kiểm tra tồn kho cho các dịch vụ đi kèm (nếu có)
-        services_data = data.get("services", [])
-        if services_data:
-            from apps.servicesadd.models import ServicesAdd
-            for s in services_data:
-                s_id = s.get('service_id')
-                qty = int(s.get('quantity', 1))
-                service_obj = ServicesAdd.objects.filter(id=s_id).first()
-                if service_obj and qty > service_obj.stock:
-                    return Response({
-                        "error": f"Dịch vụ '{service_obj.name}' chỉ còn {service_obj.stock} sản phẩm trong kho (bạn đã chọn {qty}). Vui lòng không chọn quá số lượng tồn kho."
-                    }, status=400)
-
-
-        # 🔹 Xử lý áp dụng Voucher nếu có
-        voucher_code_input = data.get("voucher_code")
-        discount_amount = float(data.get("discount_amount") or 0)
-        applied_cust_voucher = None
-
-        if voucher_code_input:
+            # Khóa cả các dòng TimeSlots tương ứng nếu có
             try:
-                from apps.vouchers.models import CustomerVoucher
-                from apps.vouchers.services import validate_voucher_for_customer
-                v_res = validate_voucher_for_customer(
-                    code=voucher_code_input,
-                    customer_id=customer_id,
-                    total_price=data.get("total_price"),
-                    field_price=data.get("field_price") or data.get("price"),
-                    service_price=data.get("totalServicePrice") or data.get("total_service_price") or 0
-                )
-                if v_res.get("valid"):
-                    discount_amount = float(v_res.get("discount_amount", 0))
-                    if v_res.get("customer_voucher_id"):
-                        applied_cust_voucher = CustomerVoucher.objects.filter(id=v_res["customer_voucher_id"]).first()
-            except Exception as v_val_err:
-                print("Lỗi kiểm tra voucher:", v_val_err)
+                from apps.timeslots.models import TimeSlots
+                list(TimeSlots.objects.select_for_update().filter(
+                    field_id=field_id,
+                    slot_date=booking_date,
+                    start_time__in=[s["start_time"] for s in parsed_slots]
+                ))
+            except Exception:
+                pass
 
-        # 🔹 Tính toán giá cho từng khung giờ
-        total_price_all = float(data.get("total_price") or 0)
-        field_obj = FootballFields.objects.get(id=field_id)
-        default_slot_rate = float(field_obj.price_per_hour or 350000)
-
-        # Phân bổ giá vào từng booking record để tổng giá bằng total_price_all
-        slot_prices = []
-        for s in parsed_slots:
-            sp = s.get("price")
-            slot_prices.append(float(sp) if sp is not None else default_slot_rate)
-
-        # Tính tổng giá gốc các slot
-        sum_slots_base = sum(slot_prices)
-        created_bookings = []
-        group_id = str(uuid.uuid4()) if len(parsed_slots) > 1 else None
-
-        payment_method_input = str(data.get("payment_method") or "").strip().lower()
-        status_input = data.get("status")
-        if status_input:
-            initial_status = status_input
-        elif payment_method_input in ['qr', 'deposit', 'vietqr', 'online']:
-            initial_status = "Pending"
-        elif payment_method_input == 'cash':
-            initial_status = "Confirmed"
-        else:
-            initial_status = "Confirmed" if (data.get("is_admin") or data.get("created_by_admin")) else "Pending"
-
-        for idx, s in enumerate(parsed_slots):
-            b_id = uuid.uuid4()
-            b_notes = notes_val
-            if group_id:
-                b_notes = f"{notes_val} [Mã nhóm: {group_id}]".strip()
-                if idx > 0:
-                    b_notes += f" [Gộp cùng #{str(created_bookings[0].id)[:8].upper()}]"
-
-            # Phân bổ giá: Đơn đầu tiên gánh toàn bộ chiết khấu voucher và dịch vụ phụ, các đơn sau theo giá slot
-            if len(parsed_slots) == 1:
-                b_price = total_price_all
-            elif idx == 0:
-                # Giá đơn đầu = Tổng tiền thanh toán trừ đi giá các đơn sau
-                rem_slots_price = sum(slot_prices[1:])
-                b_price = max(0, total_price_all - rem_slots_price)
-            else:
-                b_price = slot_prices[idx]
-
-            booking = Bookings.objects.create(
-                id=b_id,
+            # 🔹 2. RÀNG BUỘC: Khách hàng chỉ được đặt tối đa 3 khung giờ khác nhau của 1 ngày của 1 sân
+            # Đếm số khung giờ khách hàng đã đặt trước đó tại sân này trong ngày (trừ các đơn đã hủy)
+            active_statuses = ['Confirmed', 'Pending', 'Checked_in', 'Completed']
+            existing_same_field_bks = Bookings.objects.filter(
                 customer_id=customer_id,
                 field_id=field_id,
                 booking_date=booking_date,
-                start_time=s["start_time"],
-                end_time=s["end_time"],
-                total_price=b_price,
-                discount_amount=discount_amount if idx == 0 else 0,
-                voucher_code=voucher_code_input if (idx == 0 and voucher_code_input) else None,
-                status=initial_status,
-                notes=b_notes,
-                created_at=datetime.now()
+                status__in=active_statuses
             )
-            created_bookings.append(booking)
+            existing_count = existing_same_field_bks.count()
+            if existing_count + len(parsed_slots) > 3:
+                return Response({
+                    "error": f"Bạn chỉ được đặt tối đa 3 khung giờ khác nhau của 1 ngày của 1 sân. Bạn đã đặt {existing_count} khung giờ tại sân này trong ngày {booking_date.strftime('%d/%m/%Y')}."
+                }, status=400)
 
-        primary_booking = created_bookings[0]
+            # 🔹 3. RÀNG BUỘC: Đã đặt khung giờ nào ở sân này thì không được đặt tiếp ở khung giờ đó ở sân khác
+            for slot in parsed_slots:
+                other_field_conflict = Bookings.objects.filter(
+                    customer_id=customer_id,
+                    booking_date=booking_date,
+                    start_time__lt=slot["end_time"],
+                    end_time__gt=slot["start_time"],
+                    status__in=active_statuses
+                ).exclude(field_id=field_id).select_related('field').first()
 
-        # Đánh dấu voucher đã dùng (cho đơn chính)
-        if applied_cust_voucher:
-            from django.utils import timezone
-            applied_cust_voucher.is_used = True
-            applied_cust_voucher.used_at = timezone.now()
-            applied_cust_voucher.used_booking = primary_booking
-            applied_cust_voucher.discount_amount = discount_amount
-            applied_cust_voucher.save()
+                if other_field_conflict:
+                    f_name = other_field_conflict.field.field_name if other_field_conflict.field else "sân khác"
+                    st_str = slot["start_time"].strftime("%H:%M")
+                    et_str = slot["end_time"].strftime("%H:%M")
+                    return Response({
+                        "error": f"Bạn đã đặt khung giờ {st_str} - {et_str} tại {f_name} trong ngày {booking_date.strftime('%d/%m/%Y')}. Không thể đặt tiếp khung giờ đó ở sân này."
+                    }, status=400)
 
-        # 🔹 Tăng số lượt đặt cho sân này
-        try:
-            if field_obj.booking_count is None:
-                field_obj.booking_count = len(parsed_slots)
-            else:
-                field_obj.booking_count += len(parsed_slots)
-            field_obj.save()
-        except Exception as field_err:
-            print("Lỗi tăng booking_count:", field_err)
-
-        # 🔹 Cập nhật trạng thái TimeSlot thành 'booked' cho tất cả các slot đã chọn
-        try:
-            from apps.timeslots.models import TimeSlots
-            for s in parsed_slots:
-                TimeSlots.objects.filter(
+            # 🔹 4. Kiểm tra xem các khung giờ này đã có ai khác đặt trước tại sân này chưa
+            for slot in parsed_slots:
+                slot_already_booked = Bookings.objects.filter(
                     field_id=field_id,
-                    slot_date=booking_date,
-                    start_time=s["start_time"]
-                ).update(status='booked')
-        except Exception as ts_err:
-            print("Lỗi update status timeslot:", ts_err)
+                    booking_date=booking_date,
+                    start_time__lt=slot["end_time"],
+                    end_time__gt=slot["start_time"],
+                    status__in=active_statuses
+                ).exists()
+                if slot_already_booked:
+                    st_str = slot["start_time"].strftime("%H:%M")
+                    et_str = slot["end_time"].strftime("%H:%M")
+                    return Response({
+                        "error": f"Khung giờ {st_str} - {et_str} tại sân này đã có người đặt. Vui lòng chọn khung giờ khác."
+                    }, status=400)
 
-        # 🔹 Lưu dịch vụ thêm nếu có (gắn vào đơn chính)
-        services_data = data.get("services", [])
-        if services_data:
-            from apps.servicesadd.models import BookingServices
-            for s in services_data:
-                BookingServices.objects.create(
-                    id=uuid.uuid4(),
-                    booking_id=primary_booking.id,
-                    service_id=s['service_id'],
-                    quantity=s['quantity'],
-                    total_price=s.get('total_price', 0),
-                    shoe_size=s.get('shoe_size'),
-                    status='active'
+            # 🔹 Kiểm tra các slot đã chọn có bị khóa / bảo trì không
+            try:
+                for s in parsed_slots:
+                    ts_check = TimeSlots.objects.filter(
+                        field_id=field_id,
+                        slot_date=booking_date,
+                        start_time=s["start_time"]
+                    ).first()
+                    if ts_check and str(ts_check.status).strip().lower() == 'blocked':
+                        return Response({
+                            "error": f"Khung giờ {s['start_time'].strftime('%H:%M')} - {s['end_time'].strftime('%H:%M')} tại sân này hiện đang bị khóa hoặc bảo trì."
+                        }, status=400)
+            except Exception as e:
+                print("Lỗi kiểm tra slot blocked:", e)
+
+            notes_val = data.get("notes") or ""
+
+            # 🔹 Kiểm tra tồn kho cho các dịch vụ đi kèm (nếu có)
+            services_data = data.get("services", [])
+            if services_data:
+                from apps.servicesadd.models import ServicesAdd
+                for s in services_data:
+                    s_id = s.get('service_id')
+                    qty = int(s.get('quantity', 1))
+                    service_obj = ServicesAdd.objects.filter(id=s_id).first()
+                    if service_obj and qty > service_obj.stock:
+                        return Response({
+                            "error": f"Dịch vụ '{service_obj.name}' chỉ còn {service_obj.stock} sản phẩm trong kho (bạn đã chọn {qty}). Vui lòng không chọn quá số lượng tồn kho."
+                        }, status=400)
+
+            # 🔹 Xử lý áp dụng Voucher nếu có
+            voucher_code_input = data.get("voucher_code")
+            discount_amount = float(data.get("discount_amount") or 0)
+            applied_cust_voucher = None
+
+            if voucher_code_input:
+                try:
+                    from apps.vouchers.models import CustomerVoucher
+                    from apps.vouchers.services import validate_voucher_for_customer
+                    v_res = validate_voucher_for_customer(
+                        code=voucher_code_input,
+                        customer_id=customer_id,
+                        total_price=data.get("total_price"),
+                        field_price=data.get("field_price") or data.get("price"),
+                        service_price=data.get("totalServicePrice") or data.get("total_service_price") or 0
+                    )
+                    if v_res.get("valid"):
+                        discount_amount = float(v_res.get("discount_amount", 0))
+                        if v_res.get("customer_voucher_id"):
+                            applied_cust_voucher = CustomerVoucher.objects.filter(id=v_res["customer_voucher_id"]).first()
+                except Exception as v_val_err:
+                    print("Lỗi kiểm tra voucher:", v_val_err)
+
+            # 🔹 Tính toán giá cho từng khung giờ
+            total_price_all = float(data.get("total_price") or 0)
+            default_slot_rate = float(field_obj.price_per_hour or 350000)
+
+            # Phân bổ giá vào từng booking record để tổng giá bằng total_price_all
+            slot_prices = []
+            for s in parsed_slots:
+                sp = s.get("price")
+                slot_prices.append(float(sp) if sp is not None else default_slot_rate)
+
+            # Tính tổng giá gốc các slot
+            sum_slots_base = sum(slot_prices)
+            created_bookings = []
+            group_id = str(uuid.uuid4()) if len(parsed_slots) > 1 else None
+
+            payment_method_input = str(data.get("payment_method") or "").strip().lower()
+            status_input = data.get("status")
+            if status_input:
+                initial_status = status_input
+            elif payment_method_input in ['qr', 'deposit', 'vietqr', 'online']:
+                initial_status = "Pending"
+            elif payment_method_input == 'cash':
+                initial_status = "Confirmed"
+            else:
+                initial_status = "Confirmed" if (data.get("is_admin") or data.get("created_by_admin")) else "Pending"
+
+            for idx, s in enumerate(parsed_slots):
+                b_id = uuid.uuid4()
+                b_notes = notes_val
+                if group_id:
+                    b_notes = f"{notes_val} [Mã nhóm: {group_id}]".strip()
+                    if idx > 0:
+                        b_notes += f" [Gộp cùng #{str(created_bookings[0].id)[:8].upper()}]"
+
+                # Phân bổ giá: Đơn đầu tiên gánh toàn bộ chiết khấu voucher và dịch vụ phụ, các đơn sau theo giá slot
+                if len(parsed_slots) == 1:
+                    b_price = total_price_all
+                elif idx == 0:
+                    rem_slots_price = sum(slot_prices[1:])
+                    b_price = max(0, total_price_all - rem_slots_price)
+                else:
+                    b_price = slot_prices[idx]
+
+                booking = Bookings.objects.create(
+                    id=b_id,
+                    customer_id=customer_id,
+                    field_id=field_id,
+                    booking_date=booking_date,
+                    start_time=s["start_time"],
+                    end_time=s["end_time"],
+                    total_price=b_price,
+                    discount_amount=discount_amount if idx == 0 else 0,
+                    voucher_code=voucher_code_input if (idx == 0 and voucher_code_input) else None,
+                    status=initial_status,
+                    notes=b_notes,
+                    created_at=datetime.now()
                 )
+                created_bookings.append(booking)
 
-            # Nếu đơn được tạo với trạng thái Completed ngay từ đầu, trừ tồn kho
-            if str(primary_booking.status).strip().lower() in ['completed', 'hoàn thành']:
-                from apps.servicesadd.views import sync_booking_services_stock
-                sync_booking_services_stock(primary_booking, primary_booking.status)
+            primary_booking = created_bookings[0]
 
-        return Response({
-            "message": "Đặt sân thành công",
-            "booking_id": str(primary_booking.id),
-            "booking_id_short": str(primary_booking.id)[:8].upper(),
-            "booking_ids": [str(b.id) for b in created_bookings],
-            "slots_count": len(created_bookings)
-        })
+            # Đánh dấu voucher đã dùng (cho đơn chính)
+            if applied_cust_voucher:
+                from django.utils import timezone
+                applied_cust_voucher.is_used = True
+                applied_cust_voucher.used_at = timezone.now()
+                applied_cust_voucher.used_booking = primary_booking
+                applied_cust_voucher.discount_amount = discount_amount
+                applied_cust_voucher.save()
+
+            # 🔹 Tăng số lượt đặt cho sân này
+            try:
+                if field_obj.booking_count is None:
+                    field_obj.booking_count = len(parsed_slots)
+                else:
+                    field_obj.booking_count += len(parsed_slots)
+                field_obj.save()
+            except Exception as field_err:
+                print("Lỗi tăng booking_count:", field_err)
+
+            # 🔹 Cập nhật trạng thái TimeSlot thành 'booked' cho tất cả các slot đã chọn
+            try:
+                for s in parsed_slots:
+                    TimeSlots.objects.filter(
+                        field_id=field_id,
+                        slot_date=booking_date,
+                        start_time=s["start_time"]
+                    ).update(status='booked')
+            except Exception as ts_err:
+                print("Lỗi update status timeslot:", ts_err)
+
+            # 🔹 Lưu dịch vụ thêm nếu có (gắn vào đơn chính)
+            services_data = data.get("services", [])
+            if services_data:
+                from apps.servicesadd.models import BookingServices
+                for s in services_data:
+                    BookingServices.objects.create(
+                        id=uuid.uuid4(),
+                        booking_id=primary_booking.id,
+                        service_id=s['service_id'],
+                        quantity=s['quantity'],
+                        total_price=s.get('total_price', 0),
+                        shoe_size=s.get('shoe_size'),
+                        status='active'
+                    )
+
+                # Nếu đơn được tạo với trạng thái Completed ngay từ đầu, trừ tồn kho
+                if str(primary_booking.status).strip().lower() in ['completed', 'hoàn thành']:
+                    from apps.servicesadd.views import sync_booking_services_stock
+                    sync_booking_services_stock(primary_booking, primary_booking.status)
+
+            return Response({
+                "message": "Đặt sân thành công",
+                "booking_id": str(primary_booking.id),
+                "booking_id_short": str(primary_booking.id)[:8].upper(),
+                "booking_ids": [str(b.id) for b in created_bookings],
+                "slots_count": len(created_bookings)
+            })
 
     except Exception as e:
         print("ERROR:", e)
