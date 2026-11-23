@@ -130,8 +130,16 @@ function AdminSidebar() {
               </Link>
               {subMenu && isExpanded && (
                 <div className="submenu">
-                  {subMenu.map((item) => {
-                    const fullCurrent = `${location.pathname}${location.search}`;
+                  {subMenu
+                    .filter((item) => {
+                      // Mục "Phân quyền" (/admin/users/roles) CHỈ hiển thị cho tài khoản Quản trị viên tối cao (admin)
+                      if (item.path === "/admin/users/roles" && adminUser?.role !== "admin") {
+                        return false;
+                      }
+                      return true;
+                    })
+                    .map((item) => {
+                      const fullCurrent = `${location.pathname}${location.search}`;
                     const isSubActive =
                       fullCurrent === item.path ||
                       (item.path === "/admin/users" &&

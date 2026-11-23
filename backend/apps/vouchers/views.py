@@ -91,11 +91,20 @@ def get_public_vouchers(request):
 # ═════════════════════════════════════════════════════════════════════════════
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
 def admin_get_all_vouchers(request):
     """
     API Admin: Lấy toàn bộ danh sách voucher + số liệu thống kê
+    Bảo mật: Yêu cầu quyền 'vouchers_view' hoặc vai trò 'admin'.
     """
+    from utils.jwt_utils import get_authenticated_user
+    from apps.users.permissions import check_role_has_permission
+
+    caller = get_authenticated_user(request)
+    if not caller:
+        return Response({"error": "Yêu cầu đăng nhập: Vui lòng cung cấp JWT Token hợp lệ."}, status=status.HTTP_401_UNAUTHORIZED)
+    if caller.role != 'admin' and not check_role_has_permission(caller.role, 'vouchers_view'):
+        return Response({"error": "Truy cập bị từ chối: Tài khoản không có quyền xem chính sách voucher."}, status=status.HTTP_403_FORBIDDEN)
+
     vouchers = Voucher.objects.all().order_by('-created_at')
     serializer = AdminVoucherSerializer(vouchers, many=True)
 
@@ -128,11 +137,20 @@ def admin_get_all_vouchers(request):
 
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
 def admin_create_voucher(request):
     """
     API Admin: Tạo mới một voucher
+    Bảo mật: Yêu cầu quyền 'vouchers_create' hoặc vai trò 'admin'.
     """
+    from utils.jwt_utils import get_authenticated_user
+    from apps.users.permissions import check_role_has_permission
+
+    caller = get_authenticated_user(request)
+    if not caller:
+        return Response({"error": "Yêu cầu đăng nhập: Vui lòng cung cấp JWT Token hợp lệ."}, status=status.HTTP_401_UNAUTHORIZED)
+    if caller.role != 'admin' and not check_role_has_permission(caller.role, 'vouchers_create'):
+        return Response({"error": "Truy cập bị từ chối: Tài khoản không có quyền tạo mới voucher."}, status=status.HTTP_403_FORBIDDEN)
+
     data = request.data or {}
     code = str(data.get('code', '')).strip().upper()
     title = str(data.get('title', '')).strip()
@@ -197,11 +215,20 @@ def admin_create_voucher(request):
 
 
 @api_view(['PUT'])
-@permission_classes([AllowAny])
 def admin_update_voucher(request, voucher_id):
     """
     API Admin: Cập nhật thông tin voucher
+    Bảo mật: Yêu cầu quyền 'vouchers_edit' hoặc vai trò 'admin'.
     """
+    from utils.jwt_utils import get_authenticated_user
+    from apps.users.permissions import check_role_has_permission
+
+    caller = get_authenticated_user(request)
+    if not caller:
+        return Response({"error": "Yêu cầu đăng nhập: Vui lòng cung cấp JWT Token hợp lệ."}, status=status.HTTP_401_UNAUTHORIZED)
+    if caller.role != 'admin' and not check_role_has_permission(caller.role, 'vouchers_edit'):
+        return Response({"error": "Truy cập bị từ chối: Tài khoản không có quyền cập nhật voucher."}, status=status.HTTP_403_FORBIDDEN)
+
     try:
         voucher = Voucher.objects.get(id=voucher_id)
     except Voucher.DoesNotExist:
@@ -254,11 +281,20 @@ def admin_update_voucher(request, voucher_id):
 
 
 @api_view(['DELETE'])
-@permission_classes([AllowAny])
 def admin_delete_voucher(request, voucher_id):
     """
     API Admin: Xóa voucher
+    Bảo mật: Yêu cầu quyền 'vouchers_delete' hoặc vai trò 'admin'.
     """
+    from utils.jwt_utils import get_authenticated_user
+    from apps.users.permissions import check_role_has_permission
+
+    caller = get_authenticated_user(request)
+    if not caller:
+        return Response({"error": "Yêu cầu đăng nhập: Vui lòng cung cấp JWT Token hợp lệ."}, status=status.HTTP_401_UNAUTHORIZED)
+    if caller.role != 'admin' and not check_role_has_permission(caller.role, 'vouchers_delete'):
+        return Response({"error": "Truy cập bị từ chối: Tài khoản không có quyền xóa voucher."}, status=status.HTTP_403_FORBIDDEN)
+
     try:
         voucher = Voucher.objects.get(id=voucher_id)
         used_count = voucher.customer_instances.filter(is_used=True).count()
@@ -279,11 +315,20 @@ def admin_delete_voucher(request, voucher_id):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
 def admin_get_customer_vouchers(request):
     """
-    API Admin: Lấy danh sách lịch sử tất cả các mã voucher cá nhân (mã con) đã cấp cho khách hàng
+    API Admin: Lấy danh sách lịch sử tất cả các mã voucher cá nhân (mã con) đã cấp cho khách hàng.
+    Bảo mật: Yêu cầu quyền 'vouchers_view' hoặc vai trò 'admin'.
     """
+    from utils.jwt_utils import get_authenticated_user
+    from apps.users.permissions import check_role_has_permission
+
+    caller = get_authenticated_user(request)
+    if not caller:
+        return Response({"error": "Yêu cầu đăng nhập: Vui lòng cung cấp JWT Token hợp lệ."}, status=status.HTTP_401_UNAUTHORIZED)
+    if caller.role != 'admin' and not check_role_has_permission(caller.role, 'vouchers_view'):
+        return Response({"error": "Truy cập bị từ chối: Tài khoản không có quyền xem lịch sử voucher."}, status=status.HTTP_403_FORBIDDEN)
+
     from .serializers import AdminCustomerVoucherSerializer
     from django.db.models import Q
     from django.utils import timezone

@@ -147,44 +147,55 @@ def get_football_field_detail(request, id):
 # ===============================
 @csrf_exempt
 def create_football_field(request):
-    if request.method == "POST":
-        try:
-            field_name = request.POST.get("field_name")
-            field_type_name = request.POST.get("field_type")
-            location = request.POST.get("location")
-            price_per_hour = request.POST.get("price_per_hour")
-            image = request.FILES.get("image")
-            sub_image_1 = request.FILES.get("sub_image_1")
-            sub_image_2 = request.FILES.get("sub_image_2")
-            sub_image_3 = request.FILES.get("sub_image_3")
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
 
-            field_type, _ = FieldTypes.objects.get_or_create(name=field_type_name)
+    from utils.jwt_utils import get_authenticated_user
+    from apps.users.permissions import check_role_has_permission
 
-            field = FootballFields.objects.create(
-                field_name=field_name,
-                field_type=field_type,
-                location=location,
-                price_per_hour=price_per_hour,
-                image=image,
-                sub_image_1=sub_image_1,
-                sub_image_2=sub_image_2,
-                sub_image_3=sub_image_3,
-                description=request.POST.get("description"),
-                phone=request.POST.get("phone"),
-                booking_count=request.POST.get("booking_count", 0),
-                rating_avg=request.POST.get("rating_avg", 0),
-                latitude=request.POST.get("latitude") if request.POST.get("latitude") else None,
-                longitude=request.POST.get("longitude") if request.POST.get("longitude") else None,
-                is_available=True
-            )
+    caller = get_authenticated_user(request)
+    if not caller:
+        return JsonResponse({"error": "Yêu cầu đăng nhập: Vui lòng cung cấp JWT Token hợp lệ."}, status=401)
+    if caller.role != 'admin' and not check_role_has_permission(caller.role, 'fields_create'):
+        return JsonResponse({"error": "Truy cập bị từ chối: Tài khoản không có quyền tạo sân bóng mới."}, status=403)
 
-            return JsonResponse({
-                "message": "Thêm sân thành công",
-                "id": str(field.id),
-            })
+    try:
+        field_name = request.POST.get("field_name")
+        field_type_name = request.POST.get("field_type")
+        location = request.POST.get("location")
+        price_per_hour = request.POST.get("price_per_hour")
+        image = request.FILES.get("image")
+        sub_image_1 = request.FILES.get("sub_image_1")
+        sub_image_2 = request.FILES.get("sub_image_2")
+        sub_image_3 = request.FILES.get("sub_image_3")
 
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=400)
+        field_type, _ = FieldTypes.objects.get_or_create(name=field_type_name)
+
+        field = FootballFields.objects.create(
+            field_name=field_name,
+            field_type=field_type,
+            location=location,
+            price_per_hour=price_per_hour,
+            image=image,
+            sub_image_1=sub_image_1,
+            sub_image_2=sub_image_2,
+            sub_image_3=sub_image_3,
+            description=request.POST.get("description"),
+            phone=request.POST.get("phone"),
+            booking_count=request.POST.get("booking_count", 0),
+            rating_avg=request.POST.get("rating_avg", 0),
+            latitude=request.POST.get("latitude") if request.POST.get("latitude") else None,
+            longitude=request.POST.get("longitude") if request.POST.get("longitude") else None,
+            is_available=True
+        )
+
+        return JsonResponse({
+            "message": "Thêm sân thành công",
+            "id": str(field.id),
+        })
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)
 
 
 # ===============================
@@ -193,6 +204,15 @@ def create_football_field(request):
 @csrf_exempt
 @api_view(["PUT", "POST"])
 def update_football_field(request, id):
+    from utils.jwt_utils import get_authenticated_user
+    from apps.users.permissions import check_role_has_permission
+
+    caller = get_authenticated_user(request)
+    if not caller:
+        return JsonResponse({"error": "Yêu cầu đăng nhập: Vui lòng cung cấp JWT Token hợp lệ."}, status=401)
+    if caller.role != 'admin' and not check_role_has_permission(caller.role, 'fields_edit'):
+        return JsonResponse({"error": "Truy cập bị từ chối: Tài khoản không có quyền chỉnh sửa sân bóng."}, status=403)
+
     try:
         field = FootballFields.objects.get(id=id)
         data = request.data

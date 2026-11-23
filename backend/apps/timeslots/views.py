@@ -31,6 +31,15 @@ def timeslot_list(request):
         return Response(serializer.data)
 
     if request.method == 'POST':
+        from utils.jwt_utils import get_authenticated_user
+        from apps.users.permissions import check_role_has_permission
+
+        caller = get_authenticated_user(request)
+        if not caller:
+            return Response({"error": "Yêu cầu đăng nhập: Vui lòng cung cấp JWT Token hợp lệ."}, status=http_status.HTTP_401_UNAUTHORIZED)
+        if caller.role != 'admin' and not check_role_has_permission(caller.role, 'timeslots_create'):
+            return Response({"error": "Truy cập bị từ chối: Tài khoản không có quyền tạo khung giờ mới."}, status=http_status.HTTP_403_FORBIDDEN)
+
         data = request.data
         try:
             slot = TimeSlots.objects.create(
@@ -41,19 +50,29 @@ def timeslot_list(request):
                 price=data.get('price'),
                 status=data.get('status', 'available')
             )
-            return Response({"message": "Tao thanh cong", "id": str(slot.id)})
+            return Response({"message": "Tạo khung giờ thành công", "id": str(slot.id)})
         except Exception as e:
-            return Response([], status=200)
+            return Response({"error": str(e)}, status=http_status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['PUT', 'DELETE'])
 def timeslot_detail(request, pk):
+    from utils.jwt_utils import get_authenticated_user
+    from apps.users.permissions import check_role_has_permission
+
+    caller = get_authenticated_user(request)
+    if not caller:
+        return Response({"error": "Yêu cầu đăng nhập: Vui lòng cung cấp JWT Token hợp lệ."}, status=http_status.HTTP_401_UNAUTHORIZED)
+
     try:
         slot = TimeSlots.objects.get(pk=pk)
     except TimeSlots.DoesNotExist:
-        return Response([], status=200)
+        return Response({"error": "Không tìm thấy khung giờ"}, status=http_status.HTTP_404_NOT_FOUND)
 
     if request.method == 'PUT':
+        if caller.role != 'admin' and not check_role_has_permission(caller.role, 'timeslots_edit'):
+            return Response({"error": "Truy cập bị từ chối: Tài khoản không có quyền sửa khung giờ."}, status=http_status.HTTP_403_FORBIDDEN)
+
         data = request.data
         slot.slot_date = data.get('slot_date', slot.slot_date)
         slot.start_time = data.get('start_time', slot.start_time)
@@ -61,7 +80,17 @@ def timeslot_detail(request, pk):
         slot.price = data.get('price', slot.price)
         slot.status = data.get('status', slot.status)
         slot.save()
-        return Response({"message": "Cap nhat thanh cong"})
+        return Response({"message": "Cập nhật khung giờ thành công"})
+
+    if request.method == 'DELETE':
+        if caller.role != 'admin' and not check_role_has_permission(caller.role, 'timeslots_delete'):
+            return Response({"error": "Truy cập bị từ chối: Tài khoản không có quyền xóa khung giờ."}, status=http_status.HTTP_403_FORBIDDEN)
+
+        if slot.status == 'booked':
+            return Response({"error": "Không thể xóa khung giờ đã có khách đặt chỗ thành công."}, status=http_status.HTTP_400_BAD_REQUEST)
+
+        slot.delete()
+        return Response({"message": "Xóa khung giờ thành công"})
 
     if request.method == 'DELETE':
         slot.delete()
@@ -93,6 +122,15 @@ def get_timeslots_by_field(request):
 
 @api_view(['POST'])
 def generate_slots(request):
+    from utils.jwt_utils import get_authenticated_user
+    from apps.users.permissions import check_role_has_permission
+
+    caller = get_authenticated_user(request)
+    if not caller:
+        return Response({"error": "Yêu cầu đăng nhập: Vui lòng cung cấp JWT Token hợp lệ."}, status=http_status.HTTP_401_UNAUTHORIZED)
+    if caller.role != 'admin' and not check_role_has_permission(caller.role, 'timeslots_create'):
+        return Response({"error": "Truy cập bị từ chối: Tài khoản không có quyền sinh khung giờ tự động."}, status=http_status.HTTP_403_FORBIDDEN)
+
     try:
         days = int(request.data.get('days', 30))
     except (ValueError, TypeError):
@@ -203,11 +241,33 @@ def generate_slots(request):
 
 @api_view(['DELETE'])
 def delete_all_slots(request):
+    """
+    Xóa toàn bộ khung giờ (hoặc theo sân cụ thể).
+    Bảo mật:
+    - Yêu cầu JWT token có quyền 'timeslots_delete' hoặc vai trò 'admin'.
+    - BẢO VỆ DỮ LIỆU: Tuyệt đối không xóa các khung giờ đã có khách đặt (status == 'booked') để bảo toàn lịch sử.
+    """
+    from utils.jwt_utils import get_authenticated_user
+    from apps.users.permissions import check_role_has_permission
+
+    caller = get_authenticated_user(request)
+    if not caller:
+        return Response({"error": "Yêu cầu đăng nhập: Vui lòng cung cấp JWT Token hợp lệ."}, status=http_status.HTTP_401_UNAUTHORIZED)
+    if caller.role != 'admin' and not check_role_has_permission(caller.role, 'timeslots_delete'):
+        return Response({"error": "Truy cập bị từ chối: Tài khoản không có quyền xóa khung giờ."}, status=http_status.HTTP_403_FORBIDDEN)
+
     field_id = request.GET.get('field_id')
 
+    # Chỉ xóa những khung giờ khả dụng/chưa có khách đặt để tránh mất mát lịch đặt
     if field_id:
-        count, _ = TimeSlots.objects.filter(field_id=field_id).delete()
-        return Response({"deleted": count})
+        count, _ = TimeSlots.objects.filter(field_id=field_id).exclude(status='booked').delete()
+        return Response({
+            "message": "Đã xóa các khung giờ trống của sân này (giữ lại khung giờ đã có khách đặt).",
+            "deleted": count
+        })
 
-    count, _ = TimeSlots.objects.all().delete()
-    return Response({"deleted": count})
+    count, _ = TimeSlots.objects.exclude(status='booked').delete()
+    return Response({
+        "message": "Đã xóa các khung giờ trống toàn hệ thống (giữ lại khung giờ đã có khách đặt).",
+        "deleted": count
+    })

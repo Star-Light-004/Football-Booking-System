@@ -430,10 +430,34 @@ def get_profile(request):
 # ================= UPDATE USER =================
 @api_view(['PUT'])
 def update_user(request, user_id):
+    """
+    Cập nhật thông tin người dùng.
+    Bảo mật:
+    - Bắt buộc đăng nhập qua JWT Token.
+    - Người dùng chỉ được sửa thông tin cá nhân của chính mình (không được tự đổi role).
+    - Chỉ Quản trị viên tối cao (admin) mới có quyền đổi vai trò (role) và khóa/mở khóa (is_active).
+    - Tài khoản có quyền 'users_edit' được sửa thông tin người dùng khác.
+    """
+    from utils.jwt_utils import get_authenticated_user
+    from .permissions import check_role_has_permission
+
+    caller = get_authenticated_user(request)
+    if not caller:
+        return Response({"error": "Yêu cầu đăng nhập: Vui lòng cung cấp JWT Token hợp lệ."}, status=401)
+
     try:
         user = Customers.objects.get(id=user_id)
         data = request.data
 
+        is_self = str(caller.id) == str(user.id)
+        is_admin = caller.role == 'admin'
+        has_users_edit = check_role_has_permission(caller.role, 'users_edit')
+
+        # Kiểm tra quyền truy cập sửa đổi
+        if not is_self and not is_admin and not has_users_edit:
+            return Response({"error": "Truy cập bị từ chối: Bạn không có quyền chỉnh sửa tài khoản này."}, status=403)
+
+        # ── Cập nhật họ tên, email, số điện thoại ─────────────────────────
         if "full_name" in data:
             user.full_name = data["full_name"]
         elif "fullname" in data:
@@ -446,15 +470,25 @@ def update_user(request, user_id):
         if "phone" in data:
             user.phone = data["phone"]
 
-        # ── Cập nhật vai trò ──────────────────────────────────────────────
+        # ── Cập nhật vai trò (CHỈ ADMIN MỚI ĐƯỢC PHÉP ĐỔI) ───────────────
         if "role" in data:
-            valid_roles = [r.value for r in Customers.Role]
-            if data["role"] not in valid_roles:
-                return Response({"error": f"Vai trò không hợp lệ. Chọn: {valid_roles}"}, status=400)
-            user.role = data["role"]
+            new_role = data["role"]
+            if not is_admin:
+                return Response({
+                    "error": "Truy cập bị từ chối: Chỉ Quản trị viên tối cao mới có quyền phân quyền hoặc thay đổi vai trò tài khoản."
+                }, status=403)
 
-        # ── Cập nhật trạng thái ───────────────────────────────────────────
+            valid_roles = [r.value for r in Customers.Role]
+            if new_role not in valid_roles:
+                return Response({"error": f"Vai trò không hợp lệ. Chọn: {valid_roles}"}, status=400)
+            user.role = new_role
+
+        # ── Cập nhật trạng thái khóa/mở khóa (Chỉ Admin hoặc users_edit) ──
         if "is_active" in data:
+            if not is_admin and not has_users_edit:
+                return Response({
+                    "error": "Truy cập bị từ chối: Không có quyền thay đổi trạng thái hoạt động của tài khoản."
+                }, status=403)
             user.is_active = bool(data["is_active"])
 
         user.save()
@@ -480,11 +514,25 @@ def update_user(request, user_id):
 # ================= CHANGE PASSWORD =================
 @api_view(['PUT', 'POST'])
 def change_password(request, user_id):
-    """Đổi mật khẩu người dùng sau khi xác thực mật khẩu cũ."""
+    """
+    Đổi mật khẩu người dùng sau khi xác thực mật khẩu cũ.
+    Bảo mật: Chỉ chính chủ tài khoản hoặc Admin mới được đổi mật khẩu.
+    """
+    from utils.jwt_utils import get_authenticated_user
+
+    caller = get_authenticated_user(request)
+    if not caller:
+        return Response({"error": "Yêu cầu đăng nhập: Vui lòng cung cấp JWT Token hợp lệ."}, status=401)
+
     try:
         user = Customers.objects.get(id=user_id)
-        data = request.data
+        is_self = str(caller.id) == str(user.id)
+        is_admin = caller.role == 'admin'
 
+        if not is_self and not is_admin:
+            return Response({"error": "Truy cập bị từ chối: Bạn không có quyền đổi mật khẩu của tài khoản khác."}, status=403)
+
+        data = request.data
         old_password = data.get('old_password') or data.get('current_password')
         new_password = data.get('new_password')
         confirm_password = data.get('confirm_password')
@@ -498,8 +546,9 @@ def change_password(request, user_id):
         if confirm_password and new_password != confirm_password:
             return Response({"error": "Xác nhận mật khẩu mới không khớp"}, status=400)
 
-        # Nếu tài khoản đã có mật khẩu thiết lập
-        if user.password_hash:
+        # Nếu là chính chủ đổi mật khẩu và tài khoản đã có mật khẩu cũ: bắt buộc xác thực mật khẩu cũ
+        # (Nếu admin đổi thì cho phép đổi mà không cần biết mật khẩu cũ của user)
+        if not is_admin and user.password_hash:
             if not old_password:
                 return Response({"error": "Vui lòng nhập mật khẩu hiện tại"}, status=400)
             if not check_password(old_password, user.password_hash):
@@ -518,9 +567,25 @@ def change_password(request, user_id):
 # ================= TOGGLE STATUS (khóa / mở khóa) =================
 @api_view(['PATCH'])
 def toggle_status(request, user_id):
-    """Chuyển đổi is_active: active ↔ locked."""
+    """
+    Chuyển đổi is_active: active ↔ locked.
+    Bảo mật: Chỉ admin hoặc tài khoản có quyền 'users_edit' mới được khóa/mở khóa.
+    """
+    from utils.jwt_utils import get_authenticated_user
+    from .permissions import check_role_has_permission
+
+    caller = get_authenticated_user(request)
+    if not caller:
+        return Response({"error": "Yêu cầu đăng nhập: Vui lòng cung cấp JWT Token hợp lệ."}, status=401)
+
+    if caller.role != 'admin' and not check_role_has_permission(caller.role, 'users_edit'):
+        return Response({"error": "Truy cập bị từ chối: Tài khoản không có quyền khóa hoặc mở khóa người dùng."}, status=403)
+
     try:
         user = Customers.objects.get(id=user_id)
+        if user.role == 'admin' and caller.role != 'admin':
+            return Response({"error": "Không thể thay đổi trạng thái của tài khoản Quản trị viên."}, status=403)
+
         user.is_active = not user.is_active
         user.save()
         return Response({

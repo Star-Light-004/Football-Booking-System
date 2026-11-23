@@ -37,6 +37,15 @@ def manage_services(request):
         return Response(serializer.data)
 
     elif request.method == 'POST':
+        from utils.jwt_utils import get_authenticated_user
+        from apps.users.permissions import check_role_has_permission
+
+        caller = get_authenticated_user(request)
+        if not caller:
+            return Response({"error": "Yêu cầu đăng nhập: Vui lòng cung cấp JWT Token hợp lệ."}, status=401)
+        if caller.role != 'admin' and not check_role_has_permission(caller.role, 'services_create'):
+            return Response({"error": "Truy cập bị từ chối: Tài khoản không có quyền thêm mới dịch vụ."}, status=403)
+
         try:
             data = request.data
             
@@ -80,6 +89,15 @@ def service_detail(request, pk):
         return Response(serializer.data)
 
     elif request.method == 'PUT':
+        from utils.jwt_utils import get_authenticated_user
+        from apps.users.permissions import check_role_has_permission
+
+        caller = get_authenticated_user(request)
+        if not caller:
+            return Response({"error": "Yêu cầu đăng nhập: Vui lòng cung cấp JWT Token hợp lệ."}, status=401)
+        if caller.role != 'admin' and not check_role_has_permission(caller.role, 'services_edit'):
+            return Response({"error": "Truy cập bị từ chối: Tài khoản không có quyền cập nhật dịch vụ."}, status=403)
+
         try:
             data = request.data
             service.name = data.get('name', service.name)
@@ -109,6 +127,15 @@ def service_detail(request, pk):
             return Response({"error": str(e)}, status=400)
 
     elif request.method == 'DELETE':
+        from utils.jwt_utils import get_authenticated_user
+        from apps.users.permissions import check_role_has_permission
+
+        caller = get_authenticated_user(request)
+        if not caller:
+            return Response({"error": "Yêu cầu đăng nhập: Vui lòng cung cấp JWT Token hợp lệ."}, status=401)
+        if caller.role != 'admin' and not check_role_has_permission(caller.role, 'services_delete'):
+            return Response({"error": "Truy cập bị từ chối: Tài khoản không có quyền xóa dịch vụ."}, status=403)
+
         # Gỡ liên kết trong booking_services để không bị chặn bởi khóa ngoại
         try:
             BookingServices.objects.filter(service=service).update(service=None)
