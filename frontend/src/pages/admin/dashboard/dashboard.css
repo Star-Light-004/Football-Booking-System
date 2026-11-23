@@ -1415,4 +1415,124 @@ tbody td { padding: 0.85rem 1rem; font-size: 0.84rem; vertical-align: middle; }
   background: #f59e0b;
 }
 
+/* ── Dashboard Filter Bar & Date Picker ── */
+.dashboard-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1.1rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.dashboard-period-tags {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.dashboard-period-tags .filter-period-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #475569;
+  margin-right: 0.25rem;
+}
+
+.dashboard-period-tags .filter-period-label .material-symbols-outlined {
+  font-size: 1.1rem;
+  color: #059669;
+}
+
+.dashboard-period-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.42rem 0.95rem;
+  border-radius: 9999px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dashboard-period-tag:hover {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #a7f3d0;
+}
+
+.dashboard-period-tag.active {
+  background: #059669;
+  color: #ffffff;
+  border-color: #059669;
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25);
+}
+
+.dashboard-custom-date {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dashboard-date-picker-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.38rem 0.85rem;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 0.55rem;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dashboard-date-picker-wrap:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+.dashboard-date-picker-wrap:focus-within {
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15);
+  background: #ffffff;
+}
+
+.dashboard-date-picker-wrap .material-symbols-outlined {
+  font-size: 1.15rem;
+  color: #059669;
+}
+
+.dashboard-date-picker-text {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.dashboard-date-input {
+  border: none;
+  outline: none;
+  font: inherit;
+  font-size: 0.82rem;
+  color: #0f172a;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+
  

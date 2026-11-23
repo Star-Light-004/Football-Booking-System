@@ -24,16 +24,8 @@ function TopHeader({ onGenerate, searchTerm, onSearchChange }) {
         />
       </div>
       <div className="header-actions">
-        <button className="icon-btn" title="Thông báo">
+        <button className="icon-btn" title="Thông báo" type="button">
           <span className="material-symbols-outlined">notifications</span>
-        </button>
-        <button className="icon-btn" title="Trợ giúp">
-          <span className="material-symbols-outlined">help_outline</span>
-        </button>
-        <div className="header-divider" />
-        <button className="btn-new-booking" onClick={onGenerate}>
-          <span className="material-symbols-outlined">auto_awesome</span>
-          Tạo slot tự động
         </button>
       </div>
     </header>

@@ -71,14 +71,6 @@ function TournamentsTopHeader({ searchQuery, onSearchChange, onAdd }) {
         <button className="icon-btn" type="button" title="Thông báo">
           <span className="material-symbols-outlined">notifications</span>
         </button>
-        <button className="icon-btn" type="button" title="Trợ giúp">
-          <span className="material-symbols-outlined">help_outline</span>
-        </button>
-        <div className="header-divider" />
-        <button className="btn-new-booking" type="button" onClick={onAdd}>
-          <span className="material-symbols-outlined">add</span>
-          Đặt sân mới
-        </button>
       </div>
     </header>
   );

@@ -173,14 +173,6 @@ function TopHeader({ searchQuery, onSearchChange, onAddIssue, onRefresh, loading
         <button className="icon-btn" type="button" title="Thông báo">
           <span className="material-symbols-outlined">notifications</span>
         </button>
-        <button className="icon-btn" type="button" title="Trợ giúp">
-          <span className="material-symbols-outlined">help_outline</span>
-        </button>
-        <div className="header-divider" />
-        <button className="btn-new-booking" type="button" onClick={onAddIssue}>
-          <span className="material-symbols-outlined">build</span>
-          Báo sự cố mới
-        </button>
       </div>
     </header>
   );

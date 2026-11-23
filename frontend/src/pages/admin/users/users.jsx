@@ -75,25 +75,11 @@ function TopHeader({ searchQuery, onSearchChange, activeTab, onAddNew }) {
 
       <div className="header-actions">
         <div className="icon-group">
-          <button className="icon-btn">
+          <button className="icon-btn" type="button" title="Thông báo">
             <span className="material-symbols-outlined">notifications</span>
             <span className="notif-dot" />
           </button>
-          <button className="icon-btn">
-            <span className="material-symbols-outlined">help_outline</span>
-          </button>
         </div>
-        <div className="header-divider" />
-        <button
-          className={activeTab === "guests" ? "btn-add-guest" : "btn-new-booking"}
-          type="button"
-          onClick={onAddNew}
-        >
-          <span className="material-symbols-outlined">
-            {activeTab === "guests" ? "person_add" : "add"}
-          </span>
-          {activeTab === "guests" ? "Thêm khách vãng lai" : "Thêm người dùng"}
-        </button>
       </div>
     </header>
   );

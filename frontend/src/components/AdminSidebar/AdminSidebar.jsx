@@ -48,8 +48,14 @@ const ROLE_LABELS = {
   maintenance:   "Kỹ thuật",
 };
 
-const AVATAR_URL =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuCN8B1_XgT-gyh6hViClDnURmdEgMriI9tLL5MirBkzBqNDwUjaetJrOYSkH7rBKA25sr4LDP9m5cJoj4D6NM_H_r1SlNQ8_MhW9rS_ehEYjU7bTXPFF5sEq0e8xVMpbvktPsKgkAMsGGieA3DhoaZGVvdvBXTmeuBFMgk4IhWhmxMknWIj3Mvk7w6yRnl6hMqbw2Ls8ufDqptzZeLNQ5wSEep5KZjz1FMQVz1O028ND-V_miwWbNAIB16XihsBLMcPSWYNV-6e0us";
+const getInitials = (name) => {
+  if (!name) return "AD";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
 
 /**
  * AdminSidebar — sidebar dùng chung cho tất cả trang admin.
@@ -153,7 +159,9 @@ function AdminSidebar() {
 
       <div className="sidebar-profile">
         <div className="sidebar-profile-inner" style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, minWidth: 0 }}>
-          <img src={AVATAR_URL} alt="Admin" />
+          <div className="sidebar-avatar-initials" title={displayName}>
+            {getInitials(displayName)}
+          </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p className="profile-name" title={displayName}>{displayName}</p>
             <p className="profile-role">{displayRole}</p>

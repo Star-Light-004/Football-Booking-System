@@ -30,11 +30,6 @@ function TopHeader({ searchQuery, onSearchChange, onRefresh }) {
         <button className="icon-btn" type="button" title="Làm mới danh sách" onClick={() => onRefresh(false)}>
           <span className="material-symbols-outlined">refresh</span>
         </button>
-        <div className="header-divider" />
-        <Link to="/admin/bookings" className="btn-new-booking">
-          <span className="material-symbols-outlined">calendar_month</span>
-          Lịch đặt sân
-        </Link>
       </div>
     </header>
   );

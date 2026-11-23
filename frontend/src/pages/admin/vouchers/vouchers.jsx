@@ -41,16 +41,8 @@ function TopHeader({ onAdd, searchTerm, onSearchChange }) {
       </div>
 
       <div className="header-actions">
-        <button className="icon-btn" title="Thông báo">
+        <button className="icon-btn" title="Thông báo" type="button">
           <span className="material-symbols-outlined">notifications</span>
-        </button>
-        <button className="icon-btn" title="Trợ giúp">
-          <span className="material-symbols-outlined">help_outline</span>
-        </button>
-        <div className="header-divider" />
-        <button className="btn-new-booking" onClick={onAdd}>
-          <span className="material-symbols-outlined">add</span>
-          Thêm voucher
         </button>
       </div>
     </header>

@@ -41,14 +41,6 @@ function TopHeader({ onExport, searchTerm, onSearchChange, onRefresh, loading })
         <button className="icon-btn" title="Thông báo" type="button">
           <span className="material-symbols-outlined">notifications</span>
         </button>
-        <button className="icon-btn" title="Trợ giúp" type="button">
-          <span className="material-symbols-outlined">help_outline</span>
-        </button>
-        <div className="header-divider" />
-        <button className="btn-new-booking" onClick={onExport} type="button">
-          <span className="material-symbols-outlined">file_download</span>
-          Xuất báo cáo
-        </button>
       </div>
     </header>
   );

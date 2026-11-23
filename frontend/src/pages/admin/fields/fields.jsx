@@ -18,14 +18,9 @@ function TopHeader() {
       </div>
  
       <div className="header-actions">
-        <button className="icon-btn">
+        <button className="icon-btn" type="button" title="Thông báo">
           <span className="material-symbols-outlined">notifications</span>
         </button>
-        <button className="icon-btn">
-          <span className="material-symbols-outlined">help_outline</span>
-        </button>
-        <div className="header-divider" />
-        <button className="btn-new-booking" type="button"><span className="material-symbols-outlined">add</span>Đặt sân mới</button>
       </div>
     </header>
   );

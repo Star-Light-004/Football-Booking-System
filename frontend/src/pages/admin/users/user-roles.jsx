@@ -31,15 +31,7 @@ function TopHeader({ searchQuery, onSearchChange, onAdd }) {
           <button className="icon-btn" type="button" title="Thông báo">
             <span className="material-symbols-outlined">notifications</span>
           </button>
-          <button className="icon-btn" type="button" title="Trợ giúp">
-            <span className="material-symbols-outlined">help_outline</span>
-          </button>
         </div>
-        <div className="header-divider" />
-        <Link to="/admin/bookings" className="btn-new-booking">
-          <span className="material-symbols-outlined">add</span>
-          Đặt sân mới
-        </Link>
       </div>
     </header>
   );
