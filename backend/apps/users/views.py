@@ -675,7 +675,6 @@ def create_guest_user(request):
             full_name=fullname,
             phone=phone,
             email=email,
-            user=None,
             password_hash=None,
             role='customer',
             is_active=True,

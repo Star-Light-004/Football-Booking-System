@@ -106,7 +106,6 @@ def create_booking(request):
                 full_name=guest_name,
                 phone=guest_phone,
                 email=guest_email,
-                user=None,
                 password_hash=None,
                 created_at=datetime.now()
             )
