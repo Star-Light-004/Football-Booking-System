@@ -38,15 +38,15 @@ function TopHeader({ searchQuery, onSearchChange, onAdd }) {
 }
 
 const ROLES = [
-  { value: 'customer',      label: 'Người dùng',            icon: 'person',               color: 'gray'   },
-  { value: 'field_owner',   label: 'Chủ sân',               icon: 'business_center',      color: 'amber'  },
-  { value: 'field_manager', label: 'Người quản lý sân',     icon: 'manage_accounts',      color: 'teal'   },
-  { value: 'receptionist',  label: 'Lễ tân',                icon: 'support_agent',        color: 'cyan'   },
-  { value: 'cashier',       label: 'Nhân viên thu ngân',    icon: 'point_of_sale',        color: 'green'  },
-  { value: 'cleaner',       label: 'Nhân viên dọn dẹp',     icon: 'cleaning_services',    color: 'lime'   },
-  { value: 'service_staff', label: 'Nhân viên dịch vụ',     icon: 'room_service',         color: 'orange' },
-  { value: 'maintenance',   label: 'Nhân viên bảo trì sân', icon: 'construction',         color: 'red'    },
-  { value: 'admin',         label: 'Quản trị viên',         icon: 'admin_panel_settings', color: 'purple' },
+  { value: 'customer',      label: 'Người dùng',            shortLabel: 'Khách',     icon: 'person',               color: 'gray'   },
+  { value: 'field_owner',   label: 'Chủ sân',               shortLabel: 'Chủ sân',   icon: 'business_center',      color: 'amber'  },
+  { value: 'field_manager', label: 'Người quản lý sân',     shortLabel: 'Quản lý',   icon: 'manage_accounts',      color: 'teal'   },
+  { value: 'receptionist',  label: 'Lễ tân',                shortLabel: 'Lễ tân',    icon: 'support_agent',        color: 'cyan'   },
+  { value: 'cashier',       label: 'Nhân viên thu ngân',    shortLabel: 'Thu ngân',  icon: 'point_of_sale',        color: 'green'  },
+  { value: 'cleaner',       label: 'Nhân viên dọn dẹp',     shortLabel: 'Vệ sinh',   icon: 'cleaning_services',    color: 'lime'   },
+  { value: 'service_staff', label: 'Nhân viên dịch vụ',     shortLabel: 'Dịch vụ',   icon: 'room_service',         color: 'orange' },
+  { value: 'maintenance',   label: 'Nhân viên bảo trì sân', shortLabel: 'Kỹ thuật',  icon: 'construction',         color: 'red'    },
+  { value: 'admin',         label: 'Quản trị viên',         shortLabel: 'Admin',     icon: 'admin_panel_settings', color: 'purple' },
 ];
 
 /* ── Granular CRUD Permission Modules ── */
@@ -282,13 +282,11 @@ function RoleCard({
   );
 }
 
-/* ── Interactive High-Clarity RBAC Matrix Table ── */
+/* ── Interactive High-Clarity RBAC Matrix Table (100% Single Screen Fit) ── */
 function RoleMatrixTable({
   roles,
   rolePermissions,
   onPermissionToggle,
-  onModuleToggle,
-  userCounts,
 }) {
   return (
     <div className="matrix-table-card">
@@ -299,7 +297,7 @@ function RoleMatrixTable({
               <th className="th-feature-col">
                 <div className="th-feature-content">
                   <span className="material-symbols-outlined">tune</span>
-                  <span>Chức năng & Quyền thao tác</span>
+                  <span>Chức năng & Quyền hạn</span>
                 </div>
               </th>
               {roles.map((r) => {
@@ -307,12 +305,12 @@ function RoleMatrixTable({
                 const isAdmin = r.value === 'admin';
                 const count = isAdmin ? totalPossible : (rolePermissions[r.value]?.length || 0);
                 return (
-                  <th key={r.value} className={`th-role-col th-role--${r.color}`}>
+                  <th key={r.value} className={`th-role-col th-role--${r.color}`} title={r.label}>
                     <div className="th-role-header">
                       <div className="th-role-icon-box">
                         <span className="material-symbols-outlined">{r.icon}</span>
                       </div>
-                      <span className="th-role-name">{r.label}</span>
+                      <span className="th-role-name">{r.shortLabel || r.label}</span>
                       <span className="th-role-badge">
                         {count}/{totalPossible}
                       </span>
@@ -331,7 +329,7 @@ function RoleMatrixTable({
                     <div className="module-group-banner">
                       <span className="material-symbols-outlined">{mod.icon}</span>
                       <strong>{mod.label}</strong>
-                      <span className="module-group-count">({mod.actions.length} hành động)</span>
+                      <span className="module-group-count">({mod.actions.length} quyền)</span>
                     </div>
                   </td>
                 </tr>
@@ -339,11 +337,11 @@ function RoleMatrixTable({
                 {/* Sub-rows for each action */}
                 {mod.actions.map((act) => (
                   <tr key={act.key} className="tr-action-row">
-                    <td className="td-action-label">
-                      <div className="action-label-wrap" title={act.title}>
+                    <td className="td-action-label" title={act.title}>
+                      <div className="action-label-wrap">
                         <span className={`action-type-dot type-${act.type}`} />
                         <span className="action-name">{act.label}</span>
-                        <span className="action-desc">{act.title}</span>
+                        <span className="action-desc">- {act.title}</span>
                       </div>
                     </td>
 
@@ -362,7 +360,7 @@ function RoleMatrixTable({
                               type="button"
                               className={`matrix-toggle-btn ${hasPerm ? 'active' : ''}`}
                               onClick={() => onPermissionToggle(r.value, act.key)}
-                              title={`${hasPerm ? 'Hủy quyền' : 'Cấp quyền'} "${act.label}" cho vai trò ${r.label}`}
+                              title={`${hasPerm ? 'Bỏ quyền' : 'Cấp quyền'} "${act.label}" cho ${r.label}`}
                             >
                               <span className="material-symbols-outlined">
                                 {hasPerm ? 'check_circle' : 'radio_button_unchecked'}
@@ -562,78 +560,12 @@ export default function UserRoles() {
             </div>
           </div>
 
-          {/* Role Filter Tabs & View Mode Switcher */}
-          <div className="role-filter-row">
-            <div className="role-filter-tabs">
-              <button
-                type="button"
-                className={`role-tab-btn ${activeRoleFilter === 'all' ? 'active' : ''}`}
-                onClick={() => setActiveRoleFilter('all')}
-              >
-                <span className="material-symbols-outlined">groups</span>
-                Tất cả vai trò ({ROLES.length})
-              </button>
-              {ROLES.map((r) => (
-                <button
-                  key={r.value}
-                  type="button"
-                  className={`role-tab-btn ${activeRoleFilter === r.value ? 'active' : ''}`}
-                  onClick={() => setActiveRoleFilter(r.value)}
-                >
-                  <span className="material-symbols-outlined">{r.icon}</span>
-                  {r.label}
-                </button>
-              ))}
-            </div>
-
-            {/* View Mode Toggle when viewing all roles */}
-            {activeRoleFilter === 'all' && (
-              <div className="view-mode-toggle" title="Chọn kiểu hiển thị">
-                <button
-                  type="button"
-                  className={`view-mode-btn ${viewMode === 'matrix' ? 'active' : ''}`}
-                  onClick={() => setViewMode('matrix')}
-                >
-                  <span className="material-symbols-outlined">table_chart</span>
-                  <span>Ma trận bảng</span>
-                </button>
-                <button
-                  type="button"
-                  className={`view-mode-btn ${viewMode === 'cards' ? 'active' : ''}`}
-                  onClick={() => setViewMode('cards')}
-                >
-                  <span className="material-symbols-outlined">view_kanban</span>
-                  <span>Thẻ vai trò</span>
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Content: Matrix Table or Role Cards */}
-          {activeRoleFilter === 'all' && viewMode === 'matrix' ? (
-            <RoleMatrixTable
-              roles={ROLES}
-              rolePermissions={rolePermissions}
-              onPermissionToggle={handlePermissionToggle}
-              onModuleToggle={handleModuleToggle}
-              userCounts={userCounts}
-            />
-          ) : (
-            <div className={`roles-grid ${activeRoleFilter !== 'all' ? 'roles-grid--single' : ''}`}>
-              {filteredRoles.map((role) => (
-                <RoleCard
-                  key={role.value}
-                  role={role}
-                  permissions={rolePermissions[role.value] || []}
-                  onPermissionToggle={handlePermissionToggle}
-                  onModuleToggle={handleModuleToggle}
-                  onBulkToggle={handleBulkToggle}
-                  userCount={userCounts[role.value]}
-                  isSingleView={activeRoleFilter !== 'all'}
-                />
-              ))}
-            </div>
-          )}
+          {/* Bảng Ma trận phân quyền CRUD - Hiển thị toàn bộ 9 vai trò trọn vẹn trên 1 màn hình */}
+          <RoleMatrixTable
+            roles={ROLES}
+            rolePermissions={rolePermissions}
+            onPermissionToggle={handlePermissionToggle}
+          />
 
           {/* Info Card */}
           <div className="info-card">
