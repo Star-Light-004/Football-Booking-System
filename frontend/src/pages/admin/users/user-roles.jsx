@@ -154,13 +154,15 @@ function RoleCard({
   onModuleToggle,
   onBulkToggle,
   userCount,
+  isSingleView = false,
 }) {
   const isAdmin = role.value === 'admin';
   const totalPossible = ALL_PERMISSION_KEYS.length;
   const activeCount = isAdmin ? totalPossible : permissions.length;
+  const pct = Math.round((activeCount / totalPossible) * 100);
 
   return (
-    <div className={`role-card role-card--${role.color}`}>
+    <div className={`role-card role-card--${role.color} ${isSingleView ? 'role-card--single-view' : ''}`}>
       {/* Card Header */}
       <div className="role-card-header">
         <div className="role-icon">
@@ -168,16 +170,19 @@ function RoleCard({
         </div>
         <div className="role-info">
           <h3>{role.label}</h3>
-          <p>{userCount} người dùng hiện có</p>
+          <p>{userCount} người dùng hiện có trong hệ thống</p>
+        </div>
+        <div className="role-pct-badge" title={`${activeCount} trên tổng số ${totalPossible} quyền`}>
+          <strong>{pct}%</strong> quyền
         </div>
       </div>
 
       {/* Quick Actions & Counter */}
       <div className="role-card-quick-actions">
-        <span className="role-perm-count">
+        <div className="role-perm-count">
           <span className="material-symbols-outlined">verified_user</span>
-          {activeCount} / {totalPossible} quyền
-        </span>
+          <span>{activeCount} / {totalPossible} quyền</span>
+        </div>
 
         {!isAdmin ? (
           <div className="role-bulk-btns">
@@ -187,6 +192,7 @@ function RoleCard({
               onClick={() => onBulkToggle(role.value, true)}
               title="Kích hoạt tất cả quyền cho vai trò này"
             >
+              <span className="material-symbols-outlined">done_all</span>
               Chọn tất cả
             </button>
             <button
@@ -195,20 +201,30 @@ function RoleCard({
               onClick={() => onBulkToggle(role.value, false)}
               title="Bỏ chọn tất cả quyền"
             >
+              <span className="material-symbols-outlined">remove_done</span>
               Xóa hết
             </button>
           </div>
         ) : (
-          <span style={{ fontSize: '0.72rem', color: '#6d28d9', fontWeight: 700 }}>
+          <span className="role-admin-badge">
+            <span className="material-symbols-outlined">shield</span>
             Toàn quyền hệ thống
           </span>
         )}
       </div>
 
+      {/* Visual Progress Bar */}
+      <div className="role-progress-bar-track">
+        <div
+          className="role-progress-bar-fill"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+
       {/* Permissions Modular List */}
       <div className="role-permissions">
-        <p className="permissions-label">Chi tiết quyền CRUD theo Module</p>
-        <div className="role-modules-list">
+        <p className="permissions-label">Chi tiết quyền CRUD theo từng Module</p>
+        <div className={`role-modules-list ${isSingleView ? 'modules-list--grid' : ''}`}>
           {PERMISSION_MODULES.map((mod) => {
             const modActionKeys = mod.actions.map(a => a.key);
             const activeModuleActions = modActionKeys.filter(k => isAdmin || permissions.includes(k));
@@ -266,6 +282,107 @@ function RoleCard({
   );
 }
 
+/* ── Interactive High-Clarity RBAC Matrix Table ── */
+function RoleMatrixTable({
+  roles,
+  rolePermissions,
+  onPermissionToggle,
+  onModuleToggle,
+  userCounts,
+}) {
+  return (
+    <div className="matrix-table-card">
+      <div className="matrix-table-responsive">
+        <table className="rbac-matrix-table">
+          <thead>
+            <tr>
+              <th className="th-feature-col">
+                <div className="th-feature-content">
+                  <span className="material-symbols-outlined">tune</span>
+                  <span>Chức năng & Quyền thao tác</span>
+                </div>
+              </th>
+              {roles.map((r) => {
+                const totalPossible = ALL_PERMISSION_KEYS.length;
+                const isAdmin = r.value === 'admin';
+                const count = isAdmin ? totalPossible : (rolePermissions[r.value]?.length || 0);
+                return (
+                  <th key={r.value} className={`th-role-col th-role--${r.color}`}>
+                    <div className="th-role-header">
+                      <div className="th-role-icon-box">
+                        <span className="material-symbols-outlined">{r.icon}</span>
+                      </div>
+                      <span className="th-role-name">{r.label}</span>
+                      <span className="th-role-badge">
+                        {count}/{totalPossible}
+                      </span>
+                    </div>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {PERMISSION_MODULES.map((mod) => (
+              <React.Fragment key={mod.key}>
+                {/* Module Group Header Row */}
+                <tr className="tr-module-group">
+                  <td colSpan={roles.length + 1}>
+                    <div className="module-group-banner">
+                      <span className="material-symbols-outlined">{mod.icon}</span>
+                      <strong>{mod.label}</strong>
+                      <span className="module-group-count">({mod.actions.length} hành động)</span>
+                    </div>
+                  </td>
+                </tr>
+
+                {/* Sub-rows for each action */}
+                {mod.actions.map((act) => (
+                  <tr key={act.key} className="tr-action-row">
+                    <td className="td-action-label">
+                      <div className="action-label-wrap" title={act.title}>
+                        <span className={`action-type-dot type-${act.type}`} />
+                        <span className="action-name">{act.label}</span>
+                        <span className="action-desc">{act.title}</span>
+                      </div>
+                    </td>
+
+                    {roles.map((r) => {
+                      const isAdmin = r.value === 'admin';
+                      const hasPerm = isAdmin || (rolePermissions[r.value] || []).includes(act.key);
+
+                      return (
+                        <td key={r.value} className="td-checkbox-cell">
+                          {isAdmin ? (
+                            <span className="cell-check-admin" title="Admin luôn có toàn quyền">
+                              <span className="material-symbols-outlined">check_circle</span>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              className={`matrix-toggle-btn ${hasPerm ? 'active' : ''}`}
+                              onClick={() => onPermissionToggle(r.value, act.key)}
+                              title={`${hasPerm ? 'Hủy quyền' : 'Cấp quyền'} "${act.label}" cho vai trò ${r.label}`}
+                            >
+                              <span className="material-symbols-outlined">
+                                {hasPerm ? 'check_circle' : 'radio_button_unchecked'}
+                              </span>
+                            </button>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function UserCountByRole({ users }) {
   const counts = {
     customer:      users.filter(u => u.role === 'customer').length,
@@ -294,6 +411,7 @@ export default function UserRoles() {
   });
   const [loading, setLoading] = useState(false);
   const [activeRoleFilter, setActiveRoleFilter] = useState('all');
+  const [viewMode, setViewMode] = useState('matrix'); // 'matrix' | 'cards'
   const { toasts, removeToast, toast } = useToast();
 
   const [confirmConfig, setConfirmConfig] = useState({
@@ -430,7 +548,7 @@ export default function UserRoles() {
                 VẬN HÀNH CƠ SỞ <span>›</span> PHÂN QUYỀN CRUD CHI TIẾT
               </span>
               <h2>Phân quyền hệ thống</h2>
-              <p>Cấu hình quyền Tạo (C), Xem (R), Sửa (U), Xóa/Hủy (D) riêng biệt cho từng vai trò</p>
+              <p>Cấu hình quyền Tạo (C), Xem (R), Sửa (U), Xóa/Hủy (D) riêng biệt cho từng vai trò trong hệ thống</p>
             </div>
             <div className="header-controls">
               <button className="btn-reset" onClick={handleReset}>
@@ -444,43 +562,78 @@ export default function UserRoles() {
             </div>
           </div>
 
-          {/* Role Filter Tabs */}
-          <div className="role-filter-tabs">
-            <button
-              type="button"
-              className={`role-tab-btn ${activeRoleFilter === 'all' ? 'active' : ''}`}
-              onClick={() => setActiveRoleFilter('all')}
-            >
-              <span className="material-symbols-outlined">groups</span>
-              Tất cả vai trò ({ROLES.length})
-            </button>
-            {ROLES.map((r) => (
+          {/* Role Filter Tabs & View Mode Switcher */}
+          <div className="role-filter-row">
+            <div className="role-filter-tabs">
               <button
-                key={r.value}
                 type="button"
-                className={`role-tab-btn ${activeRoleFilter === r.value ? 'active' : ''}`}
-                onClick={() => setActiveRoleFilter(r.value)}
+                className={`role-tab-btn ${activeRoleFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setActiveRoleFilter('all')}
               >
-                <span className="material-symbols-outlined">{r.icon}</span>
-                {r.label}
+                <span className="material-symbols-outlined">groups</span>
+                Tất cả vai trò ({ROLES.length})
               </button>
-            ))}
+              {ROLES.map((r) => (
+                <button
+                  key={r.value}
+                  type="button"
+                  className={`role-tab-btn ${activeRoleFilter === r.value ? 'active' : ''}`}
+                  onClick={() => setActiveRoleFilter(r.value)}
+                >
+                  <span className="material-symbols-outlined">{r.icon}</span>
+                  {r.label}
+                </button>
+              ))}
+            </div>
+
+            {/* View Mode Toggle when viewing all roles */}
+            {activeRoleFilter === 'all' && (
+              <div className="view-mode-toggle" title="Chọn kiểu hiển thị">
+                <button
+                  type="button"
+                  className={`view-mode-btn ${viewMode === 'matrix' ? 'active' : ''}`}
+                  onClick={() => setViewMode('matrix')}
+                >
+                  <span className="material-symbols-outlined">table_chart</span>
+                  <span>Ma trận bảng</span>
+                </button>
+                <button
+                  type="button"
+                  className={`view-mode-btn ${viewMode === 'cards' ? 'active' : ''}`}
+                  onClick={() => setViewMode('cards')}
+                >
+                  <span className="material-symbols-outlined">view_kanban</span>
+                  <span>Thẻ vai trò</span>
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Roles Grid */}
-          <div className="roles-grid">
-            {filteredRoles.map((role) => (
-              <RoleCard
-                key={role.value}
-                role={role}
-                permissions={rolePermissions[role.value] || []}
-                onPermissionToggle={handlePermissionToggle}
-                onModuleToggle={handleModuleToggle}
-                onBulkToggle={handleBulkToggle}
-                userCount={userCounts[role.value]}
-              />
-            ))}
-          </div>
+          {/* Content: Matrix Table or Role Cards */}
+          {activeRoleFilter === 'all' && viewMode === 'matrix' ? (
+            <RoleMatrixTable
+              roles={ROLES}
+              rolePermissions={rolePermissions}
+              onPermissionToggle={handlePermissionToggle}
+              onModuleToggle={handleModuleToggle}
+              userCounts={userCounts}
+            />
+          ) : (
+            <div className={`roles-grid ${activeRoleFilter !== 'all' ? 'roles-grid--single' : ''}`}>
+              {filteredRoles.map((role) => (
+                <RoleCard
+                  key={role.value}
+                  role={role}
+                  permissions={rolePermissions[role.value] || []}
+                  onPermissionToggle={handlePermissionToggle}
+                  onModuleToggle={handleModuleToggle}
+                  onBulkToggle={handleBulkToggle}
+                  userCount={userCounts[role.value]}
+                  isSingleView={activeRoleFilter !== 'all'}
+                />
+              ))}
+            </div>
+          )}
 
           {/* Info Card */}
           <div className="info-card">
