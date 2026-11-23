@@ -8,6 +8,7 @@ from .views import (
     get_users,
     get_profile,
     update_user,
+    change_password,
     delete_user,
     toggle_status,
     role_permissions_view,
@@ -25,6 +26,7 @@ urlpatterns = [
     path('', get_users),
     path('profile/', get_profile),
     path('<uuid:user_id>/update/', update_user),
+    path('<uuid:user_id>/change-password/', change_password),
     path('<uuid:user_id>/toggle-status/', toggle_status),
     path('<uuid:user_id>/delete/', delete_user),
 ]

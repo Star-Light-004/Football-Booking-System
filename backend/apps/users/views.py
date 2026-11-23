@@ -434,8 +434,13 @@ def update_user(request, user_id):
         user = Customers.objects.get(id=user_id)
         data = request.data
 
-        if "fullname" in data:
+        if "full_name" in data:
+            user.full_name = data["full_name"]
+        elif "fullname" in data:
             user.full_name = data["fullname"]
+        elif "name" in data:
+            user.full_name = data["name"]
+
         if "email" in data:
             user.email = data["email"]
         if "phone" in data:
@@ -453,10 +458,59 @@ def update_user(request, user_id):
             user.is_active = bool(data["is_active"])
 
         user.save()
-        return Response({"message": "Cập nhật thành công"})
+        return Response({
+            "message": "Cập nhật thành công",
+            "user": {
+                "id": str(user.id),
+                "full_name": user.full_name,
+                "fullname": user.full_name,
+                "email": user.email,
+                "phone": user.phone,
+                "role": user.role,
+                "status": user.status,
+            }
+        })
 
     except Customers.DoesNotExist:
         return Response({"error": "Không tìm thấy user"}, status=404)
+    except Exception as e:
+        return Response({"error": str(e)}, status=400)
+
+
+# ================= CHANGE PASSWORD =================
+@api_view(['PUT', 'POST'])
+def change_password(request, user_id):
+    """Đổi mật khẩu người dùng sau khi xác thực mật khẩu cũ."""
+    try:
+        user = Customers.objects.get(id=user_id)
+        data = request.data
+
+        old_password = data.get('old_password') or data.get('current_password')
+        new_password = data.get('new_password')
+        confirm_password = data.get('confirm_password')
+
+        if not new_password:
+            return Response({"error": "Vui lòng nhập mật khẩu mới"}, status=400)
+
+        if len(new_password) < 8:
+            return Response({"error": "Mật khẩu mới phải có tối thiểu 8 ký tự"}, status=400)
+
+        if confirm_password and new_password != confirm_password:
+            return Response({"error": "Xác nhận mật khẩu mới không khớp"}, status=400)
+
+        # Nếu tài khoản đã có mật khẩu thiết lập
+        if user.password_hash:
+            if not old_password:
+                return Response({"error": "Vui lòng nhập mật khẩu hiện tại"}, status=400)
+            if not check_password(old_password, user.password_hash):
+                return Response({"error": "Mật khẩu hiện tại không chính xác"}, status=400)
+
+        user.password_hash = make_password(new_password)
+        user.save()
+        return Response({"message": "Đổi mật khẩu thành công!"})
+
+    except Customers.DoesNotExist:
+        return Response({"error": "Không tìm thấy người dùng"}, status=404)
     except Exception as e:
         return Response({"error": str(e)}, status=400)
 
