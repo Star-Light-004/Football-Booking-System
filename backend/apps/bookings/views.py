@@ -1011,18 +1011,6 @@ def get_tournament_requests(request):
                 qs = qs.filter(customer_id=customer_id)
         elif phone:
             qs = qs.filter(contact_phone=phone)
-        else:
-            # Danh sách quản lý dành cho Admin/Nhân viên:
-            # Bắt buộc loại bỏ các đơn trực tuyến chưa thanh toán/chưa cọc (Unpaid + Pending + không có admin_notes)
-            # Chỉ hiển thị khi đã thanh toán (Paid), đã cọc (Deposit_Paid), hoặc do Admin trực tiếp lập
-            include_unpaid = request.GET.get("include_unpaid", "").lower() in ["true", "1"]
-            if not include_unpaid:
-                from django.db.models import Q
-                qs = qs.exclude(
-                    Q(payment_status__iexact="Unpaid") &
-                    Q(status__iexact="Pending") &
-                    (Q(admin_notes__isnull=True) | Q(admin_notes=""))
-                )
 
         if status_filter and status_filter.lower() != "all":
             qs = qs.filter(status__iexact=status_filter)

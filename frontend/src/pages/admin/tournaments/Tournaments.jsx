@@ -444,17 +444,9 @@ const Tournaments = () => {
     };
   }, [showCreateModal, selectedEdit, selectedDelete]);
 
-  // Filtered & counts: Quản trị viên theo dõi toàn bộ danh sách phiếu yêu cầu giải đấu
-  // Lọc chỉ giữ lại các yêu cầu giải đấu hợp lệ (đã thanh toán hoặc cọc thành công, hoặc do Admin tạo)
-  // Tuyệt đối không hiển thị các đơn khách trực tuyến chưa thanh toán/đang chờ cọc dở dang hoặc đã hủy
+  // Quản trị viên theo dõi toàn bộ danh sách phiếu yêu cầu giải đấu (bao gồm đơn mới gửi chờ tư vấn cọc)
   const validRequests = useMemo(() => {
-    return requests.filter((r) => {
-      const isUnpaidClientDraft =
-        r.payment_status === "Unpaid" &&
-        r.status === "Pending" &&
-        (!r.admin_notes || !r.admin_notes.trim());
-      return !isUnpaidClientDraft;
-    });
+    return Array.isArray(requests) ? requests : [];
   }, [requests]);
 
   const counts = useMemo(() => {
