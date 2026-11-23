@@ -43,4 +43,22 @@ axiosClient.interceptors.request.use((config) => {
     return Promise.reject(error);
 });
 
+// Xử lý tự động dọn sạch token không hợp lệ khi server trả lỗi xác thực
+axiosClient.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (
+            error.response &&
+            (error.response.status === 401 ||
+                (error.response.status === 403 &&
+                    typeof error.response.data?.detail === 'string' &&
+                    error.response.data.detail.toLowerCase().includes('token')))
+        ) {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('admin_access_token');
+        }
+        return Promise.reject(error);
+    }
+);
+
 export default axiosClient;

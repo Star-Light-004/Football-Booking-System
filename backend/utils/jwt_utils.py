@@ -45,7 +45,8 @@ class JWTAuthentication(BaseAuthentication):
     """
     DRF Authentication Backend cho JWT Token.
     Đọc token từ header: Authorization: Bearer <token>
-    Hỗ trợ tương thích ngược (nếu không có token thì trả về None để không chặn request).
+    Hỗ trợ tương thích ngược: Nếu token không hợp lệ hoặc là phiên cũ, trả về None
+    để request không bị ngắt đột ngột bằng 403 và cho phép fallback sang X-User-Id.
     """
     def authenticate(self, request):
         auth_header = request.headers.get('Authorization') or request.META.get('HTTP_AUTHORIZATION')
@@ -59,20 +60,20 @@ class JWTAuthentication(BaseAuthentication):
         token = parts[1]
         payload = decode_jwt_token(token)
         if not payload:
-            raise exceptions.AuthenticationFailed('Token không hợp lệ hoặc đã hết hạn.')
+            return None
 
         user_id = payload.get('user_id')
         if not user_id:
-            raise exceptions.AuthenticationFailed('Token không chứa user_id.')
+            return None
 
         try:
             from apps.users.models import Customers
             user = Customers.objects.filter(id=user_id, is_active=True).first()
             if not user:
-                raise exceptions.AuthenticationFailed('Tài khoản không tồn tại hoặc đã bị khóa.')
+                return None
             return (user, token)
-        except Exception as e:
-            raise exceptions.AuthenticationFailed(str(e))
+        except Exception:
+            return None
 
 
 def get_authenticated_user(request):
