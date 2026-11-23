@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { getFields } from "../../../api/fieldsApi";
 import { getBookings } from "../../../api/bookingsApi";
@@ -64,7 +64,7 @@ function StatCard({ icon, iconClass, badge, badgeClass, label, value }) {
   );
 }
 
-function RevenueCard({ periodRevenue = 0, monthRevenue = 0, periodLabel = "Doanh thu hôm nay" }) {
+function RevenueCard({ periodRevenue = 0, monthRevenue = 0, periodLabel = "Doanh thu thực tế" }) {
   const formatCompact = (val) => {
     if (val >= 1000000) return `${(val / 1000000).toFixed(1)}M`;
     if (val >= 1000) return `${(val / 1000).toFixed(0)}K`;
@@ -108,7 +108,9 @@ function RevenueCard({ periodRevenue = 0, monthRevenue = 0, periodLabel = "Doanh
   );
 }
 
-function LineChart({ data, title = "Lượt đặt sân theo ngày", subtitle = "Thống kê 7 ngày" }) {
+function LineChart({ data, title = "Lượt đặt sân theo ngày" }) {
+  const [hoverIndex, setHoverIndex] = useState(null);
+
   if (!data || data.length === 0) return null;
 
   const width = 800;
@@ -125,7 +127,7 @@ function LineChart({ data, title = "Lượt đặt sân theo ngày", subtitle = 
   const points = data.map((d, i) => {
     const x = paddingX + i * xStep;
     const y = height - paddingY - (d.count / maxCount) * chartHeight;
-    return { x, y, label: d.label, count: d.count };
+    return { x, y, label: d.label, dateStr: d.dateStr, count: d.count };
   });
 
   const pathD = `M ${points[0].x} ${points[0].y} ` +
@@ -133,12 +135,13 @@ function LineChart({ data, title = "Lượt đặt sân theo ngày", subtitle = 
 
   const areaD = `${pathD} L ${points[points.length - 1].x} ${height - paddingY} L ${points[0].x} ${height - paddingY} Z`;
 
+  const hovered = hoverIndex !== null ? points[hoverIndex] : null;
+
   return (
     <div className="chart-card">
       <div className="chart-header">
         <div>
           <h3 className="chart-title">{title}</h3>
-          <p className="chart-subtitle">{subtitle}</p>
         </div>
       </div>
 
@@ -146,9 +149,12 @@ function LineChart({ data, title = "Lượt đặt sân theo ngày", subtitle = 
         <svg viewBox={`0 0 ${width} ${height}`} className="line-chart-svg">
           <defs>
             <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#059669" stopOpacity="0.3" />
-              <stop offset="100%" stopColor="#059669" stopOpacity="0.0" />
+              <stop offset="0%" stopColor="#059669" stopOpacity="0.32" />
+              <stop offset="100%" stopColor="#059669" stopOpacity="0.02" />
             </linearGradient>
+            <filter id="shadowFilter" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000" floodOpacity="0.18" />
+            </filter>
           </defs>
 
           {/* Grid lines */}
@@ -175,43 +181,96 @@ function LineChart({ data, title = "Lượt đặt sân theo ngày", subtitle = 
             d={pathD}
             fill="none"
             stroke="#059669"
-            strokeWidth="3"
+            strokeWidth="3.2"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
 
-          {/* Points & Labels */}
-          {points.map((p, i) => (
-            <g key={i}>
-              <circle
-                cx={p.x}
-                cy={p.y}
-                r="5"
-                fill="#fff"
-                stroke="#059669"
-                strokeWidth="2.5"
+          {/* Active hover vertical guide line */}
+          {hovered && (
+            <line
+              x1={hovered.x}
+              y1={paddingY}
+              x2={hovered.x}
+              y2={height - paddingY}
+              stroke="#059669"
+              strokeWidth="1.8"
+              strokeDasharray="3 3"
+            />
+          )}
+
+          {/* Points */}
+          {points.map((p, i) => {
+            const isHovered = hoverIndex === i;
+            return (
+              <g key={i}>
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={isHovered ? 7.5 : 5}
+                  fill={isHovered ? "#059669" : "#fff"}
+                  stroke="#059669"
+                  strokeWidth={isHovered ? 3.5 : 2.5}
+                  style={{ transition: "all 0.15s ease" }}
+                />
+                <text
+                  x={p.x}
+                  y={p.y - 12}
+                  textAnchor="middle"
+                  fontSize="11"
+                  fontWeight="700"
+                  fill="#1e293b"
+                >
+                  {p.count}
+                </text>
+                <text
+                  x={p.x}
+                  y={height - paddingY + 20}
+                  textAnchor="middle"
+                  fontSize="11"
+                  fontWeight={isHovered ? "800" : "500"}
+                  fill={isHovered ? "#059669" : "#64748b"}
+                >
+                  {p.label}
+                </text>
+
+                {/* Larger hit-target for hover */}
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r="24"
+                  fill="transparent"
+                  style={{ cursor: "pointer" }}
+                  onMouseEnter={() => setHoverIndex(i)}
+                  onMouseLeave={() => setHoverIndex(null)}
+                />
+              </g>
+            );
+          })}
+
+          {/* Interactive Tooltip on hover */}
+          {hovered && (
+            <g
+              transform={`translate(${Math.min(Math.max(hovered.x, 80), width - 80)}, ${Math.max(hovered.y - 48, 20)})`}
+              filter="url(#shadowFilter)"
+              style={{ pointerEvents: "none" }}
+            >
+              <rect
+                x="-75"
+                y="-32"
+                width="150"
+                height="42"
+                rx="8"
+                fill="#0f172a"
               />
-              <text
-                x={p.x}
-                y={p.y - 12}
-                textAnchor="middle"
-                fontSize="11"
-                fontWeight="600"
-                fill="#334155"
-              >
-                {p.count}
+              <text x="0" y="-15" textAnchor="middle" fill="#94a3b8" fontSize="10.5" fontWeight="600">
+                {hovered.dateStr || hovered.label}
               </text>
-              <text
-                x={p.x}
-                y={height - paddingY + 20}
-                textAnchor="middle"
-                fontSize="11"
-                fill="#64748b"
-              >
-                {p.label}
+              <text x="0" y="3" textAnchor="middle" fill="#34d399" fontSize="13" fontWeight="800">
+                {hovered.count} lượt đặt sân
               </text>
             </g>
-          ))}
+          )}
         </svg>
       </div>
     </div>
@@ -219,6 +278,26 @@ function LineChart({ data, title = "Lượt đặt sân theo ngày", subtitle = 
 }
 
 function DonutChart({ donutLegend = [], total = 0 }) {
+  // SVG Donut metrics
+  const size = 150;
+  const strokeWidth = 22;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+
+  let cumulativePercent = 0;
+  const slices = donutLegend.map((item, idx) => {
+    const pct = parseFloat(item.pct) || 0;
+    const strokeDasharray = `${(pct / 100) * circumference} ${circumference}`;
+    const strokeDashoffset = -((cumulativePercent / 100) * circumference);
+    cumulativePercent += pct;
+    return {
+      ...item,
+      strokeDasharray,
+      strokeDashoffset,
+      color: item.color || (idx === 0 ? "#059669" : idx === 1 ? "#3b82f6" : "#f59e0b"),
+    };
+  });
+
   return (
     <div className="donut-card">
       <div className="donut-header">
@@ -226,18 +305,56 @@ function DonutChart({ donutLegend = [], total = 0 }) {
         <span className="donut-total">{total} Sân</span>
       </div>
 
-      <div className="donut-legend">
-        {donutLegend.map((d, i) => (
-          <div key={i} className="donut-legend-item">
-            <div className="donut-legend-info">
-              <span className={`donut-legend-dot ${d.dotClass}`} />
-              <span className="donut-legend-label">{d.label}</span>
-            </div>
-            <span className="donut-legend-pct">
-              {d.pct}
-            </span>
+      <div className="donut-body-wrapper">
+        <div className="donut-visual-container">
+          <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="donut-svg-graphic">
+            {/* Background ring */}
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              fill="transparent"
+              stroke="#f1f5f9"
+              strokeWidth={strokeWidth}
+            />
+            {/* Segments */}
+            {slices.map((slice, i) => (
+              <circle
+                key={i}
+                cx={size / 2}
+                cy={size / 2}
+                r={radius}
+                fill="transparent"
+                stroke={slice.color}
+                strokeWidth={strokeWidth}
+                strokeDasharray={slice.strokeDasharray}
+                strokeDashoffset={slice.strokeDashoffset}
+                strokeLinecap="round"
+                transform={`rotate(-90 ${size / 2} ${size / 2})`}
+                style={{ transition: "stroke-dashoffset 0.4s ease" }}
+              />
+            ))}
+          </svg>
+          <div className="donut-visual-center">
+            <strong>{total}</strong>
+            <small>Sân bóng</small>
           </div>
-        ))}
+        </div>
+
+        <div className="donut-legend-list">
+          {donutLegend.map((d, i) => (
+            <div key={i} className="donut-legend-row">
+              <div className="donut-legend-label-col">
+                <span className="donut-legend-bullet" style={{ background: d.color }} />
+                <span className="donut-legend-text">{d.label}</span>
+              </div>
+              <div className="donut-legend-value-col">
+                <strong className="donut-legend-count">{d.count} sân</strong>
+                <span className="donut-legend-pct">({d.pct})</span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -351,6 +468,24 @@ export default function Dashboard() {
   const [datePeriod, setDatePeriod] = useState("today");
   const [selectedDate, setSelectedDate] = useState(todayISO);
 
+  // Danh sách các ngày đã qua để hiển thị dropdown tiện lợi
+  const pastDatesList = useMemo(() => {
+    const list = [];
+    const now = new Date();
+    for (let i = 0; i <= 14; i++) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      const iso = d.toISOString().split("T")[0];
+      const [year, month, day] = iso.split("-");
+      let label = "";
+      if (i === 0) label = `Hôm nay (${day}/${month}/${year})`;
+      else if (i === 1) label = `Hôm qua (${day}/${month}/${year})`;
+      else label = `${i} ngày trước (${day}/${month}/${year})`;
+      list.push({ iso, label, displayDate: `${day}/${month}/${year}` });
+    }
+    return list;
+  }, []);
+
   // Lấy thông tin user hiện tại và quyền
   const currentUser = getCurrentUser();
   const canViewRevenue = hasPermission("revenue_view", currentUser);
@@ -407,8 +542,6 @@ export default function Dashboard() {
     filteredBookings,
     periodRevenue,
     monthRevenue,
-    periodLabel,
-    periodDisplay,
     barsData,
     recentTableBookings,
     pendingBookings,
@@ -419,28 +552,20 @@ export default function Dashboard() {
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth();
 
-    // 1. Phân loại theo bộ lọc thời gian
-    let filtered = [];
-    let label = "Doanh thu hôm nay";
-    let display = "Hôm nay";
-
     const isMatchDate = (bDateStr, targetISO) => {
       if (!bDateStr) return false;
       return bDateStr.startsWith(targetISO);
     };
 
+    let filtered = [];
+
     if (datePeriod === "today") {
       filtered = rawBookings.filter((b) => isMatchDate(b.date, todayISO));
-      label = "Doanh thu hôm nay";
-      display = "Hôm nay";
     } else if (datePeriod === "custom") {
       filtered = rawBookings.filter((b) => isMatchDate(b.date, selectedDate));
-      const [y, m, d] = (selectedDate || todayISO).split("-");
-      label = `Doanh thu ngày ${d}/${m}/${y}`;
-      display = `Ngày ${d}/${m}/${y}`;
     } else if (datePeriod === "week") {
       const now = new Date();
-      const dayOfWeek = now.getDay() || 7; // Monday = 1, Sunday = 7
+      const dayOfWeek = now.getDay() || 7;
       const monday = new Date(now);
       monday.setDate(now.getDate() - dayOfWeek + 1);
       monday.setHours(0, 0, 0, 0);
@@ -454,32 +579,24 @@ export default function Dashboard() {
         const bd = new Date(b.date);
         return bd >= monday && bd <= sunday;
       });
-      label = "Doanh thu tuần này";
-      display = "Tuần này";
     } else if (datePeriod === "month") {
       filtered = rawBookings.filter((b) => {
         if (!b.date) return false;
         const bd = new Date(b.date);
         return bd.getFullYear() === currentYear && bd.getMonth() === currentMonth;
       });
-      label = "Doanh thu tháng này";
-      display = "Tháng này";
     } else if (datePeriod === "year") {
       filtered = rawBookings.filter((b) => {
         if (!b.date) return false;
         const bd = new Date(b.date);
         return bd.getFullYear() === currentYear;
       });
-      label = "Doanh thu năm nay";
-      display = "Năm nay";
     } else {
       // "all"
       filtered = [...rawBookings];
-      label = "Tổng doanh thu tích lũy";
-      display = "Toàn thời gian";
     }
 
-    // 2. Tính Doanh thu
+    // Tính Doanh thu
     let pRevenue = 0;
     let mRevenue = 0;
 
@@ -490,7 +607,7 @@ export default function Dashboard() {
 
       const price = Number(b.price || b.total_price || 0);
 
-      // Doanh thu tháng hiện tại
+      // Doanh thu tháng này
       if (b.date) {
         const bd = new Date(b.date);
         if (bd.getFullYear() === currentYear && bd.getMonth() === currentMonth) {
@@ -507,16 +624,21 @@ export default function Dashboard() {
       }
     });
 
-    // 3. Biểu đồ 7 ngày kết thúc tại ngày được chọn (hoặc hôm nay)
+    // Biểu đồ 7 ngày với thông tin ngày đầy đủ
     const anchorDate = (datePeriod === "custom" && selectedDate) ? new Date(selectedDate) : new Date();
     const chartDays = [];
     const chartLabels = [];
+    const chartDateStrs = [];
+
     for (let i = 6; i >= 0; i--) {
       const d = new Date(anchorDate);
       d.setDate(anchorDate.getDate() - i);
       const iso = d.toISOString().split("T")[0];
       chartDays.push(iso);
       chartLabels.push(d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" }));
+      chartDateStrs.push(
+        d.toLocaleDateString("vi-VN", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" })
+      );
     }
 
     const counts = chartDays.map((d) => rawBookings.filter((b) => isMatchDate(b.date, d)).length);
@@ -524,10 +646,11 @@ export default function Dashboard() {
     const bData = counts.map((c, i) => ({
       heightPct: `${Math.round((c / maxCount) * 100)}%`,
       label: chartLabels[i],
+      dateStr: chartDateStrs[i],
       count: c,
     }));
 
-    // 4. Danh sách đặt sân cho bảng hiển thị
+    // Bảng đặt sân
     const tableList = (filtered.length > 0 ? filtered : rawBookings).slice(0, 10).map((b) => {
       const dateStr = b.date ? new Date(b.date).toLocaleDateString("vi-VN") : "";
       return {
@@ -541,7 +664,7 @@ export default function Dashboard() {
       };
     });
 
-    // 5. Đơn chờ duyệt
+    // Đơn chờ duyệt
     const pBookings = rawBookings
       .filter((b) => b.status === "pending")
       .map((b) => ({
@@ -552,7 +675,7 @@ export default function Dashboard() {
         phone: b.phone || "",
       }));
 
-    // 6. Stats KPI
+    // KPI stats - không hiển thị chữ (hôm nay) hay (toàn thời gian)
     const totalFields = fields.length;
     const activeFields = fields.filter((f) => f.is_available !== false).length;
 
@@ -576,35 +699,50 @@ export default function Dashboard() {
       {
         icon: "event_note",
         iconClass: "purple",
-        badge: display,
+        badge: `${filtered.length} lượt`,
         badgeClass: "badge-purple",
-        label: `Lượt đặt (${display})`,
+        label: "Lượt đặt sân",
         value: filtered.length,
       },
       {
         icon: "construction",
         iconClass: "amber",
-        badge: `${totalFields - activeFields} cần bảo trì`,
+        badge: `${totalFields - activeFields} sân`,
         badgeClass: "badge-amber",
         label: "Sân bảo trì / tạm dừng",
         value: totalFields - activeFields,
       },
     ];
 
-    // 7. Donut
+    // Donut phân loại sân
     const typeCount = {};
+    const typeColors = {
+      "Sân 5 người": "#059669",
+      "5 vs 5": "#059669",
+      "Sân 7 người": "#3b82f6",
+      "7 vs 7": "#3b82f6",
+      "Sân 11 người": "#f59e0b",
+      "11 vs 11": "#f59e0b",
+    };
+
     fields.forEach((field) => {
-      const type = field.field_type || "Sân cỏ nhân tạo";
+      let type = field.field_type || "Sân cỏ nhân tạo";
+      if (type === "5 vs 5") type = "Sân 5 người";
+      else if (type === "7 vs 7") type = "Sân 7 người";
+      else if (type === "11 vs 11") type = "Sân 11 người";
+
       if (!typeCount[type]) typeCount[type] = 0;
       typeCount[type]++;
     });
 
-    const dLegend = Object.keys(typeCount).map((type) => {
-      const percent = totalFields > 0 ? Math.round((typeCount[type] / totalFields) * 100) : 0;
+    const dLegend = Object.keys(typeCount).map((type, idx) => {
+      const count = typeCount[type];
+      const percent = totalFields > 0 ? Math.round((count / totalFields) * 100) : 0;
       return {
-        dotClass: "dark-green",
         label: type,
+        count: count,
         pct: percent + "%",
+        color: typeColors[type] || (idx === 0 ? "#059669" : idx === 1 ? "#3b82f6" : "#f59e0b"),
       };
     });
 
@@ -612,8 +750,6 @@ export default function Dashboard() {
       filteredBookings: filtered,
       periodRevenue: pRevenue,
       monthRevenue: mRevenue,
-      periodLabel: label,
-      periodDisplay: display,
       barsData: bData,
       recentTableBookings: tableList,
       pendingBookings: pBookings,
@@ -640,7 +776,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="content-area">
-            {/* Page Heading với vai trò động */}
+            {/* Page Heading gọn gàng: đã bỏ nhãn calendar_today, Toàn thời gian, check_circle */}
             <div className="page-heading">
               <div className="page-heading-copy">
                 <span className="dashboard-eyebrow">
@@ -650,34 +786,23 @@ export default function Dashboard() {
                   Chào mừng trở lại, <span>{displayName}!</span>
                 </h2>
                 <p>
-                  Vai trò: <strong>{userRoleLabel}</strong> • Đang xem dữ liệu: <strong>{periodDisplay}</strong>.
+                  Vai trò: <strong>{userRoleLabel}</strong> • Báo cáo vận hành sân bóng.
                 </p>
-              </div>
-              <div className="dashboard-heading-actions">
-                <span className="dashboard-date">
-                  <span className="material-symbols-outlined">calendar_today</span>
-                  {selectedDate ? (
-                    new Date(selectedDate).toLocaleDateString("vi-VN", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric",
-                    })
-                  ) : (
-                    new Date().toLocaleDateString("vi-VN", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric",
-                    })
-                  )}
-                </span>
-                <span className="dashboard-period">
-                  {periodDisplay} <span className="material-symbols-outlined">check_circle</span>
-                </span>
               </div>
             </div>
 
-            {/* Thanh chọn mốc thời gian và ngày cụ thể */}
-            <section className="dashboard-filter-bar" aria-label="Bộ lọc thời gian tổng quan">
+            {/* Cảnh báo đơn chờ duyệt nếu có */}
+            <PendingApprovalsCard pendingBookings={pendingBookings} />
+
+            {/* 1. 4 Ô THỐNG KÊ NHANH KPI NẰM TRÊN */}
+            <div className="stats-grid">
+              {stats.map((s) => (
+                <StatCard key={s.label} {...s} />
+              ))}
+            </div>
+
+            {/* 2. BỘ LỌC MỐC THỜI GIAN VÀ CHỌN NGÀY NẰM DƯỚI 4 Ô THÔNG TIN */}
+            <section className="dashboard-filter-bar" aria-label="Bộ lọc thời gian">
               <div className="dashboard-period-tags">
                 <span className="filter-period-label">
                   <span className="material-symbols-outlined">calendar_month</span>
@@ -706,65 +831,62 @@ export default function Dashboard() {
                 ))}
               </div>
 
-              <div className="dashboard-custom-date">
-                <label className="dashboard-date-picker-wrap" title="Chọn ngày cụ thể để xem lại những ngày đã qua">
-                  <span className="material-symbols-outlined">event</span>
-                  <span className="dashboard-date-picker-text">Chọn ngày:</span>
-                  <input
-                    type="date"
-                    className="dashboard-date-input"
-                    value={selectedDate}
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        setSelectedDate(e.target.value);
-                        setDatePeriod("custom");
-                      }
-                    }}
-                  />
-                </label>
+              {/* Ô chọn ngày nằm riêng, click ra list ngày đã qua, không thêm chữ "chọn ngày" */}
+              <div className="dashboard-past-date-selector">
+                <span className="material-symbols-outlined date-icon">event</span>
+                <select
+                  className="dashboard-past-date-select"
+                  value={datePeriod === "custom" || datePeriod === "today" ? selectedDate : ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val) {
+                      setSelectedDate(val);
+                      setDatePeriod(val === todayISO ? "today" : "custom");
+                    }
+                  }}
+                  title="Chọn ngày trong danh sách những ngày đã qua"
+                >
+                  <option value="" disabled>Lịch sử ngày đã qua</option>
+                  {pastDatesList.map((item) => (
+                    <option key={item.iso} value={item.iso}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="date"
+                  className="dashboard-date-quick-input"
+                  value={selectedDate}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setSelectedDate(e.target.value);
+                      setDatePeriod(e.target.value === todayISO ? "today" : "custom");
+                    }
+                  }}
+                  title="Chọn ngày tự do từ lịch"
+                />
               </div>
             </section>
 
-            {/* Cảnh báo đơn chờ duyệt nếu có */}
-            <PendingApprovalsCard pendingBookings={pendingBookings} />
-
-            {/* Thống kê nhanh KPI */}
-            <div className="stats-grid">
-              {stats.map((s) => (
-                <StatCard key={s.label} {...s} />
-              ))}
-            </div>
-
-            {/* Thẻ Doanh thu: CHỈ HIỂN THỊ KHI CÓ QUYỀN revenue_view */}
+            {/* 3. THẺ DOANH THU */}
             {canViewRevenue && (
               <RevenueCard
                 periodRevenue={periodRevenue}
                 monthRevenue={monthRevenue}
-                periodLabel={periodLabel}
+                periodLabel="Doanh thu thực tế"
               />
             )}
 
-            {/* Biểu đồ phân tích */}
+            {/* 4. BIỂU ĐỒ PHÂN TÍCH */}
             <div className="charts-grid">
-              <LineChart
-                data={barsData}
-                title={`Lượt đặt sân theo ngày (${periodDisplay})`}
-                subtitle={`Thống kê 7 ngày kết thúc tại ${
-                  selectedDate
-                    ? new Date(selectedDate).toLocaleDateString("vi-VN", {
-                        day: "2-digit",
-                        month: "2-digit",
-                      })
-                    : "hôm nay"
-                }`}
-              />
+              <LineChart data={barsData} title="Lượt đặt sân theo ngày" />
               <DonutChart donutLegend={donutLegend} total={fields.length} />
             </div>
 
-            {/* Bảng đặt sân */}
+            {/* 5. BẢNG ĐẶT SÂN GẦN NHẤT */}
             <BookingsTable
               bookings={recentTableBookings}
-              periodTitle={`Lượt đặt sân (${periodDisplay})`}
+              periodTitle="Lượt đặt sân"
             />
           </div>
         )}
