@@ -26,7 +26,6 @@ DEFAULT_PERMISSIONS = {
         'users_view', 'users_create', 'users_edit',
         'revenue_view', 'revenue_export',
         'maintenance_manage', 'cleaning_manage',
-        'settings_manage',
     ],
     'field_manager': [
         'dashboard_view',
@@ -79,7 +78,6 @@ DEFAULT_PERMISSIONS = {
         'users_view', 'users_create', 'users_edit', 'users_delete',
         'revenue_view', 'revenue_export',
         'maintenance_manage', 'cleaning_manage',
-        'settings_manage',
     ],
 }
 
@@ -369,8 +367,8 @@ def role_permissions_view(request):
         perms = load_all_role_permissions()
         return Response(perms)
     elif request.method == 'PUT':
-        # Chỉ Admin hoặc tài khoản có quyền settings_manage mới được sửa ma trận phân quyền
-        if user.role != 'admin' and not check_role_has_permission(user.role, 'settings_manage'):
+        # Chỉ Admin mới được sửa ma trận phân quyền
+        if user.role != 'admin':
             return Response({"error": "Truy cập bị từ chối: Chỉ Quản trị viên mới có quyền cập nhật ma trận phân quyền."}, status=403)
 
         new_perms = request.data

@@ -136,12 +136,11 @@ const PERMISSION_MODULES = [
     ]
   },
   {
-    key: 'system',
-    label: 'Hệ thống & Cài đặt',
-    icon: 'tune',
+    key: 'dashboard',
+    label: 'Bảng điều khiển Tổng quan',
+    icon: 'dashboard',
     actions: [
-      { key: 'dashboard_view',   label: 'Tổng quan', abbr: 'DB', type: 'read',   title: 'Xem bảng điều khiển Dashboard' },
-      { key: 'settings_manage',  label: 'Cài đặt',   abbr: 'CF', type: 'update', title: 'Cấu hình thông tin hệ thống' },
+      { key: 'dashboard_view', label: 'Xem tổng quan', abbr: 'DB', type: 'read', title: 'Xem bảng điều khiển Dashboard' },
     ]
   },
 ];

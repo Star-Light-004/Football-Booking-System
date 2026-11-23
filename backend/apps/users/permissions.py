@@ -11,7 +11,6 @@ MODULE_PREFIX_MAP = {
     'timeslots': ['timeslots', 'timeslots_view', 'timeslots_create', 'timeslots_edit', 'timeslots_delete'],
     'services': ['services', 'services_view', 'services_create', 'services_edit', 'services_delete'],
     'vouchers': ['vouchers', 'vouchers_view', 'vouchers_create', 'vouchers_edit', 'vouchers_delete'],
-    'settings': ['settings', 'settings_manage'],
     'maintenance': ['maintenance', 'maintenance_manage'],
     'cleaning': ['cleaning', 'cleaning_manage'],
 }

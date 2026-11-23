@@ -14,7 +14,6 @@ export const DEFAULT_PERMISSIONS = {
     'users_view', 'users_create', 'users_edit',
     'revenue_view', 'revenue_export',
     'maintenance_manage', 'cleaning_manage',
-    'settings_manage',
   ],
   field_manager: [
     'dashboard_view',
@@ -68,7 +67,6 @@ export const DEFAULT_PERMISSIONS = {
     'users_view', 'users_create', 'users_edit', 'users_delete',
     'revenue_view', 'revenue_export',
     'maintenance_manage', 'cleaning_manage',
-    'settings_manage',
   ],
 };
 
@@ -89,8 +87,8 @@ export const ALL_PERMISSION_KEYS = [
   'revenue_view', 'revenue_export',
   // Operations
   'maintenance_manage', 'cleaning_manage',
-  // System
-  'dashboard_view', 'settings_manage',
+  // Dashboard
+  'dashboard_view',
 ];
 
 /**
@@ -174,7 +172,6 @@ export const hasPermission = (permissionKey, user = null) => {
     timeslots: ['timeslots', 'timeslots_view', 'timeslots_create', 'timeslots_edit', 'timeslots_delete'],
     services: ['services', 'services_view', 'services_create', 'services_edit', 'services_delete'],
     vouchers: ['vouchers', 'vouchers_view', 'vouchers_create', 'vouchers_edit', 'vouchers_delete'],
-    settings: ['settings', 'settings_manage'],
     maintenance: ['maintenance', 'maintenance_manage'],
     cleaning: ['cleaning', 'cleaning_manage'],
   };

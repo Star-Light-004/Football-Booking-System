@@ -31,8 +31,7 @@
     "revenue_view",
     "revenue_export",
     "maintenance_manage",
-    "cleaning_manage",
-    "settings_manage"
+    "cleaning_manage"
   ],
   "field_manager": [
     "dashboard_view",
@@ -117,7 +116,6 @@
     "revenue_view",
     "revenue_export",
     "maintenance_manage",
-    "cleaning_manage",
-    "settings_manage"
+    "cleaning_manage"
   ]
 }
