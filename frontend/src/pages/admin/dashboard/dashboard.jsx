@@ -494,8 +494,11 @@ export default function Dashboard() {
 
   const fetchData = async (isSilent = false) => {
     try {
-      if (!isSilent) setLoading(true);
-      const [res, bkRes] = await Promise.all([getFields(), getBookings()]);
+      if (!isSilent && fields.length === 0 && rawBookings.length === 0) setLoading(true);
+      const [res, bkRes] = await Promise.all([
+        getFields({ skipCache: isSilent }),
+        getBookings({ skipCache: isSilent })
+      ]);
       const fieldData = res.data.fields || res.data || [];
       const allBookings = bkRes.data || [];
 
@@ -504,7 +507,7 @@ export default function Dashboard() {
     } catch (error) {
       console.log(error);
     } finally {
-      if (!isSilent) setLoading(false);
+      setLoading(false);
     }
   };
 

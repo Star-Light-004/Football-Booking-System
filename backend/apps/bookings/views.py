@@ -363,7 +363,25 @@ def create_booking(request):
 
 @api_view(['GET'])
 def get_bookings(request):
-    bookings = Bookings.objects.select_related('customer', 'field').all().order_by('-booking_date', 'start_time')
+    from django.db.models import Prefetch
+    from apps.payments.models import Payments
+    from apps.servicesadd.models import BookingServices
+
+    prefetch_payments = Prefetch(
+        'payments_set',
+        queryset=Payments.objects.order_by('-payment_date', '-id'),
+        to_attr='prefetched_payments'
+    )
+    prefetch_services = Prefetch(
+        'booking_services',
+        queryset=BookingServices.objects.select_related('service'),
+        to_attr='prefetched_services'
+    )
+
+    bookings = Bookings.objects.select_related('customer', 'field').prefetch_related(
+        prefetch_payments,
+        prefetch_services
+    ).all().order_by('-booking_date', 'start_time')
 
     from .serializers import BookingsSerializer
     serializer = BookingsSerializer(bookings, many=True)
@@ -372,8 +390,18 @@ def get_bookings(request):
 
 @api_view(['GET'])
 def get_user_bookings(request, user_id):
-    from apps.reviews.models import Reviews
-    bookings = Bookings.objects.filter(customer_id=user_id).order_by('-booking_date', 'start_time')
+    from django.db.models import Prefetch
+    from apps.payments.models import Payments
+
+    prefetch_payments = Prefetch(
+        'payments_set',
+        queryset=Payments.objects.order_by('-payment_date', '-id'),
+        to_attr='prefetched_payments'
+    )
+
+    bookings = Bookings.objects.filter(customer_id=user_id).select_related('customer', 'field', 'reviews').prefetch_related(
+        prefetch_payments
+    ).order_by('-booking_date', 'start_time')
 
     from .serializers import UserBookingsSerializer
     serializer = UserBookingsSerializer(bookings, many=True, context={'request': request})
@@ -390,7 +418,18 @@ def lookup_booking(request):
         # convert date string -> date object
         date_obj = parse_date(date) if date else None
 
-        bookings = Bookings.objects.all().order_by('-created_at')
+        from django.db.models import Prefetch
+        from apps.payments.models import Payments
+
+        prefetch_payments = Prefetch(
+            'payments_set',
+            queryset=Payments.objects.order_by('-payment_date', '-id'),
+            to_attr='prefetched_payments'
+        )
+
+        bookings = Bookings.objects.select_related('customer', 'field', 'reviews').prefetch_related(
+            prefetch_payments
+        ).order_by('-created_at')
 
         # Ưu tiên tìm theo mã đặt sân nếu có
         if booking_id:
@@ -999,7 +1038,7 @@ def get_tournament_requests(request):
         customer_id = request.GET.get("customer_id")
         phone = request.GET.get("phone")
 
-        qs = TournamentRequests.objects.all().order_by('-created_at')
+        qs = TournamentRequests.objects.select_related('customer').all().order_by('-created_at')
 
         if customer_id:
             from django.db.models import Q

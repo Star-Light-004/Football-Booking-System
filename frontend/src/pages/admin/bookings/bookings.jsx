@@ -514,11 +514,16 @@ function BookingsFilterPanel({
   );
 }
 
-const BookingServiceRowItems = ({ bookingId, hasNotes }) => {
-  const [services, setServices] = useState([]);
-  const [loading, setLoading] = useState(true);
+const BookingServiceRowItems = ({ bookingId, hasNotes, initialServices }) => {
+  const [services, setServices] = useState(initialServices || []);
+  const [loading, setLoading] = useState(initialServices === undefined);
 
   useEffect(() => {
+    if (initialServices !== undefined) {
+      setServices(initialServices);
+      setLoading(false);
+      return;
+    }
     const fetchServices = async () => {
       try {
         const res = await fetch(`${BASE_URL}/services/booking-services/${bookingId}/`);
@@ -531,7 +536,7 @@ const BookingServiceRowItems = ({ bookingId, hasNotes }) => {
       }
     };
     if (bookingId) fetchServices();
-  }, [bookingId]);
+  }, [bookingId, initialServices]);
 
   if (loading) return null;
 
@@ -714,7 +719,7 @@ function BookingsTable({
                         .trim();
                       return (
                         <div style={{ display: "flex", flexDirection: "column", gap: "5px", alignItems: "flex-start" }}>
-                          <BookingServiceRowItems bookingId={b.id} hasNotes={Boolean(cleanNote)} />
+                          <BookingServiceRowItems bookingId={b.id} hasNotes={Boolean(cleanNote)} initialServices={b.services} />
                           {cleanNote && (
                             <button
                               type="button"
@@ -4025,7 +4030,7 @@ export default function Bookings() {
 
   const fetchBookings = async (isSilent = false) => {
     try {
-      const res = await getBookings();
+      const res = await getBookings({ skipCache: isSilent });
       const newList = res.data || [];
       if (isSilent && bookingsRef.current.length > 0) {
         // Kiểm tra xem có đơn đặt sân mới vừa được gửi không

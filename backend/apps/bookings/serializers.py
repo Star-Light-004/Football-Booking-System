@@ -3,8 +3,12 @@ from .models import Bookings, TournamentRequests
 from apps.reviews.models import Reviews
 
 def build_payment_info(obj):
-    from apps.payments.models import Payments
-    payment = Payments.objects.filter(booking=obj).order_by('-payment_date', '-id').first()
+    prefetched = getattr(obj, 'prefetched_payments', None)
+    if prefetched is not None:
+        payment = prefetched[0] if len(prefetched) > 0 else None
+    else:
+        from apps.payments.models import Payments
+        payment = Payments.objects.filter(booking=obj).order_by('-payment_date', '-id').first()
     total = float(obj.total_price or 0)
 
     # 1. Nếu có bản ghi thanh toán
@@ -116,6 +120,11 @@ class BookingsSerializer(serializers.ModelSerializer):
 
     def get_services(self, obj):
         try:
+            prefetched = getattr(obj, 'prefetched_services', None)
+            if prefetched is not None:
+                from apps.servicesadd.serializers import BookingServicesSerializer
+                return BookingServicesSerializer(prefetched, many=True, context=self.context).data
+
             from apps.servicesadd.models import BookingServices
             from apps.servicesadd.serializers import BookingServicesSerializer
             booking_services = BookingServices.objects.filter(booking_id=obj.id).select_related('service')
@@ -174,6 +183,11 @@ class UserBookingsSerializer(serializers.ModelSerializer):
         return None
 
     def get_is_reviewed(self, obj):
+        if hasattr(obj, 'reviews'):
+            try:
+                return obj.reviews is not None
+            except Exception:
+                pass
         return Reviews.objects.filter(booking_id=obj.id).exists()
 
     def get_payment_info(self, obj):
