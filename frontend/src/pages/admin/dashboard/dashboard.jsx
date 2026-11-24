@@ -496,7 +496,7 @@ export default function Dashboard() {
     try {
       if (!isSilent && fields.length === 0 && rawBookings.length === 0) setLoading(true);
       const [res, bkRes] = await Promise.all([
-        getFields({ skipCache: isSilent }),
+        getFields(), // Sân bóng hiếm khi đổi, ưu tiên dùng cache để giảm tải server
         getBookings({ skipCache: isSilent })
       ]);
       const fieldData = res.data.fields || res.data || [];
@@ -520,11 +520,12 @@ export default function Dashboard() {
       }
     });
 
+    // 20s poll thay vì 5s để Render Free không bị quá tải CPU
     const pollInterval = setInterval(() => {
       if (document.visibilityState === "visible") {
         fetchData(true);
       }
-    }, 5000);
+    }, 20000);
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {

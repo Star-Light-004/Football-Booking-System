@@ -1,11 +1,12 @@
 /**
- * In-memory API Cache with SWR (Stale-While-Revalidate) support.
- * Giúp chuyển trang trên web mượt mà ngay lập tức (0ms) bằng cách lưu tạm dữ liệu trong RAM trình duyệt,
- * đồng thời tự động xóa cache khi có bất kỳ thao tác Thêm / Sửa / Xóa nào.
+ * In-memory & Persistent (sessionStorage) API Cache with SWR (Stale-While-Revalidate).
+ * - Lưu tạm dữ liệu trong RAM và sessionStorage: Ngay cả khi F5 (Reload trang),
+ *   dữ liệu vẫn hiển thị NGAY LẬP TỨC (0ms) mà không bị vòng xoay "Đang tải dữ liệu...".
+ * - Tự động dọn dẹp cache khi có thao tác Thêm / Sửa / Xóa.
  */
 
 class ApiCache {
-  constructor(defaultTTL = 30000) {
+  constructor(defaultTTL = 60000) { // 1 phút
     this.cache = new Map();
     this.defaultTTL = defaultTTL;
   }
@@ -14,7 +15,6 @@ class ApiCache {
     const cleanUrl = (url || '').split('?')[0];
     const queryParams = { ...(params || {}) };
     
-    // Nếu trong url có query params thì gộp vào
     if ((url || '').includes('?')) {
       const qs = url.split('?')[1];
       const searchParams = new URLSearchParams(qs);
@@ -32,7 +32,20 @@ class ApiCache {
   }
 
   get(key) {
-    const entry = this.cache.get(key);
+    // 1. Lấy từ RAM
+    let entry = this.cache.get(key);
+
+    // 2. Nếu RAM chưa có (ví dụ vừa F5 tải lại trang), lấy từ sessionStorage
+    if (!entry && typeof window !== 'undefined' && window.sessionStorage) {
+      try {
+        const raw = sessionStorage.getItem(`fb_cache_${key}`);
+        if (raw) {
+          entry = JSON.parse(raw);
+          this.cache.set(key, entry);
+        }
+      } catch (e) {}
+    }
+
     if (!entry) return null;
 
     const isExpired = Date.now() - entry.timestamp > entry.ttl;
@@ -44,30 +57,49 @@ class ApiCache {
   }
 
   set(key, data, ttl = this.defaultTTL) {
-    this.cache.set(key, {
+    const entry = {
       data,
       timestamp: Date.now(),
       ttl,
-    });
+    };
+    this.cache.set(key, entry);
+
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      try {
+        sessionStorage.setItem(`fb_cache_${key}`, JSON.stringify(entry));
+      } catch (e) {}
+    }
   }
 
   invalidate(pattern) {
     if (!pattern) {
-      this.cache.clear();
+      this.clear();
       return;
     }
     for (const key of this.cache.keys()) {
       if (key.includes(pattern)) {
         this.cache.delete(key);
+        if (typeof window !== 'undefined' && window.sessionStorage) {
+          try { sessionStorage.removeItem(`fb_cache_${key}`); } catch (e) {}
+        }
       }
     }
   }
 
   clear() {
     this.cache.clear();
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      try {
+        const keysToRemove = [];
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const k = sessionStorage.key(i);
+          if (k && k.startsWith('fb_cache_')) keysToRemove.push(k);
+        }
+        keysToRemove.forEach(k => sessionStorage.removeItem(k));
+      } catch (e) {}
+    }
   }
 }
 
-export const apiCache = new ApiCache(30000);
+export const apiCache = new ApiCache(60000);
 export default apiCache;
-
