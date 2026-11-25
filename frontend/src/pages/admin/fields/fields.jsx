@@ -268,6 +268,7 @@ function FieldDetailModal({ initialField, onClose }) {
                       </span>
                     )}
                   </p>
+                  <p><span className="material-symbols-outlined">straighten</span><b>Quy mô mặt sân:</b> {field.pitch_standard || "Tiêu chuẩn theo loại sân"}</p>
                   <p><span className="material-symbols-outlined">event_available</span><b>Lượt đặt:</b> {field.booking_count || 0}</p>
                   <p><span className="material-symbols-outlined">phone</span><b>Liên hệ:</b> {field.phone || "Chưa cập nhật"}</p>
                   <p><span className="material-symbols-outlined">location_on</span><b>Địa chỉ:</b> {field.location}</p>
@@ -473,6 +474,7 @@ function AddFieldModal({ onClose, onSuccess, showToast }) {
   const [price, setPrice] = useState("");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
+  const [pitchStandard, setPitchStandard] = useState("");
   const [phone, setPhone] = useState("");
   const [latitude, setLatitude] = useState(null);
   const [longitude, setLongitude] = useState(null);
@@ -510,6 +512,7 @@ function AddFieldModal({ onClose, onSuccess, showToast }) {
       formData.append("location", location);
       formData.append("price_per_hour", price);
       formData.append("description", description);
+      formData.append("pitch_standard", pitchStandard);
       formData.append("phone", phone);
       if (image) formData.append("image", image);
       if (subImage1) formData.append("sub_image_1", subImage1);
@@ -646,6 +649,22 @@ function AddFieldModal({ onClose, onSuccess, showToast }) {
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
+
+            <div className="form-group full">
+              <label className="form-label">
+                Mô tả quy mô mặt sân
+                <span style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: "normal", marginLeft: "6px" }}>
+                  (Hiển thị trên banner ảnh chi tiết sân)
+                </span>
+              </label>
+              <input
+                className="form-input"
+                type="text"
+                placeholder="Ví dụ: Cụm 4 sân 7 người kết hợp sân 11 tiêu chuẩn"
+                value={pitchStandard}
+                onChange={(e) => setPitchStandard(e.target.value)}
+              />
+            </div>
           </div>
 
           {/* Info banner */}
@@ -680,6 +699,7 @@ function EditFieldModal({ field, onClose, onSuccess, showToast }) {
   const [price, setPrice] = useState(field.price_per_hour || "");
   const [location, setLocation] = useState(field.location || "");
   const [description, setDescription] = useState(field.description || "");
+  const [pitchStandard, setPitchStandard] = useState(field.pitch_standard || "");
   const [phone, setPhone] = useState(field.phone || "");
   const [isAvailable, setIsAvailable] = useState(field.is_available);
   const [latitude, setLatitude] = useState(field.latitude || null);
@@ -730,6 +750,7 @@ function EditFieldModal({ field, onClose, onSuccess, showToast }) {
       formData.append("location", location);
       formData.append("price_per_hour", price);
       formData.append("description", description);
+      formData.append("pitch_standard", pitchStandard);
       formData.append("phone", phone);
       formData.append("is_available", isAvailable);
       if (latitude) formData.append("latitude", latitude);
@@ -865,6 +886,22 @@ function EditFieldModal({ field, onClose, onSuccess, showToast }) {
                 placeholder="Mô tả về chất lượng cỏ, đèn chiếu sáng, tiện ích đi kèm..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+
+            <div className="form-group full">
+              <label className="form-label">
+                Mô tả quy mô mặt sân
+                <span style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: "normal", marginLeft: "6px" }}>
+                  (Hiển thị trên banner ảnh chi tiết sân)
+                </span>
+              </label>
+              <input
+                className="form-input"
+                type="text"
+                placeholder="Ví dụ: Cụm 4 sân 7 người kết hợp sân 11 tiêu chuẩn"
+                value={pitchStandard}
+                onChange={(e) => setPitchStandard(e.target.value)}
               />
             </div>
 

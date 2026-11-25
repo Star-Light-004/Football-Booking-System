@@ -85,6 +85,7 @@ class FootballFields(models.Model):
     )
 
     description = models.TextField(blank=True, null=True)
+    pitch_standard = models.CharField(max_length=255, blank=True, null=True, default='', verbose_name="Tiêu chuẩn mặt sân")
     rating_avg = models.DecimalField(max_digits=2, decimal_places=1, blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
     open_time = models.TimeField(blank=True, null=True)

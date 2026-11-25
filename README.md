@@ -206,7 +206,7 @@ Quản trị viên có thể bật/tắt trực quan từng quyền (Xem, Thêm,
 5. **Voucher & Khuyến mãi (Vouchers):** `vouchers_view`, `vouchers_create`, `vouchers_edit`, `vouchers_delete`
 6. **Người dùng (Users):** `users_view`, `users_create`, `users_edit`, `users_delete`
 7. **Doanh thu (Revenue):** `revenue_view`, `revenue_export`
-8. **Vận hành (Operations):** `cleaning_manage`, `maintenance_manage`, `settings_manage`
+8. **Vận hành (Operations):** `cleaning_manage`, `maintenance_manage` (kèm quyền bảng điều khiển `dashboard_view`)
 
 > **Cơ chế bảo mật kép:**
 > - **Client-side:** Component `ProtectedRoute` và tiện ích `permissionUtils.js` kiểm tra vai trò người dùng trong `localStorage` để quyết định cho phép vào trang hoặc hiển thị các nút thao tác.
@@ -220,7 +220,7 @@ Quản trị viên có thể bật/tắt trực quan từng quyền (Xem, Thêm,
 - **Hero Banner:** Thiết kế ấn tượng theo ngôn ngữ *Clean Emerald Modernism*, khẩu hiệu kêu gọi hành động (CTA) đặt sân nhanh.
 - **Thanh tìm kiếm thông minh (Quick Search Pill):** Lọc sân theo quận/huyện, loại sân (5, 7, 11 người) và ngày thi đấu.
 - **Danh sách sân nổi bật:** Thẻ sân `FieldCard` tự động tính toán giá thấp nhất (`min_price`), hiển thị huy hiệu FIFA, đánh giá sao trung bình và số lượng ca trống trong ngày.
-- **Quy trình đặt sân trực quan:** Hướng dẫn 3 bước: 1. Chọn sân & giờ $\rightarrow$ 2. Thanh toán cọc VietQR $\rightarrow$ 3. Nhận vé QR & Ra sân.
+- **Quy trình đặt sân trực quan:** Hướng dẫn 4 bước tinh gọn: 1. Chọn sân $\rightarrow$ 2. Chọn ngày & giờ $\rightarrow$ 3. Nhập thông tin $\rightarrow$ 4. Xác nhận & Nhận mã đặt sân.
 
 ### 🏟️ 2. Danh sách sân bóng (`/fields`)
 - Danh mục toàn bộ các cụm sân cỏ nhân tạo kèm hình ảnh chất lượng cao.
@@ -273,10 +273,11 @@ Quản trị viên có thể bật/tắt trực quan từng quyền (Xem, Thêm,
 Giao diện quản trị hoạt động độc lập tại đường dẫn `/admin/*`, tích hợp thanh điều hướng dùng chung `AdminSidebar` tự động ẩn/hiện các menu theo quyền hạn thực tế của người dùng:
 
 ### 📊 1. Bảng điều khiển tổng quan (`/admin/dashboard`)
-- Thẻ chỉ số KPI thời gian thực: Tổng số sân, Tỷ lệ lấp đầy hôm nay, Doanh thu trong ngày, Đơn cần xử lý gấp.
-- Biểu đồ đường (Line Chart) xu hướng lượt đặt sân theo 7 ngày qua.
-- Biểu đồ tròn phân bổ tỷ lệ đặt sân theo kích thước (Sân 5, Sân 7, Sân 11).
-- Danh sách các ca đá gần nhất với thao tác duyệt/hủy nhanh 1 chạm.
+- Thẻ chỉ số KPI thời gian thực: Tổng số sân, Sân khả dụng, Lượt đặt sân, Sân bảo trì/tạm dừng kèm thẻ doanh thu kép (Doanh thu mốc chọn & Doanh thu tháng).
+- Thẻ cảnh báo đơn chờ duyệt (`PendingApprovalsCard`) giúp quản lý xử lý nhanh các đơn mới đặt.
+- Biểu đồ đường (Line Chart SVG) xu hướng lượt đặt sân theo 7 ngày qua có tooltip chi tiết.
+- Biểu đồ tròn (Donut Chart SVG) phân bổ tỷ lệ đặt sân theo kích thước (Sân 5, Sân 7, Sân 11).
+- Bảng danh sách các ca đá gần nhất với avatar khách, thông tin sân, khung giờ và trạng thái đơn.
 
 ### 🏟️ 2. Quản lý sân bóng (`/admin/fields`)
 - Danh sách toàn bộ sân bóng kèm trạng thái hoạt động / tạm đóng bảo trì.
@@ -341,9 +342,9 @@ Giao diện quản trị hoạt động độc lập tại đường dẫn `/adm
 - Bộ lọc nâng cao theo khoảng ngày và sân bóng, hỗ trợ trích xuất dữ liệu tài chính (Export CSV/Excel).
 
 ### ⚙️ 13. Cài đặt hệ thống (`/admin/settings`)
-- Cấu hình thông tin trung tâm thể thao, số hotline hỗ trợ, địa chỉ trụ sở.
-- Cấu hình tài khoản ngân hàng thụ hưởng nhận tiền VietQR (Số tài khoản, Tên ngân hàng, Chủ tài khoản).
-- Thiết lập thời gian hủy đơn tự động nếu khách không thanh toán.
+- Tuyến đường `/admin/settings` trong ứng dụng tự động điều hướng an toàn về Bảng điều khiển quản trị (`/admin/dashboard`).
+- Cấu hình tài khoản ngân hàng thụ hưởng nhận tiền VietQR (Số tài khoản, Tên ngân hàng, Chủ tài khoản) và bảo mật kết nối SePay Webhook được thiết lập bảo mật qua biến môi trường Backend (`.env`) và tệp cấu hình `settings.py`.
+- Thiết lập thời gian hủy đơn tự động nếu khách không thanh toán cọc sau 15 phút.
 
 ---
 

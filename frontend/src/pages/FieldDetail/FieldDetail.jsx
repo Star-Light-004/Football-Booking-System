@@ -964,7 +964,17 @@ const FieldDetail = () => {
             </div>
             <div className="main-caption">
               <div className="caption-sub">MẶT SÂN TIÊU CHUẨN</div>
-              <div className="caption-title">Cụm 4 sân 7 người kết hợp sân 11 tiêu chuẩn</div>
+              <div className="caption-title">
+                {field.pitch_standard?.trim() || (
+                  field.field_type?.includes("5")
+                    ? "Cụm sân mini 5 người cỏ nhân tạo tiêu chuẩn"
+                    : field.field_type?.includes("7")
+                    ? "Cụm 4 sân 7 người kết hợp sân 11 tiêu chuẩn"
+                    : field.field_type?.includes("11")
+                    ? "Sân 11 người tiêu chuẩn thi đấu quốc tế"
+                    : "Mặt sân cỏ nhân tạo đạt chuẩn FIFA Pro"
+                )}
+              </div>
             </div>
             <button
               type="button"
@@ -1756,7 +1766,7 @@ const FieldDetail = () => {
                       <input
                         type="text"
                         className="voucher-input"
-                        placeholder="Nhập mã voucher (VD: FB-XXXXXX)"
+                        placeholder="Nhập mã voucher..."
                         value={voucherCode}
                         onChange={(e) => {
                           setVoucherCode(e.target.value.toUpperCase());

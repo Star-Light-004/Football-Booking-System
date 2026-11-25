@@ -1929,6 +1929,14 @@
   transition: all 0.2s ease;
 }
 
+.voucher-input::placeholder {
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: #94a3b8;
+}
+
 .voucher-input:focus {
   border-color: #16a34a;
   box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12);
@@ -1944,6 +1952,7 @@
   font-size: 0.78rem;
   cursor: pointer;
   white-space: nowrap;
+  flex-shrink: 0;
   transition: all 0.2s ease;
 }
 

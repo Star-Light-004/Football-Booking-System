@@ -20,7 +20,7 @@
    - 3.6 Màn hình Thanh toán & Vé điện tử VietQR (Payment & Booking Success - `/booking/success`)
    - 3.7 Tra cứu thông tin đặt sân (Booking Lookup - `/lookup`)
    - 3.8 Lịch sử đặt sân của tôi (My Bookings - `/my-bookings`)
-   - 3.9 Đăng ký tổ chức giải đấu thể thao (Tournament Request - `/tournament-request`)
+   - 3.9 Đăng ký tổ chức giải đấu thể thao (Tournament Request - `/tournaments`)
    - 3.10 Liên hệ & Hỗ trợ cứu hộ sân 24/7 (Contact & Support - `/contact`)
    - 3.11 Xác thực người dùng (Login & Register - `/login`, `/register`)
    - 3.12 Hồ sơ cá nhân (User Profile - `/profile`)
@@ -157,41 +157,47 @@
 ## 3. GIAO DIỆN NGƯỜI DÙNG DÀNH CHO KHÁCH HÀNG (CUSTOMER PORTAL)
 
 ### 3.1 Thanh điều hướng & Header toàn trang (Navbar)
-- **Vị trí & Cơ chế:** Cố định trên cùng màn hình (`sticky top-0`, `z-index: 100`), nền kính mờ nhẹ (`backdrop-filter: blur(8px)` trên nền trắng `rgba(255, 255, 255, 0.95)`).
+- **Vị trí & Cơ chế:** Cố định trên cùng màn hình (`sticky top-0`, `z-index: 50`), nền kính mờ nhẹ (`backdrop-filter: blur(14px)` trên nền trắng `rgba(255, 255, 255, 0.97)`).
 - **Cấu trúc thành phần:**
-  1. **Logo thương hiệu bên trái:** Biểu tượng trái bóng kèm chữ "Sân Bóng Hải Châu" đậm nét.
+  1. **Logo thương hiệu bên trái:** Biểu tượng trái bóng kèm chữ "Football Booking" nổi bật.
   2. **Thanh menu chính giữa:**
      - *Trang chủ* (`/`)
      - *Sân bóng* (`/fields`)
-     - *Tra cứu đơn* (`/lookup`)
-     - *Tổ chức giải đấu* (`/tournament-request`)
+     - *Đặt giải đấu* (`/tournaments`)
+     - *Lịch sử* (`/my-bookings`) — Hiển thị khi người dùng đã đăng nhập.
      - *Liên hệ* (`/contact`)
+     *(Hệ thống đồng thời cung cấp cổng tra cứu vé điện tử không cần đăng nhập tại `/lookup`).*
   3. **Khu vực tiện ích bên phải:**
-     - Nút gọi khẩn cấp / Hotline sân: `1900 88 99 22`.
-     - Nếu chưa đăng nhập: Nút "Đăng nhập" (Ghost Button) và "Đăng ký" (Primary Green Pill Button).
-     - Nếu đã đăng nhập: Avatar tròn, tên người dùng, huy hiệu Role. Dropdown menu:
-       - *Lịch đặt của tôi*
-       - *Hồ sơ cá nhân*
-       - *Khu vực Quản trị (Admin Console)* — Chỉ hiển thị nếu tài khoản có vai trò Quản trị / Nhân viên.
-       - *Đăng xuất* (màu đỏ nhẹ cảnh báo).
+     - Chuông thông báo động thời gian thực (`notifications`) kèm badge số lượng tin chưa đọc và danh sách dropdown tương tác.
+     - Nếu chưa đăng nhập: Nút "Đăng ký" và nút "Đăng nhập" (Primary Green Button).
+     - Nếu đã đăng nhập: Lời chào kèm huy hiệu vai trò (Role badge), Avatar tròn. Dropdown menu:
+       - *Thông tin của tôi* (`/profile`)
+       - *Trang quản trị (Admin Console)* (`/admin/dashboard`) — Hiển thị cho các tài khoản quản trị và nhân viên vận hành.
+       - *Đăng xuất* (màu đỏ cảnh báo).
 
 ---
 
 ### 3.2 Trang chủ (Home Page - `/`)
 - **Phần Hero nổi bật:**
-  - Tiêu đề chào đón mạnh mẽ, khẩu hiệu đặt sân nhanh chóng kèm hình ảnh sân cỏ nhân tạo đạt chuẩn buổi tối rực rỡ ánh đèn.
-  - **Thanh tìm kiếm nhanh (Quick Search Pill):** Cho phép gõ tìm theo tên sân, chọn quận/huyện tại Đà Nẵng, chọn loại sân (5, 7, 11 người) và nút "Tìm kiếm ngay".
-- **Bộ lọc loại sân trực quan (Filter Pills):**
-  - Các nút pill bo tròn: *"Tất cả"*, *"Sân 5 người"*, *"Sân 7 người • HOT"*, *"Sân 11 người"*. Có số lượng sân hiển thị theo thời gian thực.
-- **Banner ưu đãi VietQR "Giờ vàng hoàng hôn":**
-  - Card thiết kế hiệu ứng Gradient xanh lá - cam hổ phách, thông báo giảm giá 20% khi thanh toán chuyển khoản quét mã VietQR trong khung giờ 16:30 - 18:00.
+  - Tiêu đề chào đón mạnh mẽ *"Đặt sân bóng nhanh chóng — Nâng tầm trải nghiệm thể thao"*, kèm hình ảnh sân bóng rực rỡ và khẩu hiệu hành động.
+  - Các nút CTA chính: *"Đặt sân ngay"* (`/booking`) và *"Xem danh sách sân"* (`/fields`).
+  - Hàng chỉ số thống kê ấn tượng: 500+ Sân bóng, 50.000+ Lượt đặt/tháng, 30s Thời gian đặt, 4.9/5.0 Đánh giá uy tín.
+- **Thanh tìm kiếm thông minh (Home Search Bar):**
+  - Tìm kiếm sân bóng / địa chỉ theo từ khóa.
+  - Chọn khu vực quận huyện tại Đà Nẵng: *Ngũ Hành Sơn, Hải Châu, Thanh Khê, Liên Chiểu, Cẩm Lệ*.
+  - Chọn thời gian đá linh hoạt: *Hôm nay (Khung giờ vàng), Buổi sáng (6:00–12:00), Buổi chiều (12:00–17:00), Buổi tối (17:00–22:00)*.
+- **Khối "Tại sao chọn chúng tôi" (Why Choose Us):**
+  - Trực quan hóa 4 giá trị vượt trội: *Đặt sân nhanh chóng*, *Cập nhật khung giờ thời gian thực*, *Quản lý lịch đặt linh hoạt*, *Thanh toán nhanh đa phương thức*.
 - **Danh sách sân bóng tiêu biểu (Featured Fields Grid):**
-  - Hiển thị theo lưới 3 cột (Desktop) hoặc 1 cột (Mobile). Mỗi sân bóng là một `FieldCard` chuyên nghiệp gồm: ảnh đại diện, huy hiệu FIFA, đánh giá sao, khoảng cách, chip tiện ích (Đèn LED, Cỏ chuẩn, Bãi xe, Tắm nóng), số lượng ca trống hôm nay và nút *"Đặt ngay"*.
-- **Widget Kèo giao lưu hôm nay (Matchmaking Widget):**
-  - Danh sách các đội bóng đang thiếu người / cần bắt đối, thời gian, sân thi đấu và nút liên hệ kết nối ngay.
-- **Khối Giới thiệu quy trình 3 bước:**
-  - Trực quan hóa 3 bước: 1. Chọn sân & giờ -> 2. Thanh toán cọc VietQR -> 3. Nhận vé QR & Ra sân thi đấu.
-- **Footer:** Chân trang đầy đủ thông tin pháp lý, chi nhánh cụm sân, giờ mở cửa 24/7, hotline, mạng xã hội, chứng nhận cổng thanh toán an toàn Napas VietQR.
+  - Bộ lọc loại sân dạng tab: *"Tất cả"*, *"Sân 5 người"*, *"Sân 7 người"*, *"Sân 11 người"*.
+  - Lưới hiển thị các thẻ `FieldCard` gồm: ảnh đại diện, phân loại sân, tên sân, vị trí địa lý, giá cơ bản, giá thấp nhất (`min_price`), số lượt đặt và sao đánh giá.
+  - Thanh phân trang điều hướng thuận tiện khi danh sách có nhiều sân.
+- **Khối Giới thiệu quy trình 4 bước:**
+  - Trực quan hóa 4 bước đơn giản: 1. Chọn sân $\rightarrow$ 2. Chọn ngày & giờ $\rightarrow$ 3. Nhập thông tin $\rightarrow$ 4. Xác nhận.
+- **Khối kêu gọi hành động (Call to Action):**
+  - Card Cộng đồng bóng đá phủi: Giao lưu, kết nối bắt đối, chia sẻ sân đấu.
+  - Khối đối tác dành riêng cho chủ sân: Thông tin liên kết quản lý và tối ưu doanh thu sân bóng.
+- **Chân trang Footer:** Đầy đủ thông tin thương hiệu, mạng xã hội, danh mục khu vực phục vụ tại Đà Nẵng, hotline hỗ trợ 24/7 và chính sách điều khoản.
 
 ---
 
@@ -284,7 +290,7 @@
 
 ---
 
-### 3.9 Đăng ký tổ chức giải đấu thể thao (Tournament Request - `/tournament-request`)
+### 3.9 Đăng ký tổ chức giải đấu thể thao (Tournament Request - `/tournaments`)
 - **Mục tiêu:** Cung cấp giải pháp tổ chức giải đấu bóng đá phong trào, giải doanh nghiệp, giải học sinh sinh viên trọn gói.
 - **Form đăng ký chuẩn doanh nghiệp:**
   - Thông tin đơn vị tổ chức: Tên công ty / Câu lạc bộ, người đại diện, số điện thoại, email.
@@ -334,35 +340,44 @@ Khu vực Quản trị được thiết kế riêng biệt theo tiêu chuẩn **
 - **Header Sidebar:** Logo Sân Bóng Hải Châu với nhãn "HẢI CHÂU • ĐÀ NẴNG".
 - **Hồ sơ nhân viên trực ca:** Avatar, Tên nhân viên, Huy hiệu Role cụ thể (VD: *Quản trị viên*, *Chủ sân*, *Lễ tân*, *Thu ngân*, *Kỹ thuật bảo trì*, *Nhân viên vệ sinh*).
 - **Hệ thống Menu động theo Phân quyền 9 vai trò (RBAC):**
-  Hệ thống tự động lọc các mục điều hướng dựa trên quyền hạn của tài khoản:
-  1. `Tổng quan (Dashboard)`: Thống kê số liệu vận hành và doanh thu ngày.
-  2. `Quản lý sân bóng`: Danh mục sân, giá sàn, tình trạng sân.
-  3. `Quản lý đặt sân`: Xem lịch theo ngày, check-in, hủy đơn, xếp sân.
-  4. `Lịch thi đấu (Calendar)`: Giao diện trực quan ma trận sân x khung giờ.
-  5. `Yêu cầu giải đấu`: Tiếp nhận và xử lý hồ sơ giải đấu thể thao.
-  6. `Người dùng & Phân quyền`: Quản lý tài khoản khách hàng, nhân viên và bảng phân quyền chi tiết.
-  7. `Doanh thu & Báo cáo`: Phân tích tài chính, dòng tiền (Chỉ Admin & Chủ sân có quyền).
-  8. `Cấu hình khung giờ`: Định nghĩa các ca đấu, cài đặt giờ cao điểm.
-  9. `Dịch vụ & Kho đồ`: Quản lý kho nước giải khát, dụng cụ tập luyện.
-  10. `Quản lý Voucher`: Tạo mã giảm giá, giới hạn ngân sách khuyến mãi.
-  11. `Vệ sinh sân bãi`: Lịch phân công và checklist vệ sinh từng ca.
-  12. `Bảo trì kỹ thuật`: Báo cáo hư hỏng đèn, lưới, mặt cỏ và tiến độ khắc phục.
-  13. `Cài đặt hệ thống`: Thông tin cơ sở, tích hợp ngân hàng VietQR SePay.
-- **Nút Đăng xuất riêng biệt:** Đăng xuất tài khoản quản trị mà không làm mất phiên đăng nhập của trang khách hàng.
+  Hệ thống tự động lọc các mục điều hướng dựa trên quyền hạn của tài khoản thông qua tiện ích `filterNavLinksByPermission`:
+  1. `Tổng quan`: `/admin/dashboard` (Quyền: `dashboard`)
+  2. `Quản lý sân bóng`: `/admin/fields` (Quyền: `fields`)
+  3. `Quản lý đặt sân`: `/admin/bookings` (Quyền: `bookings`)
+  4. `Yêu cầu giải đấu`: `/admin/tournaments` (Quyền: `bookings`)
+  5. `Người dùng`: `/admin/users` (Quyền: `users`) — Submenu: *Tài khoản hệ thống*, *Khách vãng lai* (`?tab=guests`), *Phân quyền* (`/admin/users/roles`).
+  6. `Doanh thu`: `/admin/revenue` (Quyền: `revenue`)
+  7. `Khung giờ`: `/admin/timeslots` (Quyền: `timeslots`)
+  8. `Dịch vụ`: `/admin/services` (Quyền: `services`)
+  9. `Quản lý voucher`: `/admin/vouchers` (Quyền: `vouchers`) — Submenu: *Chính sách voucher*, *Lịch sử phát voucher* (`?tab=history`).
+  10. `Vệ sinh sân`: `/admin/cleaning` (Quyền: `cleaning`)
+  11. `Bảo trì sân & thiết bị`: `/admin/maintenance` (Quyền: `maintenance`)
+- **Nút Đăng xuất riêng biệt:** Đăng xuất tài khoản quản trị `admin_user` mà không làm ảnh hưởng phiên đăng nhập của trang khách hàng.
 
 ---
 
 ### 4.2 Bảng điều khiển tổng quan (Admin Dashboard - `/admin/dashboard`)
-- **Hàng thẻ số liệu thời gian thực (Real-time Metric Cards):**
-  - **Doanh thu hôm nay:** Hiển thị tổng tiền thu được trong ngày kèm % tăng trưởng so với hôm qua.
-  - **Tổng số trận đấu hôm nay:** Số lượng trận bóng đã lên lịch trong ngày (Đã check-in / Sắp diễn ra).
-  - **Số khách đã check-in:** Tỷ lệ người chơi đã có mặt tại sân.
-  - **Tỷ lệ lấp đầy sân (Occupancy Rate):** Biểu đồ đo phần trăm giờ sân được lấp kín.
-- **Widget Cảnh báo thời tiết sân bóng (Live Weather Alert):**
-  - Cảnh báo thời tiết tại khu vực sân (nắng ráo, mưa dông, nhiệt độ) để ban quản lý chủ động bật giàn đèn sớm hoặc thông báo khách lùi ca tránh mưa.
-- **Bảng ca thi đấu tiếp theo trong ngày:**
-  - Hiển thị danh sách các trận chuẩn bị bắt đầu trong 30 phút tới. Nút **CHECK-IN 1 CHẠM** cho lễ tân tại quầy.
-- **Biểu đồ doanh thu tuần / tháng:** Trực quan hóa đường cong doanh thu và số lượng đơn đặt.
+- **TopHeader & Page Heading:**
+  - Ô tìm kiếm nhanh thông số, giao dịch và chuông thông báo.
+  - Lời chào mừng nhân viên trực ca kèm huy hiệu vai trò hiện tại (Admin, Chủ sân, Quản lý, Lễ tân...).
+- **Thẻ cảnh báo đơn chờ duyệt (Pending Approvals Card):**
+  - Hiển thị danh sách các đơn đặt sân đang ở trạng thái `pending` cần xác nhận kèm thông tin khách, sân, khung giờ và nút xử lý nhanh sang màn hình đặt sân.
+- **Hàng 4 thẻ số liệu KPI tổng quan:**
+  - **Tổng số sân:** Tổng số sân bóng kèm badge số lượng đang hoạt động.
+  - **Sân khả dụng:** Số lượng sân sẵn sàng đón khách thi đấu.
+  - **Lượt đặt sân:** Tổng số lượt đặt tương ứng theo mốc thời gian đang lọc.
+  - **Sân bảo trì / tạm dừng:** Số lượng sân đang trong quá trình bảo dưỡng kỹ thuật.
+- **Thanh công cụ lọc mốc thời gian (Dashboard Filter Bar):**
+  - Các mốc chọn nhanh: *Hôm nay, Tuần này, Tháng này, Năm nay, Tất cả*.
+  - Bộ chọn lịch sử những ngày đã qua dropdown + Input chọn ngày tự do từ lịch.
+- **Thẻ doanh thu kép (Revenue Card):**
+  - Hiển thị *Doanh thu thực tế* theo khoảng thời gian đã chọn và *Doanh thu tháng này* (được bảo vệ theo quyền `revenue_view`).
+- **Biểu đồ đường trực quan hóa (Line Chart SVG):**
+  - Đồ thị đường cong số lượt đặt sân trong 7 ngày gần nhất, tích hợp hiệu ứng gradient mượt mà, đường gióng và tooltip chi tiết khi di chuột.
+- **Biểu đồ tròn phân loại sân (Donut Chart SVG):**
+  - Phân bổ cơ cấu danh mục sân bóng (Sân 5 người, Sân 7 người, Sân 11 người) kèm số lượng và tỷ lệ phần trăm trực quan.
+- **Bảng lượt đặt gần nhất (Bookings Table):**
+  - Danh sách đơn đặt mới nhất gồm: Mã đặt sân (#BKxxxxxxxx), avatar viết tắt kèm tên khách hàng, tên sân bóng, khung giờ thi đấu và huy hiệu trạng thái chuẩn màu nghiệp vụ.
 
 ---
 
@@ -483,15 +498,13 @@ Khu vực Quản trị được thiết kế riêng biệt theo tiêu chuẩn **
 ---
 
 ### 4.14 Cài đặt hệ thống & Cấu hình SePay VietQR (System Settings - `/admin/settings`)
-- **Thông tin doanh nghiệp / Cụm sân:** Tên hiển thị, địa chỉ trụ sở, số điện thoại hotline, email tiếp nhận yêu cầu.
-- **Cấu hình thanh toán tự động VietQR SePay:**
-  - Tên ngân hàng thụ hưởng (MBBank, Vietcombank, Techcombank,...).
-  - Số tài khoản và Tên chủ tài khoản in hoa không dấu.
-  - Cấu hình Webhook Token bảo mật để đón nhận biến động số dư tức thời từ SePay.
-- **Chính sách đặt sân & Giữ chỗ:**
-  - Quy định tỷ lệ cọc trước (Mặc định: 50%).
-  - Thời gian giữ chỗ chờ cọc (Mặc định: 15 phút, sau 15 phút tự động hủy ca).
-  - Thời gian cho phép khách tự hủy đơn trước trận (Mặc định: 12 tiếng).
+- Tuyến đường `/admin/settings` trong ứng dụng được thiết lập chuyển hướng an toàn (`Navigate replace`) về Bảng điều khiển quản trị `/admin/dashboard`.
+- **Cấu hình thanh toán tự động VietQR SePay & Ngân hàng:**
+  - Nhằm đảm bảo tính bảo mật và toàn vẹn của cổng tài chính, các tham số tài khoản ngân hàng thụ hưởng (`BANK_CODE`, `BANK_ACCOUNT_NO`, `BANK_ACCOUNT_NAME`) và mã xác thực kết nối SePay Webhook (`SEPAY_API_KEY`) được lưu trữ và quản lý an toàn qua tệp biến môi trường `.env` phía Backend.
+- **Chính sách đặt sân & Giữ chỗ cốt lõi:**
+  - Quy định tỷ lệ cọc trước: Mặc định 50% khi đặt qua cổng trực tuyến VietQR.
+  - Thời gian giữ chỗ chờ cọc: Đếm ngược 15 phút, sau 15 phút không thanh toán hệ thống tự động giải phóng khung giờ.
+  - Hạn mức đặt sân chống spam: Tối đa 3 khung giờ/ngày/sân cho mỗi khách hàng.
 
 ---
 

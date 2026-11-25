@@ -181,6 +181,7 @@ def create_football_field(request):
             sub_image_2=sub_image_2,
             sub_image_3=sub_image_3,
             description=request.POST.get("description"),
+            pitch_standard=request.POST.get("pitch_standard", "").strip(),
             phone=request.POST.get("phone"),
             booking_count=request.POST.get("booking_count", 0),
             rating_avg=request.POST.get("rating_avg", 0),
@@ -231,6 +232,8 @@ def update_football_field(request, id):
                 field.is_available = bool(val)
         if "description" in data:
             field.description = data.get("description")
+        if "pitch_standard" in data:
+            field.pitch_standard = str(data.get("pitch_standard") or "").strip()
         if "phone" in data:
             field.phone = data.get("phone")
         if "booking_count" in data:

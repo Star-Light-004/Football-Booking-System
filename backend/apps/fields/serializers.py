@@ -18,7 +18,7 @@ class FootballFieldsSerializer(serializers.ModelSerializer):
     class Meta:
         model = FootballFields
         fields = [
-            'id', 'field_name', 'field_type', 'location', 'price_per_hour', 'min_price',
+            'id', 'field_name', 'field_type', 'pitch_standard', 'location', 'price_per_hour', 'min_price',
             'is_available', 'created_at', 'image', 'image_url',
             'sub_image_1', 'sub_image_1_url',
             'sub_image_2', 'sub_image_2_url',
