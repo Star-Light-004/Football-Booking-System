@@ -1879,7 +1879,8 @@ const FieldDetail = () => {
                     address={field.address}
                     location={field.location}
                     fieldName={field.field_name}
-                    compact={true}
+                    compact={false}
+                    showFooter={true}
                   />
                 </div>
               </div>

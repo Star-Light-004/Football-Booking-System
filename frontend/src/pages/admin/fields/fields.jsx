@@ -619,10 +619,13 @@ function AddFieldModal({ onClose, onSuccess, showToast }) {
               {debouncedLocation && (
                 <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1.5px solid #bbf7d0', marginTop: '4px' }}>
                   <FieldMap
+                    lat={latitude}
+                    lng={longitude}
                     location={debouncedLocation}
                     fieldName={fieldName}
                     onCoordsFound={handleCoordsFound}
                     compact={true}
+                    showFooter={false}
                   />
                 </div>
               )}
@@ -723,8 +726,10 @@ function EditFieldModal({ field, onClose, onSuccess, showToast }) {
 
   const handleLocationChange = (val) => {
     setLocation(val);
-    setLatitude(null);
-    setLongitude(null);
+    if (val !== field.location) {
+      setLatitude(null);
+      setLongitude(null);
+    }
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       setDebouncedLocation(val);
@@ -858,10 +863,13 @@ function EditFieldModal({ field, onClose, onSuccess, showToast }) {
               {debouncedLocation && (
                 <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1.5px solid #bbf7d0', marginTop: '4px' }}>
                   <FieldMap
+                    lat={latitude}
+                    lng={longitude}
                     location={debouncedLocation}
                     fieldName={fieldName}
                     onCoordsFound={handleCoordsFound}
                     compact={true}
+                    showFooter={false}
                   />
                 </div>
               )}

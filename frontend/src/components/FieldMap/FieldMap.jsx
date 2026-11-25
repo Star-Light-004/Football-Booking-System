@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./FieldMap.css";
@@ -28,12 +28,26 @@ const greenIcon = new L.Icon({
 function MapFlyTo({ coords }) {
   const map = useMap();
   useEffect(() => {
-    if (coords) {
+    if (coords && coords.lat && coords.lng) {
       map.flyTo([coords.lat, coords.lng], 16, { duration: 1.2 });
     }
   }, [coords, map]);
   return null;
 }
+
+// Click on map to update marker position (used in Admin forms)
+function MapClickHandler({ onSelectCoords }) {
+  useMapEvents({
+    click(e) {
+      if (onSelectCoords) {
+        onSelectCoords(e.latlng.lat, e.latlng.lng);
+      }
+    },
+  });
+  return null;
+}
+
+const DEFAULT_DA_NANG = { lat: 16.054407, lng: 108.202166 };
 
 /**
  * FieldMap component
@@ -42,45 +56,61 @@ function MapFlyTo({ coords }) {
  *  - address        : địa chỉ đầy đủ (phụ)
  *  - location       : tên địa điểm / địa chỉ ngắn (dùng để geocode nếu không có lat/lng)
  *  - fieldName      : tên sân, hiển thị trong popup
- *  - onCoordsFound  : callback(lat, lng) khi geocode xong → dùng để auto-fill form
+ *  - onCoordsFound  : callback(lat, lng) khi geocode xong hoặc admin click bản đồ
  *  - compact        : true = chế độ nhỏ gọn cho modal preview
+ *  - showFooter     : hiển thị thanh điều hướng footer (mặc định true)
  */
-const FieldMap = ({ lat, lng, address, fieldName, location, onCoordsFound, compact = false }) => {
-  const [coords, setCoords] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [geocoding, setGeocoding] = useState(false); // đang geocode lại (khác với loading ban đầu)
+const FieldMap = ({
+  lat,
+  lng,
+  address,
+  fieldName = "Sân bóng đá",
+  location,
+  onCoordsFound,
+  compact = false,
+  showFooter = true,
+}) => {
+  const initialLat = parseFloat(lat);
+  const initialLng = parseFloat(lng);
+  const hasValidInitialCoords =
+    !isNaN(initialLat) && !isNaN(initialLng) && initialLat !== 0 && initialLng !== 0;
+
+  const [coords, setCoords] = useState(
+    hasValidInitialCoords ? { lat: initialLat, lng: initialLng } : null
+  );
+  const [loading, setLoading] = useState(!hasValidInitialCoords);
+  const [geocoding, setGeocoding] = useState(false);
   const prevLocationRef = useRef(null);
 
   useEffect(() => {
+    const parsedLat = parseFloat(lat);
+    const parsedLng = parseFloat(lng);
+
+    // Nếu đã có tọa độ hợp lệ từ DB / props → dùng luôn
+    if (!isNaN(parsedLat) && !isNaN(parsedLng) && parsedLat !== 0 && parsedLng !== 0) {
+      setCoords({ lat: parsedLat, lng: parsedLng });
+      setLoading(false);
+      return;
+    }
+
     const currentQuery = address || location;
-
-    // Nếu đã có tọa độ từ DB → dùng luôn (không geocode nữa)
-    if (lat && lng && parseFloat(lat) !== 0 && parseFloat(lng) !== 0) {
-      const newCoords = { lat: parseFloat(lat), lng: parseFloat(lng) };
-      setCoords(newCoords);
-      setError(false);
-      setLoading(false);
-      return;
-    }
-
     if (!currentQuery) {
-      setError(true);
+      // Fallback về trung tâm Đà Nẵng nếu không có thông tin
+      setCoords(DEFAULT_DA_NANG);
       setLoading(false);
       return;
     }
 
-    // Nếu địa chỉ không đổi thì không geocode lại
+    // Nếu địa chỉ không đổi và đã có coords thì không geocode lại
     if (prevLocationRef.current === currentQuery && coords) {
       setLoading(false);
       return;
     }
 
-    // Geocode địa chỉ mới
     prevLocationRef.current = currentQuery;
     setGeocoding(true);
-    setError(false);
 
+    // Geocode địa chỉ
     const searchQuery = encodeURIComponent(currentQuery + ", Việt Nam");
     fetch(
       `https://nominatim.openstreetmap.org/search?q=${searchQuery}&format=json&limit=1`,
@@ -94,23 +124,49 @@ const FieldMap = ({ lat, lng, address, fieldName, location, onCoordsFound, compa
             lng: parseFloat(data[0].lon),
           };
           setCoords(newCoords);
-          setError(false);
-          // Thông báo lên parent để tự điền lat/lng nếu cần
           if (onCoordsFound) {
             onCoordsFound(newCoords.lat, newCoords.lng);
           }
         } else {
-          setError(true);
+          // Thử tìm theo quận / thành phố nếu tìm địa chỉ chi tiết không ra
+          const fallbackQuery = encodeURIComponent("Hải Châu, Đà Nẵng, Việt Nam");
+          return fetch(
+            `https://nominatim.openstreetmap.org/search?q=${fallbackQuery}&format=json&limit=1`,
+            { headers: { "Accept-Language": "vi" } }
+          )
+            .then((r) => r.json())
+            .then((fallbackData) => {
+              if (fallbackData && fallbackData.length > 0) {
+                const fbCoords = {
+                  lat: parseFloat(fallbackData[0].lat),
+                  lng: parseFloat(fallbackData[0].lon),
+                };
+                setCoords(fbCoords);
+                if (onCoordsFound) onCoordsFound(fbCoords.lat, fbCoords.lng);
+              } else {
+                setCoords(DEFAULT_DA_NANG);
+              }
+            });
         }
       })
-      .catch(() => setError(true))
+      .catch(() => {
+        // Fallback nhẹ nhàng về Đà Nẵng nếu mạng/CORS lỗi
+        setCoords(DEFAULT_DA_NANG);
+      })
       .finally(() => {
         setLoading(false);
         setGeocoding(false);
       });
   }, [lat, lng, address, location, onCoordsFound]);
 
-  const mapHeight = compact ? "200px" : "280px";
+  const handleMapClick = (clickLat, clickLng) => {
+    setCoords({ lat: clickLat, lng: clickLng });
+    if (onCoordsFound) {
+      onCoordsFound(clickLat, clickLng);
+    }
+  };
+
+  const mapHeight = compact ? "200px" : "240px";
 
   if (loading) {
     return (
@@ -121,21 +177,14 @@ const FieldMap = ({ lat, lng, address, fieldName, location, onCoordsFound, compa
     );
   }
 
-  if (error || !coords) {
-    return (
-      <div className="fm-placeholder fm-error" style={{ height: mapHeight }}>
-        <span className="fm-pin-icon">📍</span>
-        <p>Không tìm thấy vị trí</p>
-        <span className="fm-sub">Thử nhập địa chỉ đầy đủ hơn</span>
-      </div>
-    );
-  }
-
-  const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}`;
+  const effectiveCoords = coords || DEFAULT_DA_NANG;
+  const displayAddress = location || address || "Hải Châu, Đà Nẵng";
+  const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    fieldName + " " + displayAddress
+  )}`;
 
   return (
     <div className="fm-wrapper">
-      {/* Badge geocoding nhỏ hiện khi đang cập nhật lại */}
       {geocoding && (
         <div className="fm-geocoding-badge">
           <span className="fm-spinner fm-spinner-sm" />
@@ -144,7 +193,7 @@ const FieldMap = ({ lat, lng, address, fieldName, location, onCoordsFound, compa
       )}
 
       <MapContainer
-        center={[coords.lat, coords.lng]}
+        center={[effectiveCoords.lat, effectiveCoords.lng]}
         zoom={16}
         style={{ height: mapHeight }}
         className="fm-map"
@@ -155,22 +204,32 @@ const FieldMap = ({ lat, lng, address, fieldName, location, onCoordsFound, compa
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>'
         />
-        {/* Tự động fly đến tọa độ mới khi địa chỉ thay đổi */}
-        <MapFlyTo coords={coords} />
-        <Marker position={[coords.lat, coords.lng]} icon={greenIcon}>
+        <MapFlyTo coords={effectiveCoords} />
+        {onCoordsFound && <MapClickHandler onSelectCoords={handleMapClick} />}
+        <Marker position={[effectiveCoords.lat, effectiveCoords.lng]} icon={greenIcon}>
           <Popup className="fm-popup">
             <strong>{fieldName}</strong>
             <br />
-            <span>{location || address}</span>
+            <span>{displayAddress}</span>
+            <div style={{ marginTop: "6px" }}>
+              <a
+                href={googleMapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "#00b14f", fontWeight: "600", textDecoration: "none", fontSize: "0.8rem" }}
+              >
+                Mở chỉ đường trên Google Maps ↗
+              </a>
+            </div>
           </Popup>
         </Marker>
       </MapContainer>
 
-      {!compact && (
+      {showFooter && (
         <div className="fm-footer">
-          <span className="fm-footer-label">
+          <span className="fm-footer-label" title={displayAddress}>
             <span className="fm-dot" />
-            {location || address}
+            {displayAddress}
           </span>
           <a
             href={googleMapsUrl}
