@@ -4,6 +4,11 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./FieldMap.css";
 
+// Global referrerPolicy setting to avoid 403 on tile servers
+if (L && L.TileLayer && L.TileLayer.prototype) {
+  L.TileLayer.prototype.options.referrerPolicy = "strict-origin-when-cross-origin";
+}
+
 // Fix leaflet default icon path (Webpack issue)
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -24,14 +29,41 @@ const greenIcon = new L.Icon({
   shadowSize: [41, 41],
 });
 
-// Sub-component: tự fly map đến tọa độ mới khi coords thay đổi
-function MapFlyTo({ coords }) {
+// Sub-component: Tự động invalidateSize khi mount để tránh lỗi map xám (blank grey)
+function MapResizer({ coords }) {
   const map = useMap();
+  const prevCoordsRef = useRef(null);
+
+  useEffect(() => {
+    // Gọi invalidateSize sau khi DOM đã render xong
+    map.invalidateSize();
+    const t1 = setTimeout(() => map.invalidateSize(), 100);
+    const t2 = setTimeout(() => map.invalidateSize(), 300);
+    const t3 = setTimeout(() => map.invalidateSize(), 800);
+
+    const onResize = () => map.invalidateSize();
+    window.addEventListener("resize", onResize);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [map]);
+
   useEffect(() => {
     if (coords && coords.lat && coords.lng) {
-      map.flyTo([coords.lat, coords.lng], 16, { duration: 1.2 });
+      if (
+        prevCoordsRef.current &&
+        (prevCoordsRef.current.lat !== coords.lat || prevCoordsRef.current.lng !== coords.lng)
+      ) {
+        map.flyTo([coords.lat, coords.lng], 16, { duration: 0.8 });
+      }
+      prevCoordsRef.current = coords;
     }
   }, [coords, map]);
+
   return null;
 }
 
@@ -80,6 +112,7 @@ const FieldMap = ({
   );
   const [loading, setLoading] = useState(!hasValidInitialCoords);
   const [geocoding, setGeocoding] = useState(false);
+  const [viewMode, setViewMode] = useState("carto"); // "carto" | "google"
   const prevLocationRef = useRef(null);
 
   useEffect(() => {
@@ -95,13 +128,11 @@ const FieldMap = ({
 
     const currentQuery = address || location;
     if (!currentQuery) {
-      // Fallback về trung tâm Đà Nẵng nếu không có thông tin
       setCoords(DEFAULT_DA_NANG);
       setLoading(false);
       return;
     }
 
-    // Nếu địa chỉ không đổi và đã có coords thì không geocode lại
     if (prevLocationRef.current === currentQuery && coords) {
       setLoading(false);
       return;
@@ -110,7 +141,6 @@ const FieldMap = ({
     prevLocationRef.current = currentQuery;
     setGeocoding(true);
 
-    // Geocode địa chỉ
     const searchQuery = encodeURIComponent(currentQuery + ", Việt Nam");
     fetch(
       `https://nominatim.openstreetmap.org/search?q=${searchQuery}&format=json&limit=1`,
@@ -128,29 +158,10 @@ const FieldMap = ({
             onCoordsFound(newCoords.lat, newCoords.lng);
           }
         } else {
-          // Thử tìm theo quận / thành phố nếu tìm địa chỉ chi tiết không ra
-          const fallbackQuery = encodeURIComponent("Hải Châu, Đà Nẵng, Việt Nam");
-          return fetch(
-            `https://nominatim.openstreetmap.org/search?q=${fallbackQuery}&format=json&limit=1`,
-            { headers: { "Accept-Language": "vi" } }
-          )
-            .then((r) => r.json())
-            .then((fallbackData) => {
-              if (fallbackData && fallbackData.length > 0) {
-                const fbCoords = {
-                  lat: parseFloat(fallbackData[0].lat),
-                  lng: parseFloat(fallbackData[0].lon),
-                };
-                setCoords(fbCoords);
-                if (onCoordsFound) onCoordsFound(fbCoords.lat, fbCoords.lng);
-              } else {
-                setCoords(DEFAULT_DA_NANG);
-              }
-            });
+          setCoords(DEFAULT_DA_NANG);
         }
       })
       .catch(() => {
-        // Fallback nhẹ nhàng về Đà Nẵng nếu mạng/CORS lỗi
         setCoords(DEFAULT_DA_NANG);
       })
       .finally(() => {
@@ -182,6 +193,7 @@ const FieldMap = ({
   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
     fieldName + " " + displayAddress
   )}`;
+  const googleMapsEmbedUrl = `https://maps.google.com/maps?q=${effectiveCoords.lat},${effectiveCoords.lng}&hl=vi&z=16&output=embed`;
 
   return (
     <div className="fm-wrapper">
@@ -192,38 +204,75 @@ const FieldMap = ({
         </div>
       )}
 
-      <MapContainer
-        center={[effectiveCoords.lat, effectiveCoords.lng]}
-        zoom={16}
-        style={{ height: mapHeight }}
-        className="fm-map"
-        scrollWheelZoom={false}
-        attributionControl={false}
-      >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>'
+      {/* Mode switcher: Bản đồ tương tác vs Google Maps */}
+      <div className="fm-type-toggle">
+        <button
+          type="button"
+          className={`fm-toggle-btn ${viewMode === "carto" ? "active" : ""}`}
+          onClick={() => setViewMode("carto")}
+          title="Bản đồ nhanh tương tác"
+        >
+          Bản đồ
+        </button>
+        <button
+          type="button"
+          className={`fm-toggle-btn ${viewMode === "google" ? "active" : ""}`}
+          onClick={() => setViewMode("google")}
+          title="Xem trực tiếp qua Google Maps"
+        >
+          Google Maps
+        </button>
+      </div>
+
+      {viewMode === "google" ? (
+        <iframe
+          title="Google Maps Location"
+          src={googleMapsEmbedUrl}
+          width="100%"
+          height={mapHeight}
+          style={{ border: 0, display: "block" }}
+          loading="lazy"
+          allowFullScreen
+          referrerPolicy="no-referrer-when-downgrade"
         />
-        <MapFlyTo coords={effectiveCoords} />
-        {onCoordsFound && <MapClickHandler onSelectCoords={handleMapClick} />}
-        <Marker position={[effectiveCoords.lat, effectiveCoords.lng]} icon={greenIcon}>
-          <Popup className="fm-popup">
-            <strong>{fieldName}</strong>
-            <br />
-            <span>{displayAddress}</span>
-            <div style={{ marginTop: "6px" }}>
-              <a
-                href={googleMapsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: "#00b14f", fontWeight: "600", textDecoration: "none", fontSize: "0.8rem" }}
-              >
-                Mở chỉ đường trên Google Maps ↗
-              </a>
-            </div>
-          </Popup>
-        </Marker>
-      </MapContainer>
+      ) : (
+        <MapContainer
+          center={[effectiveCoords.lat, effectiveCoords.lng]}
+          zoom={16}
+          style={{ height: mapHeight, width: "100%" }}
+          className="fm-map"
+          scrollWheelZoom={false}
+          attributionControl={false}
+        >
+          {/* CARTO Voyager: CDN toàn cầu không bị lỗi 403 Forbidden trên Vercel */}
+          <TileLayer
+            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+            subdomains="abcd"
+            maxZoom={20}
+            referrerPolicy="strict-origin-when-cross-origin"
+            attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+          />
+          <MapResizer coords={effectiveCoords} />
+          {onCoordsFound && <MapClickHandler onSelectCoords={handleMapClick} />}
+          <Marker position={[effectiveCoords.lat, effectiveCoords.lng]} icon={greenIcon}>
+            <Popup className="fm-popup">
+              <strong>{fieldName}</strong>
+              <br />
+              <span>{displayAddress}</span>
+              <div style={{ marginTop: "6px" }}>
+                <a
+                  href={googleMapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "#00b14f", fontWeight: "600", textDecoration: "none", fontSize: "0.8rem" }}
+                >
+                  Mở chỉ đường trên Google Maps ↗
+                </a>
+              </div>
+            </Popup>
+          </Marker>
+        </MapContainer>
+      )}
 
       {showFooter && (
         <div className="fm-footer">

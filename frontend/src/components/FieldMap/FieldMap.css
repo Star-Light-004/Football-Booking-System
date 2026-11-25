@@ -1,20 +1,21 @@
 .fm-wrapper {
-  border-radius: 16px;
+  position: relative;
+  border-radius: 14px;
   overflow: hidden;
   border: 1px solid #e5e7eb;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  background: #fff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  background: #f8fafc;
 }
 
 .fm-map {
   width: 100%;
-  height: 280px;
 }
 
-/* Leaflet override: z-index fix */
+/* Fix leaflet override & gray background */
 .fm-wrapper .leaflet-container {
   font-family: inherit;
   z-index: 0;
+  background-color: #f1f5f9;
 }
 
 .fm-wrapper .leaflet-top,
@@ -22,14 +23,51 @@
   z-index: 500;
 }
 
+/* Mode Switcher Toggle */
+.fm-type-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 600;
+  display: flex;
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 8px;
+  padding: 3px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.fm-toggle-btn {
+  border: none;
+  background: transparent;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #4b5563;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.fm-toggle-btn:hover {
+  color: #111827;
+}
+
+.fm-toggle-btn.active {
+  background: #16a34a;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(22, 163, 74, 0.3);
+}
+
 /* Footer bar */
 .fm-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  background: #f9fafb;
-  border-top: 1px solid #e5e7eb;
+  padding: 10px 14px;
+  background: #ffffff;
+  border-top: 1px solid #f1f5f9;
   gap: 8px;
 }
 
@@ -58,11 +96,11 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 6px 14px;
+  padding: 5px 12px;
   background: linear-gradient(135deg, #00b14f, #009a3e);
   color: #fff;
   border-radius: 20px;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 600;
   text-decoration: none;
   white-space: nowrap;
@@ -87,7 +125,7 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  border-radius: 16px;
+  border-radius: 14px;
   border: 1.5px dashed #d1d5db;
 }
 
@@ -98,74 +136,88 @@
   font-weight: 500;
 }
 
-.fm-placeholder .fm-sub {
-  font-size: 0.75rem;
+.fm-placeholder.fm-error {
+  border-color: #fca5a5;
+  background: #fff5f5;
+}
+
+.fm-placeholder.fm-error p {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.fm-sub {
+  font-size: 0.78rem;
   color: #9ca3af;
 }
 
 .fm-pin-icon {
   font-size: 2rem;
+  animation: bounce 1.2s infinite ease-in-out;
 }
 
-/* Loading spinner */
-.fm-loading {
-  background: #f9fafb;
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
 }
 
+/* Spinner */
 .fm-spinner {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border: 3px solid #e5e7eb;
   border-top-color: #00b14f;
   border-radius: 50%;
-  animation: fm-spin 0.8s linear infinite;
+  animation: spin 0.8s linear infinite;
 }
 
 .fm-spinner-sm {
   width: 14px;
   height: 14px;
-  min-width: 14px;
   border-width: 2px;
 }
 
-@keyframes fm-spin {
+@keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-/* Geocoding badge (overlay) */
+/* Geocoding badge */
 .fm-geocoding-badge {
   position: absolute;
   top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 900;
+  left: 10px;
+  z-index: 600;
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid #d1fae5;
-  color: #065f46;
-  font-size: 0.78rem;
-  font-weight: 600;
-  padding: 5px 12px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.92);
   border-radius: 20px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
-  pointer-events: none;
-  animation: fm-fadein 0.2s ease;
-}
-
-@keyframes fm-fadein {
-  from { opacity: 0; transform: translateX(-50%) translateY(-4px); }
-  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #374151;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(4px);
 }
 
 /* Popup style */
-.fm-popup .leaflet-popup-content {
-  font-size: 0.85rem;
-  line-height: 1.5;
+.fm-popup .leaflet-popup-content-wrapper {
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  padding: 4px;
 }
 
-/* fm-wrapper cần relative để geocoding badge overlay đúng */
-.fm-wrapper {
-  position: relative;
+.fm-popup .leaflet-popup-content {
+  margin: 8px 12px;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.fm-popup strong {
+  color: #111827;
+  font-size: 0.88rem;
+}
+
+.fm-popup span {
+  color: #6b7280;
 }
