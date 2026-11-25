@@ -141,16 +141,29 @@
 .field-card__info-row {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   font-size: 0.78rem;
   color: #6b7280;
+  line-height: 1.4;
 }
 
 .field-card__location span.material-symbols-outlined,
 .field-card__info-row span.material-symbols-outlined {
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   color: #9ca3af;
   flex-shrink: 0;
+}
+
+.field-card__review-row {
+  margin-top: 1px;
+}
+
+.field-card__review-text strong {
+  font-size: 0.82rem;
+}
+
+.field-card__no-reviews {
+  opacity: 0.9;
 }
 
 /* Tags */

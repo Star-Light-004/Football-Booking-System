@@ -14,6 +14,7 @@ class FootballFieldsSerializer(serializers.ModelSerializer):
     price_per_hour = serializers.FloatField()
     min_price = serializers.SerializerMethodField()
     rating_avg = serializers.SerializerMethodField()
+    review_count = serializers.SerializerMethodField()
     
     class Meta:
         model = FootballFields
@@ -23,7 +24,7 @@ class FootballFieldsSerializer(serializers.ModelSerializer):
             'sub_image_1', 'sub_image_1_url',
             'sub_image_2', 'sub_image_2_url',
             'sub_image_3', 'sub_image_3_url',
-            'booking_count', 'rating_avg', 'description', 'phone',
+            'booking_count', 'rating_avg', 'review_count', 'description', 'phone',
             'latitude', 'longitude', 'address', 'open_time', 'close_time'
         ]
 
@@ -94,3 +95,10 @@ class FootballFieldsSerializer(serializers.ModelSerializer):
         if hasattr(obj, 'avg_from_reviews'):
             return round(float(obj.avg_from_reviews), 1) if obj.avg_from_reviews is not None else 0
         return float(obj.rating_avg) if obj.rating_avg else 0
+
+    def get_review_count(self, obj):
+        try:
+            from apps.reviews.models import Reviews
+            return Reviews.objects.filter(field_id=obj.id).count()
+        except Exception:
+            return 0

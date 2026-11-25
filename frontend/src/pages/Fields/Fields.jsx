@@ -287,6 +287,7 @@ const Fields = () => {
                     minPrice={field.min_price}
                     bookingCount={field.booking_count}
                     rating={field.rating_avg}
+                    reviewCount={field.review_count}
                   />
                 ))
               ) : (

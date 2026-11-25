@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import "./FieldCard.css";
 
-const FieldCard = ({ id, image, type, name, location, price, minPrice, bookingCount, rating }) => {
+const FieldCard = ({ id, image, type, name, location, price, minPrice, bookingCount, rating, reviewCount }) => {
   // Determine type label & badge
   const typeStr = String(type || "").toLowerCase();
   let typeLabel = type || "Sân bóng";
@@ -12,9 +12,10 @@ const FieldCard = ({ id, image, type, name, location, price, minPrice, bookingCo
   else if (typeStr.includes("7")) typeLabel = "7 VS 7";
   else if (typeStr.includes("11")) typeLabel = "11 VS 11";
 
-  // Rating display
+  // Rating & review display
   const ratingNum = parseFloat(rating) || 0;
   const ratingDisplay = ratingNum > 0 ? ratingNum.toFixed(1) : null;
+  const numReviews = parseInt(reviewCount, 10) || 0;
 
   // Price display: Ưu tiên mức giá thấp nhất trong tất cả slot đang có
   const effectivePrice = (minPrice !== undefined && minPrice !== null && Number(minPrice) > 0) ? minPrice : price;
@@ -50,11 +51,21 @@ const FieldCard = ({ id, image, type, name, location, price, minPrice, bookingCo
           {badgeStatus && <span className={`badge-status ${badgeStatus.cls}`}>{badgeStatus.label}</span>}
         </div>
 
-        {/* Rating */}
-        {ratingDisplay && (
+        {/* Rating overlay badge on image */}
+        {numReviews > 0 && ratingDisplay && (
           <div className="field-card__rating-img">
-            <span className="material-symbols-outlined" style={{ fontSize: 12 }}>star</span>
-            {ratingDisplay}
+            <span
+              className="material-symbols-outlined"
+              style={{
+                fontSize: 13,
+                fontVariationSettings: "'FILL' 1",
+                color: "#fbbf24",
+                lineHeight: 1,
+              }}
+            >
+              star
+            </span>
+            <span>{ratingDisplay}</span>
           </div>
         )}
       </div>
@@ -78,6 +89,43 @@ const FieldCard = ({ id, image, type, name, location, price, minPrice, bookingCo
               <span>Đã có {bookingCount} lượt đặt</span>
             </div>
           )}
+          {/* Review count right under booking count */}
+          {numReviews > 0 ? (
+            <div className="field-card__info-row field-card__review-row">
+              <span
+                className="material-symbols-outlined"
+                style={{
+                  fontSize: 15,
+                  color: "#f59e0b",
+                  fontVariationSettings: "'FILL' 1",
+                  flexShrink: 0,
+                  lineHeight: 1,
+                }}
+              >
+                star
+              </span>
+              <span className="field-card__review-text">
+                <strong style={{ color: "#d97706", fontWeight: 700 }}>{ratingDisplay || "5.0"}</strong>
+                <span style={{ color: "#475569", marginLeft: "4px" }}>({numReviews} lượt đánh giá)</span>
+              </span>
+            </div>
+          ) : (
+            <div className="field-card__info-row field-card__review-row field-card__no-reviews">
+              <span
+                className="material-symbols-outlined"
+                style={{
+                  fontSize: 15,
+                  color: "#9ca3af",
+                  fontVariationSettings: "'FILL' 0",
+                  flexShrink: 0,
+                  lineHeight: 1,
+                }}
+              >
+                star
+              </span>
+              <span style={{ color: "#9ca3af", fontSize: "0.78rem" }}>Chưa có lượt đánh giá nào</span>
+            </div>
+          )}
         </div>
 
         {/* Tags */}
@@ -90,12 +138,6 @@ const FieldCard = ({ id, image, type, name, location, price, minPrice, bookingCo
             <span className="material-symbols-outlined" style={{ fontSize: 11 }}>light_mode</span>
             Có đèn
           </span>
-          {ratingDisplay && (
-            <span className="field-tag">
-              <span className="material-symbols-outlined" style={{ fontSize: 11 }}>star</span>
-              {ratingDisplay}/5
-            </span>
-          )}
         </div>
 
         {/* Footer */}
