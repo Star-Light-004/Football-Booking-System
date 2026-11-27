@@ -15,8 +15,8 @@ const Footer = () => {
                 <span className="material-symbols-outlined">sports_soccer</span>
               </div>
               <div>
-                <span className="footer-logo__name">Football</span>
-                <span className="footer-logo__name green"> Booking</span>
+                <span className="footer-logo__name">Sân Bóng</span>
+                <span className="footer-logo__name green"> Hải Châu</span>
               </div>
             </div>
             <p className="footer-brand__desc">
@@ -90,7 +90,7 @@ const Footer = () => {
 
         {/* Bottom */}
         <div className="footer-bottom">
-          <p>© 2025 Football Booking Platform. All rights reserved.</p>
+          <p>© 2026 Sân Bóng Hải Châu. All rights reserved.</p>
           <div className="footer-bottom__links">
             <button>Điều khoản dịch vụ</button>
             <button>Chính sách bảo mật & cookie</button>
