@@ -1880,22 +1880,26 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
   margin-bottom: 8px;
+  flex-wrap: nowrap;
 }
 
 .voucher-block-title {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   font-size: 0.78rem;
-  font-weight: 700;
-  color: #334155;
+  font-weight: 800;
+  color: #1e293b;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .voucher-block-title .icon {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   color: #16a34a;
 }
 
@@ -1903,14 +1907,16 @@
   background: #ecfdf5;
   border: 1px solid #a7f3d0;
   color: #059669;
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   font-weight: 700;
   cursor: pointer;
-  padding: 4px 10px;
+  padding: 3px 8px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: all 0.2s ease;
 }
 
@@ -1924,11 +1930,11 @@
 }
 
 .btn-open-wallet .wallet-icon {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
 }
 
 .btn-open-wallet .arrow-icon {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
 }
 
 .voucher-input-group {

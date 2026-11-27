@@ -722,6 +722,16 @@ def update_booking(request, booking_id):
             
         booking.save()
 
+        # 🎁 Tự động tặng voucher cho khách khi đơn chuyển sang Hoàn thành (Completed)
+        if str(new_status).lower() in ['completed', 'hoàn thành'] and str(old_status).lower() not in ['completed', 'hoàn thành']:
+            try:
+                from apps.vouchers.services import award_completion_voucher
+                awarded = award_completion_voucher(booking)
+                if awarded:
+                    print(f"🎁 Đã tự động tặng voucher {awarded.code} cho khách hàng {booking.customer_id} khi hoàn thành đơn #{booking.id}")
+            except Exception as v_err:
+                print("Lỗi tặng voucher khi hoàn thành đơn:", v_err)
+
         # 🔹 Hoàn lại Voucher cho khách nếu đơn này có áp dụng voucher
         if str(new_status).lower() in ['cancelled', 'canceled'] and str(old_status).lower() not in ['cancelled', 'canceled']:
             try:

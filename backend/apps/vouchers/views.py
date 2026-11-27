@@ -21,7 +21,12 @@ def get_customer_vouchers(request):
         return Response({'error': 'Thiếu tham số customer_id'}, status=status.HTTP_400_BAD_REQUEST)
 
     filter_type = request.query_params.get('filter', 'all')
-    queryset = CustomerVoucher.objects.select_related('voucher').filter(customer_id=customer_id)
+    # Chỉ lấy các voucher hợp lệ được sinh ra từ đơn đặt sân đã hoàn thành (source_booking ở trạng thái Completed)
+    queryset = CustomerVoucher.objects.select_related('voucher', 'source_booking').filter(
+        customer_id=customer_id,
+        source_booking__isnull=False,
+        source_booking__status__in=['Completed', 'completed', 'hoàn thành']
+    )
 
     now = timezone.now()
     if filter_type == 'active':
@@ -33,9 +38,14 @@ def get_customer_vouchers(request):
 
     serializer = CustomerVoucherSerializer(queryset, many=True)
     
-    # Thống kê nhanh
+    # Thống kê nhanh: chỉ tính các voucher từ đơn hoàn thành
     active_count = CustomerVoucher.objects.filter(
-        customer_id=customer_id, is_used=False, valid_until__gt=now, voucher__is_active=True
+        customer_id=customer_id,
+        source_booking__isnull=False,
+        source_booking__status__in=['Completed', 'completed', 'hoàn thành'],
+        is_used=False,
+        valid_until__gt=now,
+        voucher__is_active=True
     ).count()
 
     return Response({

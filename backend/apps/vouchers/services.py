@@ -14,6 +14,11 @@ def award_completion_voucher(booking):
         print("[Voucher] Booking does not have customer. Skipping voucher.")
         return None
 
+    # Chỉ tặng voucher cho đơn có trạng thái hoàn thành (Completed)
+    if str(booking.status or '').strip().lower() not in ['completed', 'hoàn thành']:
+        print(f"[Voucher] Booking {booking.id} status is '{booking.status}', not 'Completed'. Skipping.")
+        return None
+
     # Kiểm tra xem booking này đã từng tặng voucher chưa
     if CustomerVoucher.objects.filter(source_booking=booking).exists():
         print(f"[Voucher] Booking {booking.id} already awarded a voucher. Skipping.")

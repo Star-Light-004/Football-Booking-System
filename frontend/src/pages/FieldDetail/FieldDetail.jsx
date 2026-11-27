@@ -246,48 +246,6 @@ const FieldDetail = () => {
       let slots = (Array.isArray(res.data) ? res.data : [])
         .filter((slot) => getSlotDurationMinutes(slot) === 60);
 
-      // Nếu ngày này có khung giờ hoạt động trong DB (sân mở cửa):
-      // Bổ sung các khung giờ trước đó của ngày hôm nay (từ 06:00 đến giờ hiện tại) nếu chưa có trong DB,
-      // để trên giao diện người dùng vẫn hiển thị đầy đủ các khung giờ đã qua và xám màu lại không cho chọn.
-      // Nếu ngày này trong DB không có khung giờ nào (slots.length === 0, ví dụ admin đã xóa hết):
-      // thì giữ nguyên rỗng để đúng với dữ liệu thực tế.
-      if (slots.length > 0) {
-        const standardHoursList = [
-          { start_time: "06:00", end_time: "07:00", price: 80000 },
-          { start_time: "07:00", end_time: "08:00", price: 80000 },
-          { start_time: "08:00", end_time: "09:00", price: 100000 },
-          { start_time: "09:00", end_time: "10:00", price: 100000 },
-          { start_time: "10:00", end_time: "11:00", price: 120000 },
-          { start_time: "11:00", end_time: "12:00", price: 120000 },
-          { start_time: "12:00", end_time: "13:00", price: 120000 },
-          { start_time: "13:00", end_time: "14:00", price: 120000 },
-          { start_time: "14:00", end_time: "15:00", price: 150000 },
-          { start_time: "15:00", end_time: "16:00", price: 150000 },
-          { start_time: "16:00", end_time: "17:00", price: 180000 },
-          { start_time: "17:00", end_time: "18:00", price: 200000 },
-          { start_time: "18:00", end_time: "19:00", price: 250000 },
-          { start_time: "19:00", end_time: "20:00", price: 270000 },
-          { start_time: "20:00", end_time: "21:00", price: 270000 },
-          { start_time: "21:00", end_time: "22:00", price: 250000 },
-        ];
-
-        standardHoursList.forEach((std) => {
-          if (isSlotExpired(dateToFetch, std.start_time)) {
-            const alreadyExists = slots.some((s) => s.start_time && s.start_time.substring(0, 5) === std.start_time);
-            if (!alreadyExists) {
-              slots.push({
-                id: `past-${dateToFetch}-${std.start_time}`,
-                start_time: std.start_time,
-                end_time: std.end_time,
-                price: std.price,
-                status: "expired",
-                is_past: true,
-              });
-            }
-          }
-        });
-      }
-
       slots.sort((a, b) => a.start_time.localeCompare(b.start_time));
       setAvailableSlots(slots);
 
@@ -1266,7 +1224,7 @@ const FieldDetail = () => {
                     daySlots.map((slot) => {
                       const tr = `${slot.start_time} - ${slot.end_time}`;
                       const isPast = isSlotExpired(selectedDate, slot.start_time);
-                      const isBooked = slot.status !== "available";
+                      const isBooked = slot.status === "booked" || slot.status === "Completed" || slot.status === "paid" || slot.status === "Checked_in";
                       const otherConflict = customerLimits.other_field_slots?.find(
                         (o) => o.start_time === slot.start_time || o.time === tr
                       );
@@ -1328,7 +1286,7 @@ const FieldDetail = () => {
                     nightSlots.map((slot) => {
                       const tr = `${slot.start_time} - ${slot.end_time}`;
                       const isPast = isSlotExpired(selectedDate, slot.start_time);
-                      const isBooked = slot.status !== "available";
+                      const isBooked = slot.status === "booked" || slot.status === "Completed" || slot.status === "paid" || slot.status === "Checked_in";
                       const otherConflict = customerLimits.other_field_slots?.find(
                         (o) => o.start_time === slot.start_time || o.time === tr
                       );
@@ -1653,7 +1611,7 @@ const FieldDetail = () => {
                           const tr = `${slot.start_time} - ${slot.end_time}`;
                           const timeLabel = `${slot.start_time}\u2013${slot.end_time}`;
                           const isPast = isSlotExpired(selectedDate, slot.start_time);
-                          const isBooked = slot.status !== "available";
+                          const isBooked = slot.status === "booked" || slot.status === "Completed" || slot.status === "paid" || slot.status === "Checked_in";
                           const otherConflict = customerLimits.other_field_slots?.find(
                             (o) => o.start_time === slot.start_time || o.time === tr
                           );
@@ -1770,7 +1728,7 @@ const FieldDetail = () => {
                   <div className="voucher-block-header">
                     <div className="voucher-block-title">
                       <span className="material-symbols-outlined icon">confirmation_number</span>
-                      <span>Mã ưu đãi / Voucher</span>
+                      <span>Mã ưu đãi</span>
                     </div>
                     {!appliedVoucher && (
                       <button
