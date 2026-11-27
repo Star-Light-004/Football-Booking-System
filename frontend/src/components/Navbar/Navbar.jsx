@@ -186,33 +186,16 @@ const Navbar = () => {
         <div className="flex justify-between items-center h-16">
 
           {/* Logo Sân Bóng Hải Châu - Sport-Tech Gradient */}
-          <Link to="/" className="flex items-center gap-2.5 text-decoration-none group select-none">
+          <Link to="/" className="flex items-center gap-3 text-decoration-none group select-none shrink-0">
             <div className="navbar-logo-badge">
-              <svg className="ball-svg" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                {/* Glow ring / Outer sphere */}
-                <circle cx="18" cy="18" r="16" fill="url(#ballGradientNavbar)" />
-                {/* Motion speed arc */}
-                <path d="M5 23C7 28 12 32 18 32C24 32 29 28 31 23" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" strokeDasharray="2 3" opacity="0.65" />
-                {/* Soccer ball pentagons and seams */}
-                <polygon points="18,11 22,14 20.5,19 15.5,19 14,14" fill="#ffffff" />
-                <path d="M18 11V6M22 14L27 12M20.5 19L24 24M15.5 19L12 24M14 14L9 12" stroke="#ffffff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M6 18C6 14 8 10 11 7" stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" opacity="0.5" />
-                <circle cx="27" cy="9" r="1.5" fill="#ffffff" opacity="0.8" />
-                <defs>
-                  <linearGradient id="ballGradientNavbar" x1="4" y1="4" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#10b981" />
-                    <stop offset="0.55" stopColor="#059669" />
-                    <stop offset="1" stopColor="#047857" />
-                  </linearGradient>
-                </defs>
-              </svg>
+              <span className="material-symbols-outlined ball-icon">sports_soccer</span>
             </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5 leading-none">
-                <span className="brand-text-main">Sân Bóng</span>
-                <span className="brand-text-accent">Hải Châu</span>
+            <div className="flex flex-col whitespace-nowrap shrink-0">
+              <div className="flex items-center gap-1.5 leading-none whitespace-nowrap">
+                <span className="brand-text-main">SÂN BÓNG</span>
+                <span className="brand-text-accent">HẢI CHÂU</span>
               </div>
-              <span className="brand-tagline">Hệ thống đặt sân thông minh</span>
+              <span className="brand-tagline">HỆ THỐNG ĐẶT SÂN THÔNG MINH</span>
             </div>
           </Link>
 
@@ -407,19 +390,29 @@ const Navbar = () => {
                   </div>
                 </div>
 
-                {/* 🎟️ Nút Ví voucher (Vị trí 1: Nằm giữa Chuông và Profile) */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    fetchVouchers();
-                    setShowVoucherModal(true);
-                  }}
-                  className="btn-header-voucher"
-                  title="Xem ví voucher và ưu đãi của bạn"
-                >
-                  <span className="material-symbols-outlined voucher-icon">confirmation_number</span>
-                  <span className="voucher-text">Ví voucher ({voucherCount})</span>
-                </button>
+                {/* 🎟️ Nút Kho Voucher (Đồng bộ thể thức icon tròn với Chuông thông báo) */}
+                <div className="relative group mr-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      fetchVouchers();
+                      setShowVoucherModal(true);
+                    }}
+                    className="relative flex items-center justify-center w-10 h-10 rounded-full text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all duration-300"
+                    title="Ví voucher & Ưu đãi của bạn"
+                  >
+                    <span className="material-symbols-outlined text-[23px] text-emerald-600">confirmation_number</span>
+                    {/* Badge số lượng voucher */}
+                    <span className={`absolute top-1 right-1 text-white text-[10px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900 shadow-sm ${voucherCount > 0 ? 'bg-emerald-600' : 'bg-slate-400'}`}>
+                      {voucherCount}
+                    </span>
+                  </button>
+
+                  {/* Tooltip khi hover */}
+                  <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 px-2.5 py-1 bg-slate-900 text-white text-xs font-semibold rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap shadow-lg pointer-events-none z-50">
+                    Ví voucher ({voucherCount} mã khả dụng)
+                  </div>
+                </div>
 
                 <div className="hidden md:flex flex-col items-start">
                   <span className="text-sm font-semibold text-primary leading-tight">

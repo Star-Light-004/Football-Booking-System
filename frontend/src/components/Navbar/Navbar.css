@@ -128,45 +128,53 @@ header.sticky {
   transform: rotate(25deg) translateY(100%);
 }
 
-.navbar-logo-badge .ball-svg {
-  width: 26px;
-  height: 26px;
+.navbar-logo-badge .ball-icon {
+  font-size: 1.5rem !important;
+  color: #ffffff !important;
   transition: transform 0.4s ease;
+  line-height: 1;
 }
 
-.group:hover .ball-svg {
-  transform: rotate(20deg) scale(1.05);
+.group:hover .ball-icon {
+  transform: rotate(30deg) scale(1.1);
 }
 
 .brand-text-main {
   font-size: 1.12rem;
   font-weight: 900;
   color: #0f172a;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   text-transform: uppercase;
   font-family: 'Be Vietnam Pro', sans-serif;
   line-height: 1.1;
+  white-space: nowrap !important;
+  display: inline-block;
 }
 
 .brand-text-accent {
   font-size: 1.12rem;
   font-weight: 900;
+  color: #059669;
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   text-transform: uppercase;
   font-family: 'Be Vietnam Pro', sans-serif;
   line-height: 1.1;
+  white-space: nowrap !important;
+  display: inline-block;
 }
 
 .brand-tagline {
   font-size: 0.62rem;
   font-weight: 700;
   color: #64748b;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   margin-top: 2px;
+  white-space: nowrap !important;
+  display: block;
 }
 
 /* ──────────────────────────────────────────────────────────
