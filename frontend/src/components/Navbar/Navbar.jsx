@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
 import "./Navbar.css";
 import notificationsApi from "../../api/notificationsApi";
@@ -185,13 +186,25 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
 
-          {/* Logo Sân Bóng Hải Châu - Sport-Tech Gradient */}
+          {/* Logo Sân Bóng Hải Châu - Biểu tượng Sân bóng & Bóng đá đặc trưng */}
           <Link to="/" className="flex items-center gap-3 text-decoration-none group select-none shrink-0">
             <div className="navbar-logo-badge">
-              <span className="material-symbols-outlined ball-icon">sports_soccer</span>
+              <svg viewBox="0 0 32 32" className="pitch-svg" fill="none" xmlns="http://www.w3.org/2000/svg">
+                {/* Đường viền sân bóng */}
+                <rect x="3" y="5" width="26" height="22" rx="3.5" stroke="#ffffff" strokeWidth="2" strokeOpacity="0.95" />
+                {/* Đường vạch giữa sân */}
+                <line x1="16" y1="5" x2="16" y2="27" stroke="#ffffff" strokeWidth="1.8" strokeOpacity="0.9" />
+                {/* Vòng tròn trung tâm */}
+                <circle cx="16" cy="16" r="4.5" stroke="#ffffff" strokeWidth="1.8" strokeOpacity="0.9" />
+                {/* Quả bóng ở tâm sân */}
+                <circle cx="16" cy="16" r="2.2" fill="#ffffff" />
+                {/* Vùng cấm địa 2 bên */}
+                <path d="M3 11H8V21H3" stroke="#ffffff" strokeWidth="1.6" strokeOpacity="0.9" strokeLinecap="round" />
+                <path d="M29 11H24V21H29" stroke="#ffffff" strokeWidth="1.6" strokeOpacity="0.9" strokeLinecap="round" />
+              </svg>
             </div>
-            <div className="flex flex-col whitespace-nowrap shrink-0">
-              <div className="flex items-center gap-1.5 leading-none whitespace-nowrap">
+            <div className="flex flex-col whitespace-nowrap shrink-0 justify-center">
+              <div className="flex items-center gap-1.5 whitespace-nowrap" style={{ lineHeight: 1.35, paddingTop: 2 }}>
                 <span className="brand-text-main">SÂN BÓNG</span>
                 <span className="brand-text-accent">HẢI CHÂU</span>
               </div>
@@ -520,118 +533,124 @@ const Navbar = () => {
       </div>
 
       {/* ═══ MODAL VÍ VOUCHER TRÊN HEADER ═══ */}
-      {showVoucherModal && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(15, 23, 42, 0.65)",
-            backdropFilter: "blur(4px)",
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-          }}
-          onClick={() => setShowVoucherModal(false)}
-        >
+      {showVoucherModal &&
+        createPortal(
           <div
             style={{
-              background: "#ffffff",
-              borderRadius: 20,
-              width: "100%",
-              maxWidth: 440,
-              padding: "22px 24px",
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-              animation: "fadeInModal 0.2s ease-out",
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100vw",
+              height: "100vh",
+              background: "rgba(15, 23, 42, 0.65)",
+              backdropFilter: "blur(4px)",
+              WebkitBackdropFilter: "blur(4px)",
+              zIndex: 999999,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 16,
+              boxSizing: "border-box",
             }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={() => setShowVoucherModal(false)}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <h3 style={{ fontSize: "1.15rem", fontWeight: 800, color: "#0f172a", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-                <span className="material-symbols-outlined" style={{ color: "#16a34a", fontSize: "1.4rem" }}>confirmation_number</span>
-                Ví Voucher của bạn
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowVoucherModal(false)}
-                style={{ background: "#f1f5f9", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", color: "#64748b", display: "flex", alignItems: "center", justifyContent: "center" }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: "1.1rem" }}>close</span>
-              </button>
-            </div>
+            <div
+              style={{
+                background: "#ffffff",
+                borderRadius: 20,
+                width: "100%",
+                maxWidth: 440,
+                padding: "24px",
+                boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.35)",
+                margin: "auto",
+                boxSizing: "border-box",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <h3 style={{ fontSize: "1.15rem", fontWeight: 800, color: "#0f172a", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                  <span className="material-symbols-outlined" style={{ color: "#16a34a", fontSize: "1.4rem" }}>confirmation_number</span>
+                  Ví Voucher của bạn
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowVoucherModal(false)}
+                  style={{ background: "#f1f5f9", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", color: "#64748b", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  title="Đóng cửa sổ"
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: "1.1rem" }}>close</span>
+                </button>
+              </div>
 
-            <p style={{ fontSize: "0.82rem", color: "#64748b", margin: "0 0 16px 0", lineHeight: 1.4 }}>
-              Kho mã ưu đãi nhận được sau khi hoàn thành các trận thi đấu đặt sân:
-            </p>
+              <p style={{ fontSize: "0.82rem", color: "#64748b", margin: "0 0 16px 0", lineHeight: 1.4 }}>
+                Kho mã ưu đãi nhận được sau khi hoàn thành các trận thi đấu đặt sân:
+              </p>
 
-            <div style={{ maxHeight: 320, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, paddingRight: 4 }}>
-              {myVouchersList.length > 0 ? (
-                myVouchersList.map((v) => (
-                  <div
-                    key={v.id}
-                    style={{
-                      border: "1.5px dashed #86efac",
-                      borderRadius: 12,
-                      padding: "12px 14px",
-                      background: "#f0fdf4",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      gap: 12,
-                    }}
-                  >
-                    <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                        <span style={{ fontWeight: 800, color: "#15803d", fontSize: "0.95rem", letterSpacing: "0.5px" }}>
-                          {v.code}
-                        </span>
-                        <span style={{ fontSize: "0.7rem", padding: "2px 6px", background: "#dcfce7", color: "#166534", borderRadius: 4, fontWeight: 700 }}>
-                          {v.discount_type === "percent" ? `-${v.discount_value}%` : `-${Number(v.discount_value).toLocaleString("vi-VN")}đ`}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: "0.78rem", color: "#374151", fontWeight: 600 }}>{v.title}</div>
-                      <div style={{ fontSize: "0.72rem", color: "#6b7280", marginTop: 2 }}>
-                        Đơn tối thiểu: {Number(v.min_booking_price || 0).toLocaleString("vi-VN")}đ • HSD: {new Date(v.valid_until).toLocaleDateString("vi-VN")}
+              <div style={{ maxHeight: 320, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, paddingRight: 4 }}>
+                {myVouchersList.length > 0 ? (
+                  myVouchersList.map((v) => (
+                    <div
+                      key={v.id}
+                      style={{
+                        border: "1.5px dashed #86efac",
+                        borderRadius: 12,
+                        padding: "12px 14px",
+                        background: "#f0fdf4",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 12,
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                          <span style={{ fontWeight: 800, color: "#15803d", fontSize: "0.95rem", letterSpacing: "0.5px" }}>
+                            {v.code}
+                          </span>
+                          <span style={{ fontSize: "0.7rem", padding: "2px 6px", background: "#dcfce7", color: "#166534", borderRadius: 4, fontWeight: 700 }}>
+                            {v.discount_type === "percent" ? `-${v.discount_value}%` : `-${Number(v.discount_value).toLocaleString("vi-VN")}đ`}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: "0.78rem", color: "#374151", fontWeight: 600 }}>{v.title}</div>
+                        <div style={{ fontSize: "0.72rem", color: "#6b7280", marginTop: 2 }}>
+                          Đơn tối thiểu: {Number(v.min_booking_price || 0).toLocaleString("vi-VN")}đ • HSD: {new Date(v.valid_until).toLocaleDateString("vi-VN")}
+                        </div>
                       </div>
                     </div>
+                  ))
+                ) : (
+                  <div style={{ textAlign: "center", padding: "28px 16px", color: "#64748b", fontSize: "0.85rem", background: "#f8fafc", borderRadius: 14, border: "1px dashed #cbd5e1" }}>
+                    <div style={{ fontSize: "2.2rem", marginBottom: 6 }}>🎟️</div>
+                    <div style={{ fontWeight: 800, color: "#1e293b", marginBottom: 4, fontSize: "0.95rem" }}>Chưa có voucher nào trong ví</div>
+                    <div style={{ fontSize: "0.78rem", color: "#94a3b8", maxWidth: 300, margin: "0 auto", lineHeight: 1.4 }}>
+                      Khi bạn đặt sân và hoàn thành trận đấu, hệ thống sẽ tự động tặng voucher ưu đãi trực tiếp vào đây!
+                    </div>
                   </div>
-                ))
-              ) : (
-                <div style={{ textAlign: "center", padding: "28px 16px", color: "#64748b", fontSize: "0.85rem", background: "#f8fafc", borderRadius: 14, border: "1px dashed #cbd5e1" }}>
-                  <div style={{ fontSize: "2.2rem", marginBottom: 6 }}>🎟️</div>
-                  <div style={{ fontWeight: 800, color: "#1e293b", marginBottom: 4, fontSize: "0.95rem" }}>Chưa có voucher nào trong ví</div>
-                  <div style={{ fontSize: "0.78rem", color: "#94a3b8", maxWidth: 300, margin: "0 auto", lineHeight: 1.4 }}>
-                    Khi bạn đặt sân và hoàn thành trận đấu, hệ thống sẽ tự động tặng voucher ưu đãi trực tiếp vào đây!
-                  </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
 
-            <div style={{ marginTop: 18, textAlign: "right" }}>
-              <button
-                type="button"
-                onClick={() => setShowVoucherModal(false)}
-                style={{
-                  padding: "8px 20px",
-                  background: "#f1f5f9",
-                  border: "none",
-                  borderRadius: 10,
-                  fontWeight: 700,
-                  fontSize: "0.84rem",
-                  color: "#475569",
-                  cursor: "pointer",
-                }}
-              >
-                Đóng
-              </button>
+              <div style={{ marginTop: 18, textAlign: "right" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowVoucherModal(false)}
+                  style={{
+                    padding: "8px 20px",
+                    background: "#f1f5f9",
+                    border: "none",
+                    borderRadius: 10,
+                    fontWeight: 700,
+                    fontSize: "0.84rem",
+                    color: "#475569",
+                    cursor: "pointer",
+                  }}
+                >
+                  Đóng
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </header>
   );
 };
