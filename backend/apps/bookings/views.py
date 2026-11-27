@@ -479,7 +479,7 @@ def get_booked_slots(request):
         bookings = Bookings.objects.filter(
             field_id=field_id,
             booking_date=date_obj,
-            status__in=['Confirmed', 'Pending', 'Checked_in']
+            status__in=['Confirmed', 'Pending', 'Checked_in', 'Completed', 'paid', 'Paid', 'completed']
         )
         # Khi sửa một đơn, khung giờ hiện tại của chính đơn đó vẫn được phép chọn.
         exclude_booking_id = request.GET.get('exclude_booking_id')
@@ -651,7 +651,7 @@ def update_booking(request, booking_id):
             }, status=400)
 
         # 🔹 2. ĐIỀU KIỆN: Sân đó CHƯA CÓ AI ĐẶT trong khung giờ đó
-        active_statuses = ['Confirmed', 'Pending', 'Checked_in']
+        active_statuses = ['Confirmed', 'Pending', 'Checked_in', 'Completed', 'paid', 'Paid', 'completed']
         if str(new_status).lower() in ['confirmed', 'pending', 'checked_in']:
             # Kiểm tra xem có đơn khác đang hoạt động chiếm khung giờ này không
             conflicting_booking = Bookings.objects.filter(

@@ -153,20 +153,23 @@ const FieldDetail = () => {
   const [showVoucherModal, setShowVoucherModal] = useState(false);
 
   // Tải danh sách voucher cá nhân của người dùng nếu đã đăng nhập
-  useEffect(() => {
+  const loadMyVouchers = useCallback(async () => {
     try {
       const user = JSON.parse(localStorage.getItem("user") || "{}");
       if (user?.id) {
-        getMyVouchers(user.id, "active")
-          .then((res) => {
-            if (res.data?.vouchers) {
-              setMyVouchers(res.data.vouchers);
-            }
-          })
-          .catch((err) => console.log("Lỗi tải voucher cá nhân:", err));
+        const res = await getMyVouchers(user.id, "active");
+        if (res.data?.vouchers) {
+          setMyVouchers(res.data.vouchers);
+        }
       }
-    } catch (e) { }
+    } catch (e) {
+      console.log("Lỗi tải voucher cá nhân:", e);
+    }
   }, []);
+
+  useEffect(() => {
+    loadMyVouchers();
+  }, [loadMyVouchers]);
 
   // ─── REVIEWS STATE (CHỈ LẤY TỪ API) ────────────────────────────────────
   const [reviews, setReviews] = useState([]);
@@ -576,6 +579,7 @@ const FieldDetail = () => {
       setVoucherError("Vui lòng nhập mã voucher!");
       return;
     }
+    setVoucherCode(code);
     setValidatingVoucher(true);
     setVoucherError("");
     try {
@@ -591,11 +595,16 @@ const FieldDetail = () => {
         setAppliedVoucher(res.data);
         setVoucherCode(res.data.code);
         setShowVoucherModal(false);
+        toast.success(`Đã áp dụng mã voucher ${res.data.code} thành công!`);
       } else {
-        setVoucherError(res.data?.error || "Mã giảm giá không hợp lệ");
+        const msg = res.data?.error || "Mã giảm giá không hợp lệ";
+        setVoucherError(msg);
+        toast.error(msg);
       }
     } catch (err) {
-      setVoucherError(err.response?.data?.error || "Mã voucher không hợp lệ hoặc đã hết hạn");
+      const msg = err.response?.data?.error || "Mã voucher không hợp lệ hoặc đã hết hạn";
+      setVoucherError(msg);
+      toast.error(msg);
     } finally {
       setValidatingVoucher(false);
     }
@@ -629,7 +638,16 @@ const FieldDetail = () => {
 
   // ─── Handle Slot Selection (Tối đa 3 khung giờ / ngày / sân & Chặn trùng sân khác) ───
   const handleSelectSlot = (slot) => {
-    if (slot.status !== "available" || isSlotExpired(selectedDate, slot.start_time)) return;
+    const isPast = isSlotExpired(selectedDate, slot.start_time);
+    const isBooked = slot.status !== "available";
+    if (isPast) {
+      toast.warning("Khung giờ này đã qua thời gian thi đấu hôm nay, không thể chọn đặt!");
+      return;
+    }
+    if (isBooked) {
+      toast.warning("Khung giờ này đã có người đặt trước đó hoặc đã hoàn thành, vui lòng chọn khung giờ khác!");
+      return;
+    }
     const tr = `${slot.start_time} - ${slot.end_time}`;
 
     // 🔹 Kiểm tra quy tắc 2: Đã đặt khung giờ nào ở sân khác thì không được đặt ở sân này
@@ -1279,10 +1297,10 @@ const FieldDetail = () => {
                             {Number(slot.price || defaultHourlyPrice).toLocaleString()}đ
                           </div>
                           <div className="slot-pill__status">
-                            {isPast
-                              ? ""
-                              : isBooked
-                                ? "Đã đặt"
+                            {isBooked
+                              ? "Đã đặt"
+                              : isPast
+                                ? "Đã qua giờ"
                                 : otherConflict
                                   ? `Đã đặt ở ${otherConflict.field_name}`
                                   : isSelected
@@ -1341,10 +1359,10 @@ const FieldDetail = () => {
                             {Number(slot.price || defaultHourlyPrice).toLocaleString()}đ
                           </div>
                           <div className="slot-pill__status">
-                            {isPast
-                              ? ""
-                              : isBooked
-                                ? "Đã đặt"
+                            {isBooked
+                              ? "Đã đặt"
+                              : isPast
+                                ? "Đã qua giờ"
                                 : otherConflict
                                   ? `Đã đặt ở ${otherConflict.field_name}`
                                   : isSelected
@@ -1671,17 +1689,21 @@ const FieldDetail = () => {
                                 <span className="item-price">
                                   {Number(slot.price || defaultHourlyPrice).toLocaleString()}đ
                                 </span>
-                                {isPast ? null : (
-                                  <span className={`item-badge ${isBooked ? "badge-booked" : otherConflict ? "badge-booked" : isSelected ? "badge-selected" : "badge-avail"}`}
-                                    style={otherConflict ? { background: "#fef3c7", color: "#b45309", borderColor: "#fde68a" } : {}}>
-                                    {isBooked
-                                      ? "Đã đặt"
-                                      : otherConflict
-                                        ? `Đã đặt ở ${otherConflict.field_name}`
-                                        : isSelected
-                                          ? "✓ Đang chọn"
-                                          : "Trống"}
+                                {isBooked ? (
+                                  <span className="item-badge badge-booked">Đã đặt</span>
+                                ) : isPast ? (
+                                  <span className="item-badge badge-past">Đã qua giờ</span>
+                                ) : otherConflict ? (
+                                  <span
+                                    className="item-badge badge-booked"
+                                    style={{ background: "#fef3c7", color: "#b45309", borderColor: "#fde68a" }}
+                                  >
+                                    Đã đặt ở {otherConflict.field_name}
                                   </span>
+                                ) : isSelected ? (
+                                  <span className="item-badge badge-selected">✓ Đang chọn</span>
+                                ) : (
+                                  <span className="item-badge badge-avail">Trống</span>
                                 )}
                               </div>
                             </div>
@@ -1750,13 +1772,19 @@ const FieldDetail = () => {
                       <span className="material-symbols-outlined icon">confirmation_number</span>
                       <span>Mã ưu đãi / Voucher</span>
                     </div>
-                    {myVouchers.length > 0 && !appliedVoucher && (
+                    {!appliedVoucher && (
                       <button
                         type="button"
                         className="btn-open-wallet"
-                        onClick={() => setShowVoucherModal(true)}
+                        onClick={() => {
+                          loadMyVouchers();
+                          setShowVoucherModal(true);
+                        }}
+                        title="Bấm để xem danh sách voucher của bạn và áp dụng nhanh"
                       >
-                        Ví voucher ({myVouchers.length})
+                        <span className="material-symbols-outlined wallet-icon">account_balance_wallet</span>
+                        <span>Ví voucher ({myVouchers.length})</span>
+                        <span className="material-symbols-outlined arrow-icon">chevron_right</span>
                       </button>
                     )}
                   </div>

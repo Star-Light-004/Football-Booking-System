@@ -43,11 +43,12 @@ export const isSlotExpired = (slotDateStr, startTimeStr) => {
   if (dateFormatted < todayStr) return true;
   if (dateFormatted > todayStr) return false;
 
-  // Ngày là ngày hôm nay
-  const [slotH] = startTimeStr.split(":").map(Number);
+  // Ngày là ngày hôm nay:
+  // So sánh chính xác cả giờ và phút: Khung giờ có thời gian bắt đầu <= thời gian hiện tại sẽ bị khóa không thể đặt
+  const [slotH, slotM = 0] = startTimeStr.split(":").map(Number);
   const currentH = now.getHours();
+  const currentM = now.getMinutes();
 
-  // Khung giờ hiện tại và các khung giờ trước đó không chọn được
-  return slotH <= currentH;
+  return slotH < currentH || (slotH === currentH && slotM <= currentM);
 };
 

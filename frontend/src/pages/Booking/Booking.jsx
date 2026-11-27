@@ -1508,23 +1508,25 @@ const Booking = () => {
                   <span style={{ fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#9ca3af" }}>
                     MÃ GIẢM GIÁ / VOUCHER
                   </span>
-                  {!hasAppliedFromDetail && currentUser && myVouchers.length > 0 && !appliedVoucher && (
+                  {!hasAppliedFromDetail && currentUser && !appliedVoucher && (
                     <button
                       type="button"
                       onClick={() => setShowVoucherModal(true)}
                       style={{
-                        background: "none",
-                        border: "none",
-                        color: "#16a34a",
+                        background: "#ecfdf5",
+                        border: "1px solid #a7f3d0",
+                        color: "#059669",
                         fontSize: "0.75rem",
                         fontWeight: 700,
                         cursor: "pointer",
-                        display: "flex",
+                        display: "inline-flex",
                         alignItems: "center",
-                        gap: 4
+                        gap: 4,
+                        padding: "3px 8px",
+                        borderRadius: "999px"
                       }}
                     >
-                      <span className="material-symbols-outlined" style={{ fontSize: "0.95rem" }}>confirmation_number</span>
+                      <span className="material-symbols-outlined" style={{ fontSize: "0.95rem" }}>account_balance_wallet</span>
                       Ví voucher ({myVouchers.length})
                     </button>
                   )}

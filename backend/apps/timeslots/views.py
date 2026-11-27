@@ -111,10 +111,30 @@ def get_timeslots_by_field(request):
             slot_date=date_param
         ).order_by('start_time')
 
+        from apps.bookings.models import Bookings
+        active_bookings = Bookings.objects.filter(
+            field_id=field_id,
+            booking_date=date_param,
+            status__in=['Confirmed', 'Pending', 'Checked_in', 'Completed', 'paid', 'Paid', 'completed']
+        )
+        booked_intervals = []
+        for b in active_bookings:
+            booked_intervals.append((b.start_time.strftime('%H:%M'), b.end_time.strftime('%H:%M')))
+
         from .serializers import TimeSlotSimpleSerializer
         serializer = TimeSlotSimpleSerializer(slots, many=True)
+        data = serializer.data or []
 
-        return Response(serializer.data or [])
+        # Tự động gán status = 'booked' nếu khung giờ đã có người đặt hoặc đã hoàn thành
+        for slot in data:
+            st = slot.get('start_time')
+            et = slot.get('end_time')
+            for b_st, b_et in booked_intervals:
+                if st == b_st and et == b_et:
+                    slot['status'] = 'booked'
+                    break
+
+        return Response(data)
 
     except Exception:
         return Response([], status=200)

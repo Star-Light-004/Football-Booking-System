@@ -889,7 +889,9 @@
 }
 
 .slot-pill.past-dimmed .slot-pill__status {
-  display: none !important;
+  display: block !important;
+  color: #94a3b8 !important;
+  font-weight: 700;
 }
 
 
@@ -1558,6 +1560,12 @@
   color: #be123c;
 }
 
+.badge-past {
+  background: #f1f5f9;
+  color: #94a3b8;
+  border: 1px solid #cbd5e1;
+}
+
 .widget-services-box {
   background: #f8fafc;
   border-radius: 10px;
@@ -1892,20 +1900,35 @@
 }
 
 .btn-open-wallet {
-  background: none;
-  border: none;
-  color: #16a34a;
-  font-size: 0.75rem;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #059669;
+  font-size: 0.76rem;
   font-weight: 700;
   cursor: pointer;
-  padding: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+  transition: all 0.2s ease;
 }
 
 .btn-open-wallet:hover {
-  text-decoration: underline;
+  background: #d1fae5;
+  border-color: #6ee7b7;
+  color: #047857;
+  text-decoration: none;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.15);
+}
+
+.btn-open-wallet .wallet-icon {
+  font-size: 0.95rem;
+}
+
+.btn-open-wallet .arrow-icon {
+  font-size: 0.85rem;
 }
 
 .voucher-input-group {
