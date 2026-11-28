@@ -833,18 +833,22 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem;
   flex-wrap: nowrap;
   padding-bottom: 0.35rem;
   margin-bottom: 1.25rem;
-  overflow-x: auto;
-  scrollbar-width: thin;
+  overflow: visible;
+}
+
+.cleaning-tabs-bar::-webkit-scrollbar {
+  display: none;
+  height: 0;
 }
 
 .cleaning-tabs-left {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.35rem;
   flex-shrink: 0;
   flex-wrap: nowrap;
 }
@@ -852,25 +856,50 @@
 .cleaning-period-filter {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.3rem;
   flex-shrink: 0;
   flex-wrap: nowrap;
+}
+
+.cleaning-period-filter .filter-period-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.cleaning-period-filter .filter-period-label .material-symbols-outlined {
+  font-size: 1rem;
+  color: #059669;
+}
+
+.cleaning-period-filter .dashboard-period-tag {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.78rem;
+  border-radius: 9999px;
+  font-weight: 700;
 }
 
 .cleaning-tab-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 9999px;
-  padding: 0.5rem 1rem;
-  font-size: 0.84rem;
+  padding: 0.42rem 0.75rem;
+  font-size: 0.81rem;
   font-weight: 600;
   color: #475569;
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.2s ease;
+}
+
+.cleaning-tab-btn .material-symbols-outlined {
+  font-size: 1.05rem;
 }
 
 .cleaning-tab-btn:hover {
