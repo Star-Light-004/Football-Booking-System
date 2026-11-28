@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 
 // Dữ liệu mẫu khởi tạo lịch sử dọn dẹp đa ngày (Hôm nay, Tuần này, Tháng này)
 export const generateSeedCleaningHistory = (fieldList = []) => {
