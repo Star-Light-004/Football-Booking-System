@@ -46,6 +46,10 @@ export default function Cleaning() {
   const [nowTick, setNowTick] = useState(Date.now());
 
   const todayISO = useMemo(() => new Date().toLocaleDateString("en-CA"), []);
+  const todayFormatted = useMemo(() => {
+    const [year, month, day] = todayISO.split("-");
+    return `${day}/${month}/${year}`;
+  }, [todayISO]);
   const [selectedPeriod, setSelectedPeriod] = useState("today"); // "today" | "week" | "month" | "all" | "custom"
   const [selectedDate, setSelectedDate] = useState(todayISO);
 
@@ -1169,34 +1173,10 @@ export default function Cleaning() {
               </button>
             </div>
 
-            <div className="cleaning-period-filter">
-              <span className="filter-period-label">
-                <span className="material-symbols-outlined">calendar_month</span>
-                Mốc thời gian:
-              </span>
-              {[
-                { key: "today", label: "Hôm nay" },
-                { key: "week", label: "Tuần này" },
-                { key: "month", label: "Tháng này" },
-                { key: "all", label: "Tất cả" },
-              ].map((p) => (
-                <button
-                  key={p.key}
-                  type="button"
-                  className={`dashboard-period-tag ${selectedPeriod === p.key ? "active" : ""}`}
-                  onClick={() => {
-                    setSelectedPeriod(p.key);
-                    if (p.key === "today") {
-                      setSelectedDate(todayISO);
-                    }
-                    if (p.key === "week" || p.key === "month" || p.key === "today") {
-                      setStatsRange(p.key === "today" ? "day" : p.key);
-                    }
-                  }}
-                >
-                  {p.label}
-                </button>
-              ))}
+            {/* Khi vào trang không hiện mốc thời gian, chỉ hiển thị biểu tượng thời gian ngày hôm đó */}
+            <div className="facility-today-chip">
+              <span className="material-symbols-outlined">event</span>
+              <span>Hôm nay ({todayFormatted})</span>
             </div>
           </div>
 
@@ -1212,6 +1192,9 @@ export default function Cleaning() {
               setStatsRange={setStatsRange}
               statsFieldFilter={statsFieldFilter}
               setStatsFieldFilter={setStatsFieldFilter}
+              selectedDate={selectedDate}
+              setSelectedDate={setSelectedDate}
+              pastDatesList={pastDatesList}
             />
           ) : activeTab === "lost_found" ? (
             <LostFoundBookingPanel

@@ -217,6 +217,10 @@ export default function Maintenance() {
   const [statsFieldFilter, setStatsFieldFilter] = useState("all");
 
   const todayISO = useMemo(() => new Date().toLocaleDateString("en-CA"), []);
+  const todayFormatted = useMemo(() => {
+    const [year, month, day] = todayISO.split("-");
+    return `${day}/${month}/${year}`;
+  }, [todayISO]);
   const [selectedPeriod, setSelectedPeriod] = useState("all"); // "all" | "today" | "week" | "month" | "custom"
   const [selectedDate, setSelectedDate] = useState(todayISO);
 
@@ -868,7 +872,7 @@ export default function Maintenance() {
             </div>
           </div>
 
-          {/* Tabs chuyển đổi giữa Quản lý bảo trì sân và Thống kê bảo trì & Mốc thời gian */}
+          {/* Tabs chuyển đổi giữa Quản lý bảo trì sân và Thống kê bảo trì */}
           <div className="maintenance-tabs-bar">
             <div className="maintenance-tabs-left">
               <button
@@ -890,34 +894,10 @@ export default function Maintenance() {
               </button>
             </div>
 
-            <div className="maintenance-period-filter">
-              <span className="filter-period-label">
-                <span className="material-symbols-outlined">calendar_month</span>
-                Mốc thời gian:
-              </span>
-              {[
-                { key: "all", label: "Tất cả" },
-                { key: "today", label: "Hôm nay" },
-                { key: "week", label: "Tuần này" },
-                { key: "month", label: "Tháng này" },
-              ].map((p) => (
-                <button
-                  key={p.key}
-                  type="button"
-                  className={`dashboard-period-tag ${selectedPeriod === p.key ? "active" : ""}`}
-                  onClick={() => {
-                    setSelectedPeriod(p.key);
-                    if (p.key === "today") {
-                      setSelectedDate(todayISO);
-                    }
-                    if (p.key === "week" || p.key === "month" || p.key === "today" || p.key === "all") {
-                      setStatsRange(p.key === "today" ? "day" : p.key);
-                    }
-                  }}
-                >
-                  {p.label}
-                </button>
-              ))}
+            {/* Khi vào trang không hiện mốc thời gian, chỉ hiển thị biểu tượng thời gian ngày hôm đó */}
+            <div className="facility-today-chip">
+              <span className="material-symbols-outlined">event</span>
+              <span>Hôm nay ({todayFormatted})</span>
             </div>
           </div>
 
@@ -929,6 +909,9 @@ export default function Maintenance() {
               setStatsRange={setStatsRange}
               statsFieldFilter={statsFieldFilter}
               setStatsFieldFilter={setStatsFieldFilter}
+              selectedDate={selectedDate}
+              setSelectedDate={setSelectedDate}
+              pastDatesList={pastDatesList}
               onExportCSV={handleExportStatsCSV}
             />
           ) : (

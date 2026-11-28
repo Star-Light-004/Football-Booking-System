@@ -92,18 +92,43 @@ export function MaintenanceStatsPanel({
   setStatsRange,
   statsFieldFilter = "all",
   setStatsFieldFilter,
+  selectedDate,
+  setSelectedDate,
+  pastDatesList = [],
   onExportCSV,
 }) {
   const todayStr = new Date().toLocaleDateString("en-CA");
   const now = new Date();
   const dayMs = 24 * 60 * 60 * 1000;
 
-  // Lọc sự cố theo khoảng thời gian: Hôm nay / Tuần này / Tháng này / Tất cả
+  // Danh sách 7 ngày gần nhất (fallback nếu chưa truyền)
+  const availablePastDates = useMemo(() => {
+    if (pastDatesList && pastDatesList.length > 0) return pastDatesList;
+    const list = [];
+    const n = new Date();
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(n);
+      d.setDate(n.getDate() - i);
+      const iso = d.toLocaleDateString("en-CA");
+      const [year, month, day] = iso.split("-");
+      let label = "";
+      if (i === 0) label = `Hôm nay (${day}/${month}/${year})`;
+      else if (i === 1) label = `Hôm qua (${day}/${month}/${year})`;
+      else label = `${i} ngày trước (${day}/${month}/${year})`;
+      list.push({ iso, label, displayDate: `${day}/${month}/${year}` });
+    }
+    return list;
+  }, [pastDatesList]);
+
+  // Lọc sự cố theo khoảng thời gian: Hôm nay / Tuần này / Tháng này / Tất cả / Ngày cụ thể
   const dateFilteredIssues = issues.filter((item) => {
     if (statsRange === "all") return true;
 
     const itemDateStr = parseDateToYMD(item, todayStr);
 
+    if (statsRange === "custom") {
+      return itemDateStr === (selectedDate || todayStr);
+    }
     if (statsRange === "day") {
       return itemDateStr === todayStr;
     }
@@ -154,6 +179,8 @@ export function MaintenanceStatsPanel({
   const rangeTitle =
     statsRange === "day"
       ? `Hôm nay (${formatVN(todayStr)})`
+      : statsRange === "custom"
+      ? `Ngày ${formatVN(selectedDate || todayStr)}`
       : statsRange === "week"
       ? "7 ngày gần nhất (Tuần này)"
       : statsRange === "month"
@@ -210,7 +237,10 @@ export function MaintenanceStatsPanel({
             <button
               type="button"
               className={`stats-range-btn ${statsRange === "day" ? "active" : ""}`}
-              onClick={() => setStatsRange("day")}
+              onClick={() => {
+                setStatsRange("day");
+                if (setSelectedDate) setSelectedDate(todayStr);
+              }}
             >
               <span className="material-symbols-outlined">today</span>
               Hôm nay
@@ -239,6 +269,34 @@ export function MaintenanceStatsPanel({
               <span className="material-symbols-outlined">history</span>
               Tất cả
             </button>
+          </div>
+
+          {/* Dropdown chọn ngày trong 7 ngày gần nhất */}
+          <div className="stats-field-select-wrapper stats-date-select-wrapper">
+            <span className="material-symbols-outlined select-icon">calendar_today</span>
+            <select
+              className="stats-field-select"
+              value={statsRange === "custom" || statsRange === "day" ? (selectedDate || todayStr) : ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val) {
+                  if (setSelectedDate) setSelectedDate(val);
+                  if (val === todayStr) {
+                    setStatsRange("day");
+                  } else {
+                    setStatsRange("custom");
+                  }
+                }
+              }}
+              title="Chọn ngày trong 7 ngày gần nhất"
+            >
+              <option value="" disabled>-- Chọn ngày --</option>
+              {availablePastDates.map((item) => (
+                <option key={item.iso} value={item.iso}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Dropdown lọc theo từng sân */}
