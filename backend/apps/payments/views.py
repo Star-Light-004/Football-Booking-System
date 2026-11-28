@@ -795,14 +795,20 @@ def get_revenue_analytics(request):
                 st_class = 'pending'
                 st_label = 'Chờ xử lý'
 
+            start_t = str(b.start_time)[:5] if b.start_time else ""
+            end_t = str(b.end_time)[:5] if b.end_time else ""
+            time_slot = f"{start_t} - {end_t}" if start_t and end_t else start_t
+            date_str = b.booking_date.strftime('%d/%m/%Y') if b.booking_date else ""
+
             transactions_list.append({
                 'id': short_code,
                 'full_id': str(b.id),
                 'name': cust_name,
                 'phone': cust_phone,
                 'field': b.field.field_name if b.field else "Sân tiêu chuẩn",
-                'date': f"{b.booking_date.strftime('%d/%m/%Y')} - {str(b.start_time)[:5]}",
-                'booking_date': str(b.booking_date),
+                'date': date_str,
+                'time_slot': time_slot,
+                'booking_date': str(b.booking_date) if b.booking_date else "",
                 'price': float(b.total_price or 0),
                 'discount': float(b.discount_amount or 0),
                 'payment_method': pm_method,

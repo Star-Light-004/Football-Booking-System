@@ -392,7 +392,7 @@ function TransactionTable({ transactions, searchTerm, selectedPeriod, selectedSp
             className={`tx-filter-btn ${statusFilter === 'success' ? 'active' : ''}`}
             onClick={() => setStatusFilter('success')}
           >
-            Đã hoàn thành (Doanh thu)
+            Đã hoàn thành
           </button>
           <button
             type="button"
@@ -416,31 +416,6 @@ function TransactionTable({ transactions, searchTerm, selectedPeriod, selectedSp
             Đã hủy
           </button>
         </div>
-
-        {/* Quick Period Filter Pills */}
-        <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#006b2c' }}>calendar_month</span>
-            Thời gian:
-          </span>
-          {[
-            { key: 'all', label: 'Tất cả' },
-            { key: 'today', label: 'Hôm nay' },
-            { key: 'week', label: 'Tuần này' },
-            { key: 'month', label: 'Tháng này' },
-            { key: 'year', label: 'Năm nay' },
-          ].map((p) => (
-            <button
-              key={p.key}
-              type="button"
-              className={`tx-filter-btn ${txPeriod === p.key ? 'active' : ''}`}
-              style={{ borderRadius: '9999px', fontSize: '0.78rem', padding: '5px 12px' }}
-              onClick={() => setTxPeriod(p.key)}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
       </div>
 
       <div className="table-wrapper">
@@ -452,8 +427,8 @@ function TransactionTable({ transactions, searchTerm, selectedPeriod, selectedSp
               <th>Sân bóng</th>
               <th>Thời gian thi đấu</th>
               <th>Phương thức</th>
-              <th>Số tiền</th>
-              <th className="right">Trạng thái</th>
+              <th>Số tiền thanh toán</th>
+              <th style={{ textAlign: 'center' }}>Trạng thái</th>
             </tr>
           </thead>
           <tbody>
@@ -468,36 +443,54 @@ function TransactionTable({ transactions, searchTerm, selectedPeriod, selectedSp
               </tr>
             ) : (
               filtered.map((t) => (
-                <tr key={t.id + t.date}>
+                <tr key={t.full_id || t.id}>
                   <td>
-                    <span className="inv-id">#{t.id}</span>
+                    <span className="inv-id">#{String(t.id).replace(/^#/, '')}</span>
                   </td>
                   <td>
                     <div className="customer-cell">
                       <div className="avatar green">{getInitials(t.name)}</div>
                       <div>
-                        <span className="customer-name">{t.name}</span>
-                        {t.phone && <small className="customer-phone">{t.phone}</small>}
+                        <span className="customer-name">{t.name || 'Khách vãng lai'}</span>
+                        <small className="customer-phone">{t.phone || '—'}</small>
                       </div>
                     </div>
                   </td>
                   <td>
-                    <span className="field-badge">{t.field}</span>
+                    <span className="field-badge">{t.field || 'Sân bóng'}</span>
                   </td>
                   <td>
-                    <span className="tx-date">{t.date}</span>
+                    <div className="tx-time-cell">
+                      <span className="tx-date-main">
+                        {t.date || (t.booking_date ? new Date(t.booking_date).toLocaleDateString('vi-VN') : '—')}
+                      </span>
+                      {t.time_slot && <small className="tx-time-sub">{t.time_slot}</small>}
+                    </div>
                   </td>
                   <td>
-                    <span className="tx-method-badge">{t.payment_method}</span>
+                    <span className={`tx-method-badge ${t.payment_method?.includes('VietQR') ? 'qr' : 'cash'}`}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>
+                        {t.payment_method?.includes('VietQR') ? 'qr_code_2' : 'payments'}
+                      </span>
+                      {t.payment_method || 'Tiền mặt tại sân'}
+                    </span>
                   </td>
                   <td>
-                    <span className="tx-price">{formatCurrency(t.price)} đ</span>
-                    {t.discount > 0 && (
-                      <small className="tx-discount">(-{formatCurrency(t.discount)}đ voucher)</small>
-                    )}
+                    <div className="tx-price-cell">
+                      <span className="tx-price">{formatCurrency(t.price)} đ</span>
+                      {t.discount > 0 ? (
+                        <small className="tx-discount">
+                          <span className="material-symbols-outlined" style={{ fontSize: '0.75rem' }}>sell</span>
+                          -{formatCurrency(t.discount)}đ voucher
+                        </small>
+                      ) : null}
+                    </div>
                   </td>
-                  <td className="tx-status-cell">
-                    <span className={`tx-badge ${t.status_class}`}>{t.status_label}</span>
+                  <td style={{ textAlign: 'center' }}>
+                    <span className={`tx-badge ${t.status_class}`}>
+                      <span className="tx-badge-dot" />
+                      {t.status_label}
+                    </span>
                   </td>
                 </tr>
               ))
@@ -893,11 +886,11 @@ export default function Revenue() {
   const [searchTerm, setSearchTerm] = useState('');
   const [openExport, setOpenExport] = useState(false);
 
-  // Danh sách 30 ngày đã qua để chọn xem doanh thu theo ngày
+  // Danh sách 7 ngày gần nhất để chọn xem doanh thu theo ngày
   const pastDatesList = useMemo(() => {
     const list = [];
     const now = new Date();
-    for (let i = 0; i <= 30; i++) {
+    for (let i = 0; i < 7; i++) {
       const d = new Date(now);
       d.setDate(now.getDate() - i);
       const iso = d.toISOString().split('T')[0];

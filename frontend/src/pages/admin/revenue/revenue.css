@@ -140,10 +140,14 @@
 .admin-revenue-main .page-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: center;
   margin-bottom: 1.35rem;
-  gap: 1rem;
-  flex-wrap: wrap;
+  gap: 1.25rem;
+}
+
+.admin-revenue-main .page-header > div:first-child {
+  flex: 1;
+  min-width: 0;
 }
 
 .admin-revenue-main .booking-admin-eyebrow {
@@ -180,8 +184,8 @@
 .dashboard-heading-actions {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  gap: 0.65rem;
+  flex-shrink: 0;
 }
 
 .dashboard-select-field,
@@ -889,40 +893,83 @@
   display: inline-block;
 }
 
-.tx-date {
-  font-size: 0.8125rem;
-  color: #475569;
-  font-weight: 500;
+.tx-time-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.tx-date-main {
+  font-size: 0.825rem;
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.tx-time-sub {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 600;
 }
 
 .tx-method-badge {
-  font-size: 0.72rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 6px;
+  font-weight: 700;
+}
+
+.tx-method-badge.qr {
   color: #0284c7;
   background: #f0f9ff;
   border: 1px solid #bae6fd;
-  padding: 0.25rem 0.5rem;
-  border-radius: 6px;
-  font-weight: 700;
+}
+
+.tx-method-badge.cash {
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+}
+
+.tx-price-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
 }
 
 .tx-price {
   font-weight: 800;
   color: #0f172a;
-  display: block;
+  font-size: 0.875rem;
 }
 
 .tx-discount {
-  font-size: 0.68rem;
-  color: #ef4444;
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.7rem;
+  color: #dc2626;
+  font-weight: 600;
 }
 
 .tx-badge {
-  display: inline-block;
-  padding: 0.3rem 0.65rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.75rem;
   border-radius: 9999px;
-  font-size: 0.72rem;
-  font-weight: 800;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tx-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
 }
 
 .tx-badge.success {
