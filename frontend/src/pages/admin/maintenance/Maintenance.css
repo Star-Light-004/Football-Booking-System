@@ -2411,3 +2411,129 @@
   display: block;
 }
 
+/* ── Compact Maintenance Table Styles ── */
+.m-ticket-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: flex-start;
+}
+
+.inv-id {
+  font-family: monospace;
+  font-weight: 800;
+  color: #2563eb;
+  background: #eff6ff;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+}
+
+.m-field-name {
+  font-size: 0.825rem;
+  color: #0f172a;
+  font-weight: 700;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.m-issue-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.m-issue-tags {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.field-badge {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+.priority-badge {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.priority-badge.priority-high {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.priority-badge.priority-normal {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.issue-desc {
+  font-size: 0.78rem;
+  color: #475569;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.tx-time-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.tx-date-main {
+  font-size: 0.8125rem;
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.tx-time-sub {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.tx-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tx-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.tx-badge.success {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.tx-badge.pending {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.tx-badge.cancelled {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+

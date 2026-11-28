@@ -768,11 +768,12 @@ export default function Maintenance() {
         <div className="content-area">
           {/* Header Trang */}
           <div className="page-heading">
-            <div className="page-heading-left">
+            <div className="page-heading-copy">
+              <span className="dashboard-eyebrow">
+                VẬN HÀNH CƠ SỞ <span>›</span> BẢO TRÌ SÂN &amp; THIẾT BỊ
+              </span>
               <h2>Bảo trì &amp; Quản lý Thiết bị Sân</h2>
-              <p className="page-subheading" style={{ color: "#64748b", fontSize: "0.82rem", margin: "0.2rem 0 0 0" }}>
-                Giám sát tình trạng cơ sở vật chất, khóa sân và điều phối sửa chữa trang thiết bị.
-              </p>
+              <p>Giám sát tình trạng cơ sở vật chất, khóa sân và điều phối sửa chữa trang thiết bị.</p>
             </div>
             <div className="dashboard-heading-actions">
               <div className="dashboard-past-date-selector">

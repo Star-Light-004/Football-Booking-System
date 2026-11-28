@@ -511,80 +511,94 @@ export function MaintenanceStatsPanel({
             </span>
           </div>
         ) : (
-          <div className="stats-history-grid">
-            {filteredHistory.map((h, idx) => {
-              const isDone = h.status === "done" || h.status === "resolved";
-              const isFixing = h.status === "fixing";
-              const isUrgent = (h.priority || "").toLowerCase().includes("khẩn cấp");
+          <div className="stats-table-wrapper">
+            <table className="stats-data-table">
+              <thead>
+                <tr>
+                  <th style={{ width: "19%" }}>Phiếu &amp; Sân bóng</th>
+                  <th style={{ width: "31%" }}>Hạng mục &amp; Mô tả sự cố</th>
+                  <th style={{ width: "17%" }}>Nguồn báo &amp; Thời gian</th>
+                  <th style={{ width: "11%" }}>Chi phí thực tế</th>
+                  <th style={{ width: "10%" }}>Hoàn tất</th>
+                  <th style={{ width: "12%", textAlign: "center" }}>Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredHistory.map((h, idx) => {
+                  const isDone = h.status === "done" || h.status === "resolved";
+                  const isFixing = h.status === "fixing";
+                  const isUrgent = (h.priority || "").toLowerCase().includes("khẩn cấp");
+                  const isCleaning = (h.reportedBy || h.reported_by_name || "").toLowerCase().includes("vệ sinh");
+                  const costNum = parseFloat(h.cost) || 0;
 
-              return (
-                <div
-                  key={h.id || idx}
-                  className={`stats-history-card ${isUrgent ? "is-urgent" : "is-routine"}`}
-                  style={{
-                    borderLeft: `4px solid ${isDone ? "#10b981" : isFixing ? "#f59e0b" : isUrgent ? "#ef4444" : "#f97316"}`,
-                  }}
-                >
-                  <div className="history-card-top">
-                    <div className="history-title-wrap">
-                      <span
-                        className="material-symbols-outlined history-badge-icon"
-                        style={{
-                          color: isDone ? "#059669" : isFixing ? "#d97706" : isUrgent ? "#dc2626" : "#ea580c",
-                        }}
-                      >
-                        {isDone ? "task_alt" : isFixing ? "build" : "handyman"}
-                      </span>
-                      <div>
-                        <h5 className="history-field-name">{h.fieldName || h.field_name}</h5>
-                        <span className="history-slot-time">
-                          Hạng mục: <strong>{h.category}</strong>
+                  return (
+                    <tr key={h.id || idx}>
+                      {/* Cột 1: Phiếu & Sân bóng */}
+                      <td>
+                        <div className="m-ticket-cell">
+                          <span className="inv-id">#{String(h.id || idx + 1).slice(0, 8)}</span>
+                          <strong className="m-field-name">{h.fieldName || h.field_name || "Sân bóng"}</strong>
+                        </div>
+                      </td>
+
+                      {/* Cột 2: Hạng mục & Mô tả sự cố */}
+                      <td>
+                        <div className="m-issue-cell">
+                          <div className="m-issue-tags">
+                            <span className="field-badge">{h.category || "Cơ sở vật chất"}</span>
+                            <span
+                              className={`priority-badge priority-${isUrgent ? "high" : "normal"}`}
+                            >
+                              {h.priority || "Bình thường"}
+                            </span>
+                          </div>
+                          <span className="issue-desc" title={h.description}>
+                            {h.description || "Không có mô tả chi tiết sự cố"}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Cột 3: Nguồn báo & Thời gian */}
+                      <td>
+                        <div className="tx-time-cell">
+                          <span className="tx-date-main">{formatDisplayDate(h.createdAt || h.created_at)}</span>
+                          <small className="tx-time-sub" style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: "0.8rem", color: isCleaning ? "#059669" : "#3b82f6" }}>
+                              {isCleaning ? "cleaning_services" : "build"}
+                            </span>
+                            {h.reportedBy || h.reported_by_name || "Nhân viên"}
+                          </small>
+                        </div>
+                      </td>
+
+                      {/* Cột 4: Chi phí thực tế */}
+                      <td>
+                        <strong style={{ color: costNum > 0 ? "#b91c1c" : "#64748b", fontSize: "0.88rem" }}>
+                          {costNum > 0 ? `${formatCurrency(costNum)} đ` : "0 đ"}
+                        </strong>
+                      </td>
+
+                      {/* Cột 5: Hoàn tất */}
+                      <td>
+                        <span style={{ color: isDone ? "#059669" : "#64748b", fontSize: "0.8rem", fontWeight: 600 }}>
+                          {h.resolvedAt || (isDone ? "Đã sửa xong" : "Đang xử lý")}
                         </span>
-                      </div>
-                    </div>
+                      </td>
 
-                    <div className="history-meta-right">
-                      <span
-                        className="history-time-badge"
-                        style={{
-                          background: isDone ? "#ecfdf5" : isFixing ? "#fffbeb" : "#fef2f2",
-                          color: isDone ? "#047857" : isFixing ? "#b45309" : "#b91c1c",
-                          fontWeight: 700,
-                        }}
-                      >
-                        <span className="material-symbols-outlined" style={{ fontSize: "0.85rem" }}>
-                          {isDone ? "check_circle" : isFixing ? "build" : "pending"}
+                      {/* Cột 6: Trạng thái */}
+                      <td style={{ textAlign: "center" }}>
+                        <span
+                          className={`tx-badge ${isDone ? "success" : isFixing ? "pending" : "cancelled"}`}
+                        >
+                          <span className="tx-badge-dot" />
+                          {isDone ? "Đã xong" : isFixing ? "Đang sửa" : "Chờ xử lý"}
                         </span>
-                        {isDone ? "Đã sửa xong" : isFixing ? "Đang sửa chữa" : "Chờ xử lý"}
-                      </span>
-                      <span className="history-date-badge">{formatDisplayDate(h.createdAt || h.created_at)}</span>
-                    </div>
-                  </div>
-
-                  <div className="history-body">
-                    <p className="history-notes">
-                      <span className="material-symbols-outlined note-icon">notes</span>
-                      <span>{h.description || "Chưa có mô tả chi tiết sự cố."}</span>
-                    </p>
-                  </div>
-
-                  <div className="history-footer">
-                    <div className="history-cleaner-info">
-                      <span className="material-symbols-outlined">person</span>
-                      <span>
-                        Nguồn báo: <strong>{h.reportedBy || h.reported_by_name || "Nhân viên"}</strong>
-                      </span>
-                    </div>
-
-                    <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-                      <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#059669" }}>
-                        Thực chi: {formatCurrency(h.cost)} đ
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
