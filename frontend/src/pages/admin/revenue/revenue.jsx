@@ -46,13 +46,15 @@ function TopHeader({ onExport, searchTerm, onSearchChange, onRefresh, loading })
   );
 }
 
-function SummaryCards({ summary, selectedPeriod = 'all', selectedSpecificDate = null }) {
+function SummaryCards({ summary, selectedPeriod = 'all', selectedSpecificDate = null, selectedYear = new Date().getFullYear() }) {
+  const currentYear = new Date().getFullYear();
+  const isCurrentYear = Number(selectedYear) === currentYear;
   const growthRate = summary?.growth_pct ?? 0;
   const isPositiveGrowth = growthRate >= 0;
   const totalRevenue = summary?.total_revenue || 0;
 
-  let periodBadge = 'Toàn thời gian';
-  let periodLabel = 'Tổng doanh thu thực tế';
+  let periodBadge = `Năm ${selectedYear}`;
+  let periodLabel = `Tổng doanh thu năm ${selectedYear}`;
 
   if (selectedSpecificDate) {
     const [y, m, d] = selectedSpecificDate.split('-');
@@ -67,9 +69,9 @@ function SummaryCards({ summary, selectedPeriod = 'all', selectedSpecificDate = 
   } else if (selectedPeriod === 'month') {
     periodBadge = 'Tháng này';
     periodLabel = 'Doanh thu tháng này';
-  } else if (selectedPeriod === 'year') {
-    periodBadge = 'Năm nay';
-    periodLabel = 'Doanh thu năm nay';
+  } else if (selectedPeriod === 'year' || selectedPeriod === 'all') {
+    periodBadge = `Năm ${selectedYear}`;
+    periodLabel = `Doanh thu năm ${selectedYear}`;
   }
 
   return (
@@ -110,13 +112,19 @@ function SummaryCards({ summary, selectedPeriod = 'all', selectedSpecificDate = 
               {isPositiveGrowth ? `+${growthRate}%` : `${growthRate}%`}
             </span>
           </div>
-          <p className="card-label">Doanh thu tháng này</p>
+          <p className="card-label">
+            {isCurrentYear ? 'Doanh thu tháng này' : `Doanh thu tháng 12/${selectedYear}`}
+          </p>
           <h3 className="card-value">
             {formatCurrency(summary?.this_month_revenue)} <span className="unit">đ</span>
           </h3>
         </div>
         <p className="card-italic">
-          {isPositiveGrowth ? '📈 Tăng trưởng' : '📉 Giảm'} so với tháng trước ({formatCurrency(summary?.last_month_revenue)} đ)
+          {isCurrentYear ? (
+            `${isPositiveGrowth ? '📈 Tăng trưởng' : '📉 Giảm'} so với tháng trước (${formatCurrency(summary?.last_month_revenue)} đ)`
+          ) : (
+            `So với tháng 11/${selectedYear} (${formatCurrency(summary?.last_month_revenue)} đ)`
+          )}
         </p>
       </div>
 
@@ -287,7 +295,7 @@ function DonutChart({ segments }) {
   );
 }
 
-function TransactionTable({ transactions, searchTerm, selectedPeriod, selectedSpecificDate = null, onPeriodChange }) {
+function TransactionTable({ transactions, searchTerm, selectedPeriod, selectedSpecificDate = null, selectedYear = new Date().getFullYear(), onPeriodChange }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [internalPeriod, setInternalPeriod] = useState('all');
 
@@ -335,34 +343,32 @@ function TransactionTable({ transactions, searchTerm, selectedPeriod, selectedSp
         } else {
           matchPeriod = false;
         }
-      } else if (txPeriod !== 'all') {
-        if (dStr) {
-          const now = new Date();
-          let tDate = null;
-          if (typeof dStr === 'string' && dStr.includes('/')) {
-            const parts = dStr.split(' ')[0].split('/');
-            if (parts.length === 3) tDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-          } else {
-            tDate = new Date(dStr);
-          }
-          if (tDate && !isNaN(tDate.getTime())) {
-            if (txPeriod === 'today') {
-              matchPeriod = String(dStr).slice(0, 10) === now.toISOString().slice(0, 10);
-            } else if (txPeriod === 'week') {
-              const diffDays = (now - tDate) / (1000 * 60 * 60 * 24);
-              matchPeriod = diffDays >= 0 && diffDays <= 7;
-            } else if (txPeriod === 'month') {
-              matchPeriod = tDate.getFullYear() === now.getFullYear() && tDate.getMonth() === now.getMonth();
-            } else if (txPeriod === 'year') {
-              matchPeriod = tDate.getFullYear() === now.getFullYear();
-            }
+      } else if (dStr) {
+        const now = new Date();
+        let tDate = null;
+        if (typeof dStr === 'string' && dStr.includes('/')) {
+          const parts = dStr.split(' ')[0].split('/');
+          if (parts.length === 3) tDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+        } else {
+          tDate = new Date(dStr);
+        }
+        if (tDate && !isNaN(tDate.getTime())) {
+          if (txPeriod === 'today') {
+            matchPeriod = String(dStr).slice(0, 10) === now.toISOString().slice(0, 10);
+          } else if (txPeriod === 'week') {
+            const diffDays = (now - tDate) / (1000 * 60 * 60 * 24);
+            matchPeriod = diffDays >= 0 && diffDays <= 7;
+          } else if (txPeriod === 'month') {
+            matchPeriod = tDate.getFullYear() === Number(selectedYear) && tDate.getMonth() === now.getMonth();
+          } else if (txPeriod === 'year' || txPeriod === 'all') {
+            matchPeriod = tDate.getFullYear() === Number(selectedYear);
           }
         }
       }
 
       return matchSearch && matchStatus && matchPeriod;
     });
-  }, [transactions, searchTerm, statusFilter, txPeriod, selectedSpecificDate]);
+  }, [transactions, searchTerm, statusFilter, txPeriod, selectedSpecificDate, selectedYear]);
 
   const getInitials = (name) => {
     if (!name) return 'KH';
@@ -760,25 +766,21 @@ function MaintenanceTable({ issues, searchTerm }) {
       </div>
 
       <div className="table-wrapper">
-        <table>
+        <table className="maintenance-compact-table">
           <thead>
             <tr>
-              <th>Mã phiếu</th>
-              <th>Sân bóng</th>
-              <th>Hạng mục thiết bị</th>
-              <th>Mô tả sự cố</th>
-              <th>Nguồn báo</th>
-              <th>Mức độ</th>
-              <th>Chi phí thực tế</th>
-              <th>Thời gian báo</th>
-              <th>Ngày hoàn thành</th>
-              <th className="right">Trạng thái</th>
+              <th style={{ width: '18%' }}>Phiếu &amp; Sân bóng</th>
+              <th style={{ width: '32%' }}>Hạng mục &amp; Mô tả sự cố</th>
+              <th style={{ width: '18%' }}>Nguồn báo &amp; Thời gian</th>
+              <th style={{ width: '14%' }}>Chi phí thực tế</th>
+              <th style={{ width: '10%' }}>Hoàn tất</th>
+              <th style={{ width: '8%', textAlign: 'center' }}>Trạng thái</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan="10" style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
+                <td colSpan="6" style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
                   <span className="material-symbols-outlined" style={{ fontSize: 36, display: 'block', marginBottom: 8 }}>
                     construction
                   </span>
@@ -792,74 +794,59 @@ function MaintenanceTable({ issues, searchTerm }) {
                 const isCleaning =
                   reporter.toLowerCase().includes('vệ sinh') ||
                   reporter.toLowerCase().includes('dọn dẹp');
-
                 const actCost = parseFloat(item.cost) || 0;
 
                 return (
                   <tr key={item.id}>
                     <td>
-                      <span className="inv-id">#{String(item.id).slice(0, 8)}</span>
+                      <div className="m-ticket-cell">
+                        <span className="inv-id">#{String(item.id).slice(0, 8)}</span>
+                        <strong className="m-field-name">{item.fieldName || item.field_name || 'Sân bóng'}</strong>
+                      </div>
                     </td>
                     <td>
-                      <strong style={{ color: '#0f172a' }}>{item.fieldName || item.field_name || 'Sân'}</strong>
-                    </td>
-                    <td>
-                      <span className="field-badge">{item.category}</span>
-                    </td>
-                    <td style={{ maxWidth: 220 }}>
-                      <span className="issue-desc" title={item.description}>
-                        {item.description}
-                      </span>
-                    </td>
-                    <td>
-                      {isCleaning ? (
-                        <span className="m-source-pill cleaning" title="Báo từ vệ sinh sân">
-                          <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>
-                            cleaning_services
+                      <div className="m-issue-cell">
+                        <div className="m-issue-tags">
+                          <span className="field-badge">{item.category || 'Cơ sở vật chất'}</span>
+                          <span
+                            className={`priority-badge priority-${
+                              item.priority === 'Khẩn cấp' || item.priority === 'Cao' ? 'high' : 'normal'
+                            }`}
+                          >
+                            {item.priority || 'Bình thường'}
                           </span>
-                          Từ vệ sinh
+                        </div>
+                        <span className="issue-desc" title={item.description}>
+                          {item.description || 'Không có mô tả chi tiết'}
                         </span>
-                      ) : (
-                        <span className="m-source-pill tech" title="Kỹ thuật lập">
-                          <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>
-                            build
+                      </div>
+                    </td>
+                    <td>
+                      <div className="tx-time-cell">
+                        <span className="tx-date-main">{item.createdAt || item.created_at || 'Mới báo'}</span>
+                        <small className="tx-time-sub" style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: '0.8rem', color: isCleaning ? '#059669' : '#3b82f6' }}>
+                            {isCleaning ? 'cleaning_services' : 'build'}
                           </span>
                           {reporter}
-                        </span>
-                      )}
+                        </small>
+                      </div>
                     </td>
                     <td>
-                      <span
-                        className={`priority-badge priority-${
-                          item.priority === 'Khẩn cấp' || item.priority === 'Cao' ? 'high' : 'normal'
-                        }`}
-                      >
-                        {item.priority}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 700, color: actCost > 0 ? '#b91c1c' : '#94a3b8' }}>
+                      <span className="m-cost-val" style={{ color: actCost > 0 ? '#b91c1c' : '#64748b' }}>
                         {actCost > 0 ? `${formatCurrency(actCost)} đ` : '0 đ'}
                       </span>
                     </td>
                     <td>
-                      <span className="tx-date">{item.createdAt || item.created_at || 'Vừa xong'}</span>
-                    </td>
-                    <td>
-                      <span className="tx-date" style={{ color: isDone ? '#059669' : '#94a3b8' }}>
-                        {item.resolvedAt || (isDone ? 'Đã hoàn thành' : 'Chưa xong')}
+                      <span className="tx-date" style={{ color: isDone ? '#059669' : '#64748b', fontSize: '0.8rem', fontWeight: 600 }}>
+                        {item.resolvedAt || (isDone ? 'Đã hoàn thành' : 'Đang xử lý')}
                       </span>
                     </td>
-                    <td className="tx-status-cell">
-                      {isDone ? (
-                        <span className="tx-badge success">Đã sửa xong</span>
-                      ) : item.status === 'fixing' ? (
-                        <span className="tx-badge pending">Đang sửa chữa</span>
-                      ) : (
-                        <span className="tx-badge cancelled" style={{ background: '#fee2e2', color: '#b91c1c' }}>
-                          Chờ xử lý
-                        </span>
-                      )}
+                    <td style={{ textAlign: 'center' }}>
+                      <span className={`tx-badge ${isDone ? 'success' : item.status === 'fixing' ? 'pending' : 'cancelled'}`}>
+                        <span className="tx-badge-dot" />
+                        {isDone ? 'Đã xong' : item.status === 'fixing' ? 'Đang sửa' : 'Chờ xử lý'}
+                      </span>
                     </td>
                   </tr>
                 );
@@ -1350,6 +1337,7 @@ export default function Revenue() {
                 summary={activeSummary || revenueData?.summary}
                 selectedPeriod={selectedPeriod}
                 selectedSpecificDate={selectedSpecificDate}
+                selectedYear={selectedYear}
               />
 
               {/* Charts Section */}
@@ -1375,6 +1363,7 @@ export default function Revenue() {
                 searchTerm={searchTerm}
                 selectedPeriod={selectedPeriod}
                 selectedSpecificDate={selectedSpecificDate}
+                selectedYear={selectedYear}
                 onPeriodChange={(period) => {
                   setSelectedPeriod(period);
                   setSelectedSpecificDate(null);

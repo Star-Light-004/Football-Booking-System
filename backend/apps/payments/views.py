@@ -645,49 +645,53 @@ def get_revenue_analytics(request):
             except Exception:
                 pass
 
-        # Chỉ tính các đơn đã HOÀN THÀNH ('Completed') vào doanh thu thực tế (theo chuẩn ENUM DB)
-        all_completed_bookings = bookings_qs.filter(status='Completed')
+        # Lọc bookings theo năm được chọn và theo sân
+        year_bookings_qs = bookings_qs.filter(booking_date__year=selected_year)
+
+        # Chỉ tính các đơn đã HOÀN THÀNH ('Completed') vào doanh thu thực tế
+        all_completed_bookings = year_bookings_qs.filter(status='Completed')
         
-        # Tổng doanh thu thực tế (chỉ tính đơn hoàn thành)
+        # Tổng doanh thu thực tế trong năm được chọn
         total_revenue = all_completed_bookings.aggregate(total=Sum('total_price'))['total'] or 0
 
-        # Doanh thu dự kiến (toàn bộ trừ Cancelled)
-        expected_revenue = bookings_qs.exclude(status='Cancelled').aggregate(total=Sum('total_price'))['total'] or 0
+        # Doanh thu dự kiến trong năm được chọn (toàn bộ trừ Cancelled)
+        expected_revenue = year_bookings_qs.exclude(status='Cancelled').aggregate(total=Sum('total_price'))['total'] or 0
 
-        # Doanh thu hôm nay (chỉ tính đơn hoàn thành hôm nay)
-        today_revenue = all_completed_bookings.filter(booking_date=today_date).aggregate(total=Sum('total_price'))['total'] or 0
+        # Doanh thu hôm nay (chỉ có ý nghĩa khi xem năm hiện tại)
+        if selected_year == current_year:
+            today_revenue = all_completed_bookings.filter(booking_date=today_date).aggregate(total=Sum('total_price'))['total'] or 0
+            this_month_completed = all_completed_bookings.filter(booking_date__month=current_month)
+            this_month_revenue = this_month_completed.aggregate(total=Sum('total_price'))['total'] or 0
 
-        # Doanh thu tháng này (chỉ tính đơn hoàn thành trong tháng)
-        this_month_completed = all_completed_bookings.filter(
-            booking_date__year=current_year,
-            booking_date__month=current_month
-        )
-        this_month_revenue = this_month_completed.aggregate(total=Sum('total_price'))['total'] or 0
+            last_month = current_month - 1 if current_month > 1 else 12
+            last_month_year = current_year if current_month > 1 else current_year - 1
+            last_month_completed = bookings_qs.filter(
+                status='Completed',
+                booking_date__year=last_month_year,
+                booking_date__month=last_month
+            )
+            last_month_revenue = last_month_completed.aggregate(total=Sum('total_price'))['total'] or 0
 
-        # Doanh thu tháng trước
-        last_month = current_month - 1 if current_month > 1 else 12
-        last_month_year = current_year if current_month > 1 else current_year - 1
-        last_month_completed = all_completed_bookings.filter(
-            booking_date__year=last_month_year,
-            booking_date__month=last_month
-        )
-        last_month_revenue = last_month_completed.aggregate(total=Sum('total_price'))['total'] or 0
-
-        # Tỷ lệ tăng trưởng so với tháng trước
-        if last_month_revenue > 0:
-            growth_pct = round(((float(this_month_revenue) - float(last_month_revenue)) / float(last_month_revenue)) * 100, 1)
-        elif this_month_revenue > 0:
-            growth_pct = 100.0
+            if last_month_revenue > 0:
+                growth_pct = round(((float(this_month_revenue) - float(last_month_revenue)) / float(last_month_revenue)) * 100, 1)
+            elif this_month_revenue > 0:
+                growth_pct = 100.0
+            else:
+                growth_pct = 0.0
         else:
+            today_revenue = 0
+            # Khi xem năm khác, lấy tháng cuối cùng có doanh thu làm tham chiếu
+            this_month_revenue = all_completed_bookings.filter(booking_date__month=12).aggregate(total=Sum('total_price'))['total'] or 0
+            last_month_revenue = all_completed_bookings.filter(booking_date__month=11).aggregate(total=Sum('total_price'))['total'] or 0
             growth_pct = 0.0
 
-        total_orders_count = bookings_qs.count()
+        total_orders_count = year_bookings_qs.count()
         successful_orders_count = all_completed_bookings.count()
-        cancelled_orders_count = bookings_qs.filter(status='Cancelled').count()
-        pending_orders_count = bookings_qs.filter(status='Pending').count()
+        cancelled_orders_count = year_bookings_qs.filter(status='Cancelled').count()
+        pending_orders_count = year_bookings_qs.filter(status='Pending').count()
 
         avg_order_value = round(float(total_revenue) / successful_orders_count) if successful_orders_count > 0 else 0
-        total_discount = bookings_qs.aggregate(total=Sum('discount_amount'))['total'] or 0
+        total_discount = year_bookings_qs.aggregate(total=Sum('discount_amount'))['total'] or 0
 
         # 2. DOANH THU THEO 12 THÁNG TRONG NĂM ĐƯỢC CHỌN (CHỈ TÍNH HOÀN THÀNH)
         year_bookings = all_completed_bookings.filter(booking_date__year=selected_year)
@@ -764,8 +768,8 @@ def get_revenue_analytics(request):
                 {'label': 'Sân 11 người', 'revenue': 0, 'count': 0, 'pct': '15%', 'color': '#f59e0b', 'strokeArray': '15 100', 'strokeOffset': -85},
             ]
 
-        # 4. DANH SÁCH GIAO DỊCH / HÓA ĐƠN GẦN NHẤT
-        recent_bookings = bookings_qs.order_by('-booking_date', '-created_at')[:50]
+        # 4. DANH SÁCH GIAO DỊCH / HÓA ĐƠN TRONG NĂM ĐƯỢC CHỌN
+        recent_bookings = year_bookings_qs.order_by('-booking_date', '-created_at')[:50]
         payments_map = {str(p.booking_id): p for p in Payments.objects.filter(booking__in=recent_bookings)}
 
         transactions_list = []
