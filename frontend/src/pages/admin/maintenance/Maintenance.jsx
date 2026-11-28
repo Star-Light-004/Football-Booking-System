@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { getFields, updateField } from "../../../api/fieldsApi";
 import {
@@ -215,6 +215,77 @@ export default function Maintenance() {
   const [activeMainTab, setActiveMainTab] = useState("board");
   const [statsRange, setStatsRange] = useState("day"); // "day" | "week" | "month" | "all"
   const [statsFieldFilter, setStatsFieldFilter] = useState("all");
+
+  const todayISO = useMemo(() => new Date().toLocaleDateString("en-CA"), []);
+  const [selectedPeriod, setSelectedPeriod] = useState("all"); // "all" | "today" | "week" | "month" | "custom"
+  const [selectedDate, setSelectedDate] = useState(todayISO);
+
+  // Danh sách 7 ngày gần nhất để chọn xem phiếu bảo trì theo ngày
+  const pastDatesList = useMemo(() => {
+    const list = [];
+    const now = new Date();
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      const iso = d.toLocaleDateString("en-CA");
+      const [year, month, day] = iso.split("-");
+      let label = "";
+      if (i === 0) label = `Hôm nay (${day}/${month}/${year})`;
+      else if (i === 1) label = `Hôm qua (${day}/${month}/${year})`;
+      else label = `${i} ngày trước (${day}/${month}/${year})`;
+      list.push({ iso, label, displayDate: `${day}/${month}/${year}` });
+    }
+    return list;
+  }, []);
+
+  const isIssueInPeriod = (item, period, specificDate) => {
+    if (!item) return true;
+    const raw = item.date || item.created_at || item.createdAt || item.resolved_at || item.resolvedAt || "";
+    if (!raw) return true;
+
+    let ymd = "";
+    const str = String(raw).trim();
+    if (str.toLowerCase().includes("hôm nay") || str.toLowerCase().includes("vừa xong")) {
+      ymd = todayISO;
+    } else if (str.toLowerCase().includes("hôm qua")) {
+      const yd = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      ymd = yd.toLocaleDateString("en-CA");
+    } else {
+      const isoMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+      if (isoMatch) {
+        ymd = `${isoMatch[1]}-${isoMatch[2].padStart(2, "0")}-${isoMatch[3].padStart(2, "0")}`;
+      } else {
+        const slashMatch = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+        if (slashMatch) {
+          ymd = `${slashMatch[3]}-${slashMatch[2].padStart(2, "0")}-${slashMatch[1].padStart(2, "0")}`;
+        }
+      }
+    }
+
+    if (specificDate && (period === "custom" || period === "today")) {
+      return ymd === specificDate;
+    }
+
+    if (!period || period === "all") return true;
+
+    const now = new Date();
+    if (period === "today") return ymd === todayISO;
+
+    if (period === "week") {
+      if (!ymd) return true;
+      const t = new Date(ymd);
+      const diff = (now - t) / (1000 * 60 * 60 * 24);
+      return diff >= 0 && diff <= 7;
+    }
+
+    if (period === "month") {
+      if (!ymd) return true;
+      const t = new Date(ymd);
+      return t.getFullYear() === now.getFullYear() && t.getMonth() === now.getMonth();
+    }
+
+    return true;
+  };
 
   // In-screen dialog confirm
   const [confirmConfig, setConfirmConfig] = useState({
@@ -609,13 +680,17 @@ export default function Maintenance() {
     setShowDetailModal(true);
   };
 
+  const periodFilteredIssues = useMemo(() => {
+    return issues.filter((i) => isIssueInPeriod(i, selectedPeriod, selectedDate));
+  }, [issues, selectedPeriod, selectedDate, todayISO]);
+
   const maintenanceFields = fields.filter((f) => f.is_available === false);
-  const fixingIssues = issues.filter((i) => i.status !== "done" && i.status !== "resolved");
-  const totalActualCost = issues
+  const fixingIssues = periodFilteredIssues.filter((i) => i.status !== "done" && i.status !== "resolved");
+  const totalActualCost = periodFilteredIssues
     .filter((i) => i.status === "done" || i.status === "resolved")
     .reduce((sum, i) => sum + (parseFloat(i.cost) || 0), 0);
 
-  const filteredIssues = issues.filter(
+  const filteredIssues = periodFilteredIssues.filter(
     (i) =>
       (i.fieldName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (i.category || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -700,6 +775,29 @@ export default function Maintenance() {
               </p>
             </div>
             <div className="dashboard-heading-actions">
+              <div className="dashboard-past-date-selector">
+                <span className="material-symbols-outlined date-icon">event</span>
+                <select
+                  className="dashboard-past-date-select"
+                  value={selectedPeriod === "custom" || selectedPeriod === "today" ? selectedDate : ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val) {
+                      setSelectedDate(val);
+                      setSelectedPeriod(val === todayISO ? "today" : "custom");
+                    }
+                  }}
+                  title="Chọn ngày để xem phiếu bảo trì"
+                >
+                  <option value="" disabled>Lịch sử ngày đã qua</option>
+                  {pastDatesList.map((item) => (
+                    <option key={item.iso} value={item.iso}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <button
                 type="button"
                 className="btn-new-booking"
@@ -735,7 +833,15 @@ export default function Maintenance() {
               <div className="kpi-stat-info">
                 <span className="kpi-stat-label">Sự cố cần sửa</span>
                 <span className="kpi-stat-number">{fixingIssues.length} sự cố</span>
-                <span className="kpi-stat-sub">Chờ kỹ thuật xử lý</span>
+                <span className="kpi-stat-sub">
+                  {selectedPeriod === "today"
+                    ? "Hôm nay"
+                    : selectedPeriod === "week"
+                    ? "Tuần này"
+                    : selectedPeriod === "month"
+                    ? "Tháng này"
+                    : "Chờ kỹ thuật xử lý"}
+                </span>
               </div>
               <div className="kpi-stat-icon-wrap bg-red">
                 <span className="material-symbols-outlined">engineering</span>
@@ -746,7 +852,15 @@ export default function Maintenance() {
               <div className="kpi-stat-info">
                 <span className="kpi-stat-label">Tổng chi phí thực tế</span>
                 <span className="kpi-stat-number">{formatCurrency(totalActualCost)} đ</span>
-                <span className="kpi-stat-sub">Thực chi hoàn tất sửa chữa</span>
+                <span className="kpi-stat-sub">
+                  {selectedPeriod === "today"
+                    ? "Chi phí hôm nay"
+                    : selectedPeriod === "week"
+                    ? "Chi phí tuần này"
+                    : selectedPeriod === "month"
+                    ? "Chi phí tháng này"
+                    : "Thực chi hoàn tất sửa chữa"}
+                </span>
               </div>
               <div className="kpi-stat-icon-wrap bg-green">
                 <span className="material-symbols-outlined">payments</span>
@@ -756,23 +870,55 @@ export default function Maintenance() {
 
           {/* Tabs chuyển đổi giữa Quản lý bảo trì sân và Thống kê bảo trì */}
           <div className="maintenance-tabs-bar">
-            <button
-              type="button"
-              className={`maintenance-tab-item ${activeMainTab === "board" ? "active" : ""}`}
-              onClick={() => setActiveMainTab("board")}
-            >
-              <span className="material-symbols-outlined">handyman</span>
-              Quản lý bảo trì sân &amp; Thiết bị
-            </button>
-            <button
-              type="button"
-              className={`maintenance-tab-item ${activeMainTab === "stats" ? "active" : ""}`}
-              onClick={() => setActiveMainTab("stats")}
-            >
-              <span className="material-symbols-outlined">insights</span>
-              Thống kê ca bảo trì
-              <span className="tab-pill-badge">{issues.length}</span>
-            </button>
+            <div className="maintenance-tabs-left">
+              <button
+                type="button"
+                className={`maintenance-tab-item ${activeMainTab === "board" ? "active" : ""}`}
+                onClick={() => setActiveMainTab("board")}
+              >
+                <span className="material-symbols-outlined">handyman</span>
+                Quản lý bảo trì sân &amp; Thiết bị
+              </button>
+              <button
+                type="button"
+                className={`maintenance-tab-item ${activeMainTab === "stats" ? "active" : ""}`}
+                onClick={() => setActiveMainTab("stats")}
+              >
+                <span className="material-symbols-outlined">insights</span>
+                Thống kê ca bảo trì
+                <span className="tab-pill-badge">{periodFilteredIssues.length}</span>
+              </button>
+            </div>
+
+            <div className="maintenance-period-filter">
+              <span className="filter-period-label">
+                <span className="material-symbols-outlined">calendar_month</span>
+                Mốc thời gian:
+              </span>
+              {[
+                { key: "all", label: "Tất cả" },
+                { key: "today", label: "Hôm nay" },
+                { key: "week", label: "Tuần này" },
+                { key: "month", label: "Tháng này" },
+              ].map((p) => (
+                <button
+                  key={p.key}
+                  type="button"
+                  className={`dashboard-period-tag ${selectedPeriod === p.key ? "active" : ""}`}
+                  onClick={() => {
+                    setSelectedPeriod(p.key);
+                    if (p.key === "today") {
+                      setSelectedDate(todayISO);
+                    }
+                    if (p.key === "week" || p.key === "month" || p.key === "today" || p.key === "all") {
+                      setStatsRange(p.key === "today" ? "day" : p.key);
+                    }
+                  }}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {activeMainTab === "stats" ? (

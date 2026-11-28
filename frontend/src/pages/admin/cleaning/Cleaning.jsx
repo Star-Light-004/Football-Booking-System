@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { getFields } from "../../../api/fieldsApi";
 import { getBookings } from "../../../api/bookingsApi";
@@ -44,6 +44,28 @@ export default function Cleaning() {
   const [activeTab, setActiveTab] = useState("all"); // "all" | "urgent" | "in_progress" | "clean" | "lost_found"
   const [loading, setLoading] = useState(true);
   const [nowTick, setNowTick] = useState(Date.now());
+
+  const todayISO = useMemo(() => new Date().toLocaleDateString("en-CA"), []);
+  const [selectedPeriod, setSelectedPeriod] = useState("today"); // "today" | "week" | "month" | "all" | "custom"
+  const [selectedDate, setSelectedDate] = useState(todayISO);
+
+  // Danh sách 7 ngày gần nhất để chọn xem lịch sử vệ sinh theo ngày
+  const pastDatesList = useMemo(() => {
+    const list = [];
+    const now = new Date();
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      const iso = d.toLocaleDateString("en-CA");
+      const [year, month, day] = iso.split("-");
+      let label = "";
+      if (i === 0) label = `Hôm nay (${day}/${month}/${year})`;
+      else if (i === 1) label = `Hôm qua (${day}/${month}/${year})`;
+      else label = `${i} ngày trước (${day}/${month}/${year})`;
+      list.push({ iso, label, displayDate: `${day}/${month}/${year}` });
+    }
+    return list;
+  }, []);
 
   // Modal Xem chi tiết cho Role Nhân viên Dọn dẹp
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -1037,10 +1059,28 @@ export default function Cleaning() {
               <p>Theo dõi tình trạng sạch sẽ của các sân sau ca đá, dọn rác, thu gom bóng và báo hỏng thiết bị.</p>
             </div>
             <div className="dashboard-heading-actions">
-              <span className="dashboard-date">
-                <span className="material-symbols-outlined">calendar_today</span>
-                Ngày: {new Date().toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })}
-              </span>
+              <div className="dashboard-past-date-selector">
+                <span className="material-symbols-outlined date-icon">event</span>
+                <select
+                  className="dashboard-past-date-select"
+                  value={selectedPeriod === "custom" || selectedPeriod === "today" ? selectedDate : ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val) {
+                      setSelectedDate(val);
+                      setSelectedPeriod(val === todayISO ? "today" : "custom");
+                    }
+                  }}
+                  title="Chọn ngày để xem tình trạng vệ sinh sân"
+                >
+                  <option value="" disabled>Lịch sử ngày đã qua</option>
+                  {pastDatesList.map((item) => (
+                    <option key={item.iso} value={item.iso}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
@@ -1059,7 +1099,15 @@ export default function Cleaning() {
 
             <div className="kpi-stat-box box-blue">
               <div className="kpi-stat-info">
-                <span className="kpi-stat-label">Ca đã dọn trong ngày</span>
+                <span className="kpi-stat-label">
+                  {selectedPeriod === "today"
+                    ? "Ca đã dọn hôm nay"
+                    : selectedPeriod === "week"
+                    ? "Ca đã dọn tuần này"
+                    : selectedPeriod === "month"
+                    ? "Ca đã dọn tháng này"
+                    : "Ca đã dọn"}
+                </span>
                 <span className="kpi-stat-number">{cleanedMatchesTodayCount} ca</span>
                 <span className="kpi-stat-sub">Đã hoàn thành vệ sinh</span>
               </div>
@@ -1080,45 +1128,77 @@ export default function Cleaning() {
             </div>
           </div>
 
-          {/* ── BỘ TABS LỌC NHANH TRẠNG THÁI (ĐÃ BỎ TAB ĐANG DỌN & SÂN ĐÃ DỌN) ── */}
+          {/* ── BỘ TABS LỌC NHANH TRẠNG THÁI & MỐC THỜI GIAN ── */}
           <div className="cleaning-tabs-bar">
-            <button
-              type="button"
-              className={`cleaning-tab-btn ${activeTab === "all" ? "active" : ""}`}
-              onClick={() => setActiveTab("all")}
-            >
-              Tất cả sân
-              <span className="tab-pill">{fields.length}</span>
-            </button>
+            <div className="cleaning-tabs-left">
+              <button
+                type="button"
+                className={`cleaning-tab-btn ${activeTab === "all" ? "active" : ""}`}
+                onClick={() => setActiveTab("all")}
+              >
+                Tất cả sân
+                <span className="tab-pill">{fields.length}</span>
+              </button>
 
-            <button
-              type="button"
-              className={`cleaning-tab-btn tab-urgent ${activeTab === "urgent" ? "active" : ""}`}
-              onClick={() => setActiveTab("urgent")}
-            >
-              <span className="material-symbols-outlined">priority_high</span>
-              Cần dọn gấp
-              {urgentCount > 0 && <span className="tab-pill pill-red">{urgentCount}</span>}
-            </button>
+              <button
+                type="button"
+                className={`cleaning-tab-btn tab-urgent ${activeTab === "urgent" ? "active" : ""}`}
+                onClick={() => setActiveTab("urgent")}
+              >
+                <span className="material-symbols-outlined">priority_high</span>
+                Cần dọn gấp
+                {urgentCount > 0 && <span className="tab-pill pill-red">{urgentCount}</span>}
+              </button>
 
-            <button
-              type="button"
-              className={`cleaning-tab-btn tab-lost ${activeTab === "lost_found" ? "active" : ""}`}
-              onClick={() => setActiveTab("lost_found")}
-            >
-              <span className="material-symbols-outlined">luggage</span>
-              Đồ khách bỏ quên
-              {pendingLostCount > 0 && <span className="tab-pill pill-amber">{pendingLostCount}</span>}
-            </button>
+              <button
+                type="button"
+                className={`cleaning-tab-btn tab-lost ${activeTab === "lost_found" ? "active" : ""}`}
+                onClick={() => setActiveTab("lost_found")}
+              >
+                <span className="material-symbols-outlined">luggage</span>
+                Đồ khách bỏ quên
+                {pendingLostCount > 0 && <span className="tab-pill pill-amber">{pendingLostCount}</span>}
+              </button>
 
-            <button
-              type="button"
-              className={`cleaning-tab-btn tab-stats ${activeTab === "stats" ? "active" : ""}`}
-              onClick={() => setActiveTab("stats")}
-            >
-              <span className="material-symbols-outlined">insights</span>
-              Thống kê ca dọn
-            </button>
+              <button
+                type="button"
+                className={`cleaning-tab-btn tab-stats ${activeTab === "stats" ? "active" : ""}`}
+                onClick={() => setActiveTab("stats")}
+              >
+                <span className="material-symbols-outlined">insights</span>
+                Thống kê ca dọn
+              </button>
+            </div>
+
+            <div className="cleaning-period-filter">
+              <span className="filter-period-label">
+                <span className="material-symbols-outlined">calendar_month</span>
+                Mốc thời gian:
+              </span>
+              {[
+                { key: "today", label: "Hôm nay" },
+                { key: "week", label: "Tuần này" },
+                { key: "month", label: "Tháng này" },
+                { key: "all", label: "Tất cả" },
+              ].map((p) => (
+                <button
+                  key={p.key}
+                  type="button"
+                  className={`dashboard-period-tag ${selectedPeriod === p.key ? "active" : ""}`}
+                  onClick={() => {
+                    setSelectedPeriod(p.key);
+                    if (p.key === "today") {
+                      setSelectedDate(todayISO);
+                    }
+                    if (p.key === "week" || p.key === "month" || p.key === "today") {
+                      setStatsRange(p.key === "today" ? "day" : p.key);
+                    }
+                  }}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* ── NẾU CHỌN TAB THỐNG KÊ CA DỌN ── */}
