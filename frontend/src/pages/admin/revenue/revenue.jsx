@@ -769,12 +769,12 @@ function MaintenanceTable({ issues, searchTerm }) {
         <table className="maintenance-compact-table">
           <thead>
             <tr>
-              <th style={{ width: '18%' }}>Phiếu &amp; Sân bóng</th>
-              <th style={{ width: '32%' }}>Hạng mục &amp; Mô tả sự cố</th>
-              <th style={{ width: '18%' }}>Nguồn báo &amp; Thời gian</th>
-              <th style={{ width: '14%' }}>Chi phí thực tế</th>
+              <th style={{ width: '19%' }}>Phiếu &amp; Sân bóng</th>
+              <th style={{ width: '31%' }}>Hạng mục &amp; Mô tả sự cố</th>
+              <th style={{ width: '17%' }}>Nguồn báo &amp; Thời gian</th>
+              <th style={{ width: '11%' }}>Chi phí thực tế</th>
               <th style={{ width: '10%' }}>Hoàn tất</th>
-              <th style={{ width: '8%', textAlign: 'center' }}>Trạng thái</th>
+              <th style={{ width: '12%', textAlign: 'center' }}>Trạng thái</th>
             </tr>
           </thead>
           <tbody>
