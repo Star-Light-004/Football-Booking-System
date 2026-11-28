@@ -34,6 +34,28 @@ const parseVNDInput = (str) => {
   return numStr === "" ? "" : Number(numStr);
 };
 
+// Render voucher title, splitting promotional discount info (e.g. "Giảm 10%...") onto its own separate line
+const renderVoucherTitle = (title) => {
+  if (!title) return null;
+  const parts = String(title).split(/\s*[-–—]\s*/);
+  if (parts.length > 1) {
+    const mainTitle = parts[0];
+    const discountPart = parts.slice(1).join(" - ");
+    return (
+      <div className="v-title-split-block">
+        <span className="v-title-main">{mainTitle}</span>
+        <span className="v-title-discount-badge">
+          <span className="material-symbols-outlined" style={{ fontSize: "0.78rem" }}>
+            percent
+          </span>
+          {discountPart}
+        </span>
+      </div>
+    );
+  }
+  return <span className="v-title-main">{title}</span>;
+};
+
 const INITIAL_FORM = {
   code: "",
   title: "",
@@ -656,7 +678,7 @@ export default function AdminVouchers() {
                           </span>
                           {v.code}
                         </div>
-                        <div className="v-title-text">{v.title}</div>
+                        <div className="v-title-text">{renderVoucherTitle(v.title)}</div>
                         {v.description && <div className="v-desc-text">{v.description}</div>}
                       </td>
 
@@ -936,9 +958,7 @@ export default function AdminVouchers() {
                               </td>
 
                               <td>
-                                <div style={{ fontWeight: 600, color: "#1e293b", fontSize: "0.875rem" }}>
-                                  {iv.voucher_title || iv.voucher_code}
-                                </div>
+                                {renderVoucherTitle(iv.voucher_title || iv.voucher_code)}
                                 <div className="v-desc-text">
                                   Mã gốc: <code style={{ color: "#16a34a", fontWeight: 700 }}>{iv.voucher_code}</code>
                                 </div>
