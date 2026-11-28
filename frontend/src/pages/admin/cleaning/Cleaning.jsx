@@ -1063,7 +1063,7 @@ export default function Cleaning() {
                 <span className="material-symbols-outlined date-icon">event</span>
                 <select
                   className="dashboard-past-date-select"
-                  value={selectedPeriod === "custom" || selectedPeriod === "today" ? selectedDate : ""}
+                  value={selectedDate}
                   onChange={(e) => {
                     const val = e.target.value;
                     if (val) {
@@ -1073,7 +1073,6 @@ export default function Cleaning() {
                   }}
                   title="Chọn ngày để xem tình trạng vệ sinh sân"
                 >
-                  <option value="" disabled>Lịch sử ngày đã qua</option>
                   {pastDatesList.map((item) => (
                     <option key={item.iso} value={item.iso}>
                       {item.label}

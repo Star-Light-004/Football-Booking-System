@@ -1354,26 +1354,37 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 1rem;
   margin-bottom: 1.5rem;
   border-bottom: 2px solid #e2e8f0;
-  padding-bottom: 0.25rem;
-  flex-wrap: wrap;
+  padding-bottom: 0.35rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .maintenance-tabs-left {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  gap: 1rem;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+}
+
+.maintenance-tabs-right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .maintenance-period-filter {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  margin-bottom: 0.25rem;
-  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding-left: 0.75rem;
+  border-left: 1.5px solid #e2e8f0;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
 }
 
 .maintenance-tab-item {

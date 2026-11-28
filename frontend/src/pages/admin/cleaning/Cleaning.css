@@ -833,24 +833,28 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  padding-bottom: 0.25rem;
+  gap: 1rem;
+  flex-wrap: nowrap;
+  padding-bottom: 0.35rem;
   margin-bottom: 1.25rem;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .cleaning-tabs-left {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  gap: 0.45rem;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
 }
 
 .cleaning-period-filter {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  flex-wrap: wrap;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
 }
 
 .cleaning-tab-btn {

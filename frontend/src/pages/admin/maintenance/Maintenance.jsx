@@ -779,7 +779,7 @@ export default function Maintenance() {
                 <span className="material-symbols-outlined date-icon">event</span>
                 <select
                   className="dashboard-past-date-select"
-                  value={selectedPeriod === "custom" || selectedPeriod === "today" ? selectedDate : ""}
+                  value={selectedDate}
                   onChange={(e) => {
                     const val = e.target.value;
                     if (val) {
@@ -789,7 +789,6 @@ export default function Maintenance() {
                   }}
                   title="Chọn ngày để xem phiếu bảo trì"
                 >
-                  <option value="" disabled>Lịch sử ngày đã qua</option>
                   {pastDatesList.map((item) => (
                     <option key={item.iso} value={item.iso}>
                       {item.label}
@@ -797,22 +796,6 @@ export default function Maintenance() {
                   ))}
                 </select>
               </div>
-
-              <button
-                type="button"
-                className="btn-new-booking"
-                onClick={() => {
-                  setNewIssue((prev) => ({
-                    ...prev,
-                    fieldName: fields[0]?.field_name || "",
-                    description: "",
-                  }));
-                  setShowCreateModal(true);
-                }}
-              >
-                <span className="material-symbols-outlined">add_alert</span>
-                Tạo phiếu bảo trì
-              </button>
             </div>
           </div>
 
@@ -868,7 +851,7 @@ export default function Maintenance() {
             </div>
           </div>
 
-          {/* Tabs chuyển đổi giữa Quản lý bảo trì sân và Thống kê bảo trì */}
+          {/* Tabs chuyển đổi giữa Quản lý bảo trì sân và Thống kê bảo trì & Mốc thời gian */}
           <div className="maintenance-tabs-bar">
             <div className="maintenance-tabs-left">
               <button
@@ -888,36 +871,56 @@ export default function Maintenance() {
                 Thống kê ca bảo trì
                 <span className="tab-pill-badge">{periodFilteredIssues.length}</span>
               </button>
+
+              {/* Lùi mốc thời gian lại gần Thống kê ca bảo trì */}
+              <div className="maintenance-period-filter">
+                <span className="filter-period-label">
+                  <span className="material-symbols-outlined">calendar_month</span>
+                  Mốc thời gian:
+                </span>
+                {[
+                  { key: "all", label: "Tất cả" },
+                  { key: "today", label: "Hôm nay" },
+                  { key: "week", label: "Tuần này" },
+                  { key: "month", label: "Tháng này" },
+                ].map((p) => (
+                  <button
+                    key={p.key}
+                    type="button"
+                    className={`dashboard-period-tag ${selectedPeriod === p.key ? "active" : ""}`}
+                    onClick={() => {
+                      setSelectedPeriod(p.key);
+                      if (p.key === "today") {
+                        setSelectedDate(todayISO);
+                      }
+                      if (p.key === "week" || p.key === "month" || p.key === "today" || p.key === "all") {
+                        setStatsRange(p.key === "today" ? "day" : p.key);
+                      }
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <div className="maintenance-period-filter">
-              <span className="filter-period-label">
-                <span className="material-symbols-outlined">calendar_month</span>
-                Mốc thời gian:
-              </span>
-              {[
-                { key: "all", label: "Tất cả" },
-                { key: "today", label: "Hôm nay" },
-                { key: "week", label: "Tuần này" },
-                { key: "month", label: "Tháng này" },
-              ].map((p) => (
-                <button
-                  key={p.key}
-                  type="button"
-                  className={`dashboard-period-tag ${selectedPeriod === p.key ? "active" : ""}`}
-                  onClick={() => {
-                    setSelectedPeriod(p.key);
-                    if (p.key === "today") {
-                      setSelectedDate(todayISO);
-                    }
-                    if (p.key === "week" || p.key === "month" || p.key === "today" || p.key === "all") {
-                      setStatsRange(p.key === "today" ? "day" : p.key);
-                    }
-                  }}
-                >
-                  {p.label}
-                </button>
-              ))}
+            {/* Dịch chuyển nút Tạo phiếu bảo trì xuống đứng trên cùng 1 hàng */}
+            <div className="maintenance-tabs-right">
+              <button
+                type="button"
+                className="btn-new-booking"
+                onClick={() => {
+                  setNewIssue((prev) => ({
+                    ...prev,
+                    fieldName: fields[0]?.field_name || "",
+                    description: "",
+                  }));
+                  setShowCreateModal(true);
+                }}
+              >
+                <span className="material-symbols-outlined">add_alert</span>
+                Tạo phiếu bảo trì
+              </button>
             </div>
           </div>
 
