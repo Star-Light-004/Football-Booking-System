@@ -12,6 +12,28 @@ import { broadcastSyncEvent, onSyncEvent } from "../../../utils/realtimeSync";
 import { useToast, ToastContainer } from "../../../components/Toast/Toast";
 import "./vouchers.css";
 
+// Clean raw numbers from backend (e.g. "100000.00" -> 100000)
+const cleanNumber = (val) => {
+  if (val === null || val === undefined || val === "") return "";
+  const n = Math.round(Number(val));
+  return isNaN(n) ? "" : n;
+};
+
+// Format integer string with dots (e.g. 100000 -> "100.000")
+const formatVNDInput = (val) => {
+  if (val === "" || val === null || val === undefined) return "";
+  const numStr = String(val).replace(/\D/g, "");
+  if (!numStr) return "";
+  return Number(numStr).toLocaleString("vi-VN");
+};
+
+// Parse input string with dots back to integer or empty string
+const parseVNDInput = (str) => {
+  if (str === "" || str === null || str === undefined) return "";
+  const numStr = String(str).replace(/\D/g, "");
+  return numStr === "" ? "" : Number(numStr);
+};
+
 const INITIAL_FORM = {
   code: "",
   title: "",
@@ -22,6 +44,7 @@ const INITIAL_FORM = {
   min_booking_price: 100000,
   applicable_to: "all",
   expiry_days: 30,
+  expiry_date: "",
   usage_limit: 100,
   is_system_reward: false,
   is_active: true,
@@ -290,23 +313,38 @@ export default function AdminVouchers() {
   // Open Create Modal
   const handleOpenCreate = () => {
     setEditingVoucher(null);
-    setFormData(INITIAL_FORM);
+    const targetDate = new Date();
+    targetDate.setDate(targetDate.getDate() + 30);
+    setFormData({
+      ...INITIAL_FORM,
+      expiry_days: 30,
+      expiry_date: targetDate.toISOString().slice(0, 10),
+    });
     setShowModal(true);
   };
 
   // Open Edit Modal
   const handleOpenEdit = (v) => {
     setEditingVoucher(v);
+    const days = Number(v.expiry_days) || 30;
+    const targetDate = new Date();
+    targetDate.setDate(targetDate.getDate() + days);
+    const expiryDateStr = targetDate.toISOString().slice(0, 10);
+
     setFormData({
       code: v.code || "",
       title: v.title || "",
       description: v.description || "",
       discount_type: v.discount_type || "percent",
-      discount_value: v.discount_value || 0,
-      max_discount: v.max_discount || "",
-      min_booking_price: v.min_booking_price || 0,
+      discount_value:
+        v.discount_type === "percent"
+          ? (Number(v.discount_value) || 0)
+          : cleanNumber(v.discount_value),
+      max_discount: cleanNumber(v.max_discount),
+      min_booking_price: cleanNumber(v.min_booking_price),
       applicable_to: v.applicable_to || "all",
-      expiry_days: v.expiry_days || 30,
+      expiry_days: days,
+      expiry_date: expiryDateStr,
       usage_limit: v.usage_limit !== undefined && v.usage_limit !== null ? v.usage_limit : "",
       is_system_reward: Boolean(v.is_system_reward),
       is_active: Boolean(v.is_active),
@@ -337,11 +375,27 @@ export default function AdminVouchers() {
 
     setSubmitting(true);
     const payload = {
-      ...formData,
+      code: formData.code.trim().toUpperCase(),
+      title: formData.title.trim(),
+      description: formData.description?.trim() || "",
+      discount_type: formData.discount_type,
+      discount_value: Number(formData.discount_value) || 0,
+      max_discount:
+        formData.discount_type === "percent" && formData.max_discount !== "" && formData.max_discount !== null
+          ? Number(formData.max_discount)
+          : null,
+      min_booking_price:
+        formData.min_booking_price !== "" && formData.min_booking_price !== null
+          ? Number(formData.min_booking_price)
+          : 0,
+      applicable_to: formData.applicable_to || "all",
+      expiry_days: Number(formData.expiry_days) || 30,
       usage_limit:
         formData.usage_limit !== "" && formData.usage_limit !== null
           ? parseInt(formData.usage_limit, 10)
           : null,
+      is_system_reward: Boolean(formData.is_system_reward),
+      is_active: Boolean(formData.is_active),
     };
 
     try {
@@ -576,7 +630,7 @@ export default function AdminVouchers() {
                   <th>Phân loại</th>
                   <th>Lượt sử dụng</th>
                   <th>Trạng thái</th>
-                  <th style={{ textAlign: "right" }}>Thao tác</th>
+                  <th style={{ textAlign: "center", width: "80px" }}>Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -1035,9 +1089,14 @@ export default function AdminVouchers() {
                     <label>Loại giảm giá</label>
                     <select
                       value={formData.discount_type}
-                      onChange={(e) =>
-                        setFormData({ ...formData, discount_type: e.target.value })
-                      }
+                      onChange={(e) => {
+                        const newType = e.target.value;
+                        setFormData({
+                          ...formData,
+                          discount_type: newType,
+                          discount_value: newType === "percent" ? 10 : 20000,
+                        });
+                      }}
                     >
                       <option value="percent">Giảm theo phần trăm (%)</option>
                       <option value="fixed">Giảm số tiền cố định (VNĐ)</option>
@@ -1050,58 +1109,175 @@ export default function AdminVouchers() {
                         ? "Phần trăm giảm (%) *"
                         : "Số tiền giảm (VNĐ) *"}
                     </label>
-                    <input
-                      type="number"
-                      step="any"
-                      min="0"
-                      value={formData.discount_value}
-                      onChange={(e) =>
-                        setFormData({ ...formData, discount_value: e.target.value })
-                      }
-                      required
-                    />
+                    {formData.discount_type === "percent" ? (
+                      <div className="v-input-with-affix">
+                        <input
+                          type="number"
+                          step="1"
+                          min="1"
+                          max="100"
+                          placeholder="VD: 10, 20"
+                          value={formData.discount_value}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              discount_value: e.target.value === "" ? "" : Number(e.target.value),
+                            })
+                          }
+                          required
+                        />
+                        <span className="v-input-affix">%</span>
+                      </div>
+                    ) : (
+                      <div className="v-input-with-affix">
+                        <input
+                          type="text"
+                          placeholder="VD: 20.000, 50.000"
+                          value={formData.discount_value !== "" ? formatVNDInput(formData.discount_value) : ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              discount_value: parseVNDInput(e.target.value),
+                            })
+                          }
+                          required
+                        />
+                        <span className="v-input-affix">VNĐ</span>
+                      </div>
+                    )}
                   </div>
 
                   {formData.discount_type === "percent" && (
                     <div className="v-form-group">
                       <label>Giảm tối đa (VNĐ)</label>
-                      <input
-                        type="number"
-                        placeholder="Để trống nếu không giới hạn"
-                        value={formData.max_discount}
-                        onChange={(e) =>
-                          setFormData({ ...formData, max_discount: e.target.value })
-                        }
-                      />
+                      <div className="v-input-with-affix">
+                        <input
+                          type="text"
+                          placeholder="Để trống nếu không giới hạn"
+                          value={formData.max_discount !== "" ? formatVNDInput(formData.max_discount) : ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              max_discount: parseVNDInput(e.target.value),
+                            })
+                          }
+                        />
+                        <span className="v-input-affix">VNĐ</span>
+                      </div>
                     </div>
                   )}
 
                   <div className="v-form-group">
                     <label>Giá trị đơn đặt tối thiểu (VNĐ)</label>
-                    <input
-                      type="number"
-                      placeholder="VD: 100000"
-                      value={formData.min_booking_price}
-                      onChange={(e) =>
-                        setFormData({ ...formData, min_booking_price: e.target.value })
-                      }
-                    />
+                    <div className="v-input-with-affix">
+                      <input
+                        type="text"
+                        placeholder="VD: 100.000 (để 0 nếu không yêu cầu)"
+                        value={formData.min_booking_price !== "" ? formatVNDInput(formData.min_booking_price) : ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            min_booking_price: parseVNDInput(e.target.value),
+                          })
+                        }
+                      />
+                      <span className="v-input-affix">VNĐ</span>
+                    </div>
                   </div>
 
-                  <div className="v-form-group">
-                    <label>Thời hạn sử dụng (Số ngày)</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={formData.expiry_days}
-                      onChange={(e) =>
-                        setFormData({ ...formData, expiry_days: e.target.value })
-                      }
-                    />
+                  {/* ═══ THỜI HẠN HIỆU LỰC (ĐIỀN NGÀY HẾT HẠN HOẶC CHỌN SỐ NGÀY) ═══ */}
+                  <div className="v-form-group col-span-2 v-expiry-sync-box">
+                    <div className="v-expiry-header">
+                      <span className="material-symbols-outlined" style={{ color: "#16a34a", fontSize: "1.15rem" }}>
+                        event_upcoming
+                      </span>
+                      <strong>Thời hạn hiệu lực của Voucher</strong>
+                    </div>
+
+                    <div className="v-expiry-grid">
+                      <div className="v-expiry-col">
+                        <label>Số ngày có hiệu lực</label>
+                        <div className="v-input-with-affix">
+                          <input
+                            type="number"
+                            min="1"
+                            placeholder="VD: 30"
+                            value={formData.expiry_days}
+                            onChange={(e) => {
+                              const days = parseInt(e.target.value, 10);
+                              if (isNaN(days) || days <= 0) {
+                                setFormData({ ...formData, expiry_days: "", expiry_date: "" });
+                              } else {
+                                const target = new Date();
+                                target.setDate(target.getDate() + days);
+                                setFormData({
+                                  ...formData,
+                                  expiry_days: days,
+                                  expiry_date: target.toISOString().slice(0, 10),
+                                });
+                              }
+                            }}
+                            required
+                          />
+                          <span className="v-input-affix">ngày</span>
+                        </div>
+                      </div>
+
+                      <div className="v-expiry-divider">
+                        <span>HOẶC</span>
+                      </div>
+
+                      <div className="v-expiry-col">
+                        <label>Chọn ngày hết hạn cụ thể</label>
+                        <input
+                          type="date"
+                          min={new Date().toISOString().slice(0, 10)}
+                          value={formData.expiry_date || ""}
+                          onChange={(e) => {
+                            const selectedDateStr = e.target.value;
+                            if (!selectedDateStr) {
+                              setFormData({ ...formData, expiry_date: "" });
+                              return;
+                            }
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            const selected = new Date(selectedDateStr);
+                            selected.setHours(0, 0, 0, 0);
+                            const diffTime = selected.getTime() - today.getTime();
+                            const diffDays = Math.max(1, Math.round(diffTime / (1000 * 60 * 60 * 24)));
+                            setFormData({
+                              ...formData,
+                              expiry_days: diffDays,
+                              expiry_date: selectedDateStr,
+                            });
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {formData.expiry_days > 0 && formData.expiry_date && (
+                      <div className="v-expiry-preview">
+                        <span className="material-symbols-outlined" style={{ fontSize: "1.1rem", color: "#16a34a" }}>
+                          check_circle
+                        </span>
+                        <span>
+                          Voucher sẽ có hiệu lực trong <strong>{formData.expiry_days} ngày</strong> (tương đương hết hạn vào ngày{" "}
+                          <strong>
+                            {new Date(formData.expiry_date).toLocaleDateString("vi-VN", {
+                              weekday: "short",
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "numeric",
+                            })}
+                          </strong>
+                          ).
+                        </span>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="v-form-group">
-                    <label>Số lượng voucher (Lượt dùng tối đa)</label>
+                  <div className="v-form-group col-span-2">
+                    <label>Số lượng voucher phát hành (Lượt dùng tối đa)</label>
                     <input
                       type="number"
                       min="1"

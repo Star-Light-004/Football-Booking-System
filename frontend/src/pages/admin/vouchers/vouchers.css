@@ -106,14 +106,14 @@
 
 .main-content.vouchers-admin-main {
   margin-left: 16rem;
-  padding: 1.35rem 1.75rem 2.5rem;
+  padding: 1.15rem 1.25rem 2rem;
   min-height: calc(100vh - 4rem);
   box-sizing: border-box;
   background-color: #f7f8fc;
 }
 
 .vouchers-admin-main .content-inner {
-  max-width: 1440px;
+  max-width: 100%;
   margin: 0 auto;
 }
 
@@ -390,46 +390,50 @@
 .vouchers-table-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 16px;
+  border-radius: 14px;
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  width: 100%;
 }
 
 .v-table-wrapper {
   overflow-x: auto;
+  width: 100%;
+  scrollbar-width: thin;
 }
 
 .v-table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
 }
 
 .v-table th {
   background: #f8fafc;
-  padding: 14px 18px;
-  font-size: 0.75rem;
+  padding: 10px 10px;
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
   color: #64748b;
   border-bottom: 1px solid #e2e8f0;
   white-space: nowrap;
 }
 
 .v-table td {
-  padding: 16px 18px;
+  padding: 10px 10px;
   border-bottom: 1px solid #f1f5f9;
   vertical-align: middle;
   color: #334155;
-  white-space: nowrap;
+  font-size: 0.8125rem;
 }
 
 .v-table td:first-child,
 .v-table th:first-child {
   white-space: normal;
-  min-width: 250px;
+  min-width: 170px;
+  max-width: 230px;
 }
 
 .v-table tr:hover td {
@@ -439,39 +443,41 @@
 .v-code-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   background: #f0fdf4;
   color: #166534;
   border: 1.5px dashed #86efac;
-  padding: 4px 10px;
-  border-radius: 6px;
+  padding: 3px 7px;
+  border-radius: 5px;
   font-weight: 800;
   font-family: monospace;
-  font-size: 0.92rem;
+  font-size: 0.82rem;
   letter-spacing: 0.5px;
 }
 
 .v-title-text {
   font-weight: 700;
   color: #0f172a;
-  margin-top: 4px;
-  font-size: 0.875rem;
+  margin-top: 3px;
+  font-size: 0.82rem;
+  line-height: 1.35;
 }
 
 .v-desc-text {
-  font-size: 0.775rem;
+  font-size: 0.735rem;
   color: #64748b;
   margin-top: 2px;
+  line-height: 1.3;
 }
 
 .v-discount-value {
   font-weight: 800;
   color: #16a34a;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
 }
 
 .v-discount-sub {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: #64748b;
   margin-top: 2px;
 }
@@ -479,37 +485,40 @@
 .v-reward-tag {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   background: #fdf4ff;
   color: #9333ea;
   border: 1px solid #f0abfc;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 6px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  white-space: nowrap;
 }
 
 .v-public-tag {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   background: #f0f9ff;
   color: #0284c7;
   border: 1px solid #bae6fd;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 6px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  white-space: nowrap;
 }
 
 .v-status-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 0.75rem;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 16px;
+  font-size: 0.72rem;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .v-status-badge.active {
@@ -523,8 +532,8 @@
 }
 
 .v-status-badge .dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: currentColor;
 }
@@ -532,14 +541,14 @@
 .v-actions-group {
   display: flex;
   align-items: center;
-  gap: 8px;
-  justify-content: flex-end;
+  gap: 6px;
+  justify-content: center;
 }
 
 .v-action-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -811,17 +820,17 @@
 .v-customer-pill {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .v-customer-avatar {
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: #dcfce7;
   color: #166534;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -831,52 +840,60 @@
 .v-customer-info {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .v-customer-name {
   font-weight: 700;
   color: #0f172a;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
 }
 
 .v-customer-phone {
-  font-size: 0.775rem;
+  font-size: 0.72rem;
   color: #64748b;
+  white-space: nowrap;
 }
 
 .v-source-booking-pill {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
+  gap: 3px;
+  padding: 2px 6px;
   background: #f1f5f9;
   color: #334155;
-  border-radius: 6px;
-  font-size: 0.775rem;
+  border-radius: 5px;
+  font-size: 0.72rem;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .v-used-booking-pill {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
+  gap: 3px;
+  padding: 2px 6px;
   background: #e0f2fe;
   color: #0369a1;
-  border-radius: 6px;
-  font-size: 0.775rem;
+  border-radius: 5px;
+  font-size: 0.72rem;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 /* ═══ Toggle Switch On/Off Control ═══ */
 .v-switch-control {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   cursor: pointer;
   user-select: none;
-  padding: 4px 8px;
-  border-radius: 20px;
+  padding: 2px 4px;
+  border-radius: 16px;
   transition: all 0.2s ease;
 }
 
@@ -885,13 +902,14 @@
 }
 
 .v-switch-track {
-  width: 38px;
-  height: 22px;
+  width: 32px;
+  height: 18px;
   border-radius: 999px;
   background: #cbd5e1;
   position: relative;
   transition: background-color 0.25s ease, box-shadow 0.25s ease;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
 }
 
 .v-switch-control.active .v-switch-track {
@@ -903,8 +921,8 @@
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: #ffffff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
@@ -912,14 +930,15 @@
 }
 
 .v-switch-control.active .v-switch-thumb {
-  transform: translateX(16px);
+  transform: translateX(14px);
 }
 
 .v-switch-label {
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 700;
-  transition: color 0.2s ease;
+  color: #475569;
   white-space: nowrap;
+  transition: color 0.2s ease;
 }
 
 .v-switch-control.active .v-switch-label {
@@ -928,6 +947,92 @@
 
 .v-switch-control.inactive .v-switch-label {
   color: #64748b;
+}
+
+/* Input with Affix (VNĐ / % / ngày) */
+.v-input-with-affix {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.v-input-with-affix input {
+  padding-right: 52px !important;
+}
+
+.v-input-affix {
+  position: absolute;
+  right: 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #64748b;
+  pointer-events: none;
+}
+
+/* Expiry Sync Box */
+.v-expiry-sync-box {
+  background: #f8fafc;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+.v-expiry-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 12px;
+}
+
+.v-expiry-grid {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.v-expiry-col {
+  flex: 1;
+}
+
+.v-expiry-col label {
+  margin-bottom: 4px;
+  font-size: 0.75rem;
+}
+
+.v-expiry-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 10px;
+}
+
+.v-expiry-divider span {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #94a3b8;
+  background: #e2e8f0;
+  padding: 3px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.v-expiry-preview {
+  margin-top: 10px;
+  border-top: 1px dashed #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.775rem;
+  color: #15803d;
+  background: #f0fdf4;
+  padding: 8px 12px;
+  border-radius: 6px;
 }
 
 /* ── Scope Radio Group (Phạm vi áp dụng Voucher) ── */
