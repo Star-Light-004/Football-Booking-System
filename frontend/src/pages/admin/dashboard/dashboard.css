@@ -1523,16 +1523,6 @@ tbody td { padding: 0.85rem 1rem; font-size: 0.84rem; vertical-align: middle; }
   padding: 0.1rem 0.2rem;
 }
 
-.dashboard-date-quick-input {
-  border: none;
-  outline: none;
-  background: transparent;
-  font: inherit;
-  cursor: pointer;
-  width: 24px;
-  color: #64748b;
-}
-
 /* ── SVG Donut Chart Visual & Breakdown ── */
 .donut-header {
   display: flex;

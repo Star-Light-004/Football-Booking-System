@@ -46,32 +46,31 @@ function TopHeader({ onExport, searchTerm, onSearchChange, onRefresh, loading })
   );
 }
 
-function SummaryCards({ summary, selectedPeriod = 'all' }) {
+function SummaryCards({ summary, selectedPeriod = 'all', selectedSpecificDate = null }) {
   const growthRate = summary?.growth_pct ?? 0;
   const isPositiveGrowth = growthRate >= 0;
   const totalRevenue = summary?.total_revenue || 0;
 
-  const periodBadge =
-    selectedPeriod === 'today'
-      ? 'Hôm nay'
-      : selectedPeriod === 'week'
-      ? 'Tuần này'
-      : selectedPeriod === 'month'
-      ? 'Tháng này'
-      : selectedPeriod === 'year'
-      ? 'Năm nay'
-      : 'Toàn thời gian';
+  let periodBadge = 'Toàn thời gian';
+  let periodLabel = 'Tổng doanh thu thực tế';
 
-  const periodLabel =
-    selectedPeriod === 'today'
-      ? 'Doanh thu hôm nay'
-      : selectedPeriod === 'week'
-      ? 'Doanh thu tuần này'
-      : selectedPeriod === 'month'
-      ? 'Doanh thu tháng này'
-      : selectedPeriod === 'year'
-      ? 'Doanh thu năm nay'
-      : 'Tổng doanh thu thực tế';
+  if (selectedSpecificDate) {
+    const [y, m, d] = selectedSpecificDate.split('-');
+    periodBadge = `${d}/${m}/${y}`;
+    periodLabel = `Doanh thu ngày ${d}/${m}/${y}`;
+  } else if (selectedPeriod === 'today') {
+    periodBadge = 'Hôm nay';
+    periodLabel = 'Doanh thu hôm nay';
+  } else if (selectedPeriod === 'week') {
+    periodBadge = 'Tuần này';
+    periodLabel = 'Doanh thu tuần này';
+  } else if (selectedPeriod === 'month') {
+    periodBadge = 'Tháng này';
+    periodLabel = 'Doanh thu tháng này';
+  } else if (selectedPeriod === 'year') {
+    periodBadge = 'Năm nay';
+    periodLabel = 'Doanh thu năm nay';
+  }
 
   return (
     <div className="summary-grid three-cards">
@@ -288,7 +287,7 @@ function DonutChart({ segments }) {
   );
 }
 
-function TransactionTable({ transactions, searchTerm, selectedPeriod, onPeriodChange }) {
+function TransactionTable({ transactions, searchTerm, selectedPeriod, selectedSpecificDate = null, onPeriodChange }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [internalPeriod, setInternalPeriod] = useState('all');
 
@@ -311,10 +310,32 @@ function TransactionTable({ transactions, searchTerm, selectedPeriod, onPeriodCh
         (statusFilter === 'pending' && t.status_class === 'pending') ||
         (statusFilter === 'cancelled' && t.status_class === 'cancelled');
 
-      // Period filter
+      // Period or Specific Date filter
       let matchPeriod = true;
-      if (txPeriod !== 'all') {
-        const dStr = t.booking_date || t.date;
+      const dStr = t.booking_date || t.date || t.created_at;
+
+      if (selectedSpecificDate) {
+        if (dStr) {
+          let tDate = null;
+          if (typeof dStr === 'string' && dStr.includes('/')) {
+            const parts = dStr.split(' ')[0].split('/');
+            if (parts.length === 3) tDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+          } else {
+            tDate = new Date(dStr);
+          }
+          if (tDate && !isNaN(tDate.getTime())) {
+            const [sYear, sMonth, sDay] = selectedSpecificDate.split('-').map(Number);
+            matchPeriod =
+              tDate.getFullYear() === sYear &&
+              tDate.getMonth() + 1 === sMonth &&
+              tDate.getDate() === sDay;
+          } else {
+            matchPeriod = false;
+          }
+        } else {
+          matchPeriod = false;
+        }
+      } else if (txPeriod !== 'all') {
         if (dStr) {
           const now = new Date();
           let tDate = null;
@@ -341,7 +362,7 @@ function TransactionTable({ transactions, searchTerm, selectedPeriod, onPeriodCh
 
       return matchSearch && matchStatus && matchPeriod;
     });
-  }, [transactions, searchTerm, statusFilter, txPeriod]);
+  }, [transactions, searchTerm, statusFilter, txPeriod, selectedSpecificDate]);
 
   const getInitials = (name) => {
     if (!name) return 'KH';
@@ -865,11 +886,30 @@ export default function Revenue() {
   const [revenueData, setRevenueData] = useState(null);
   const [maintenanceIssues, setMaintenanceIssues] = useState([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedPeriod, setSelectedPeriod] = useState('all'); // 'all' | 'today' | 'week' | 'month' | 'year'
+  const [selectedPeriod, setSelectedPeriod] = useState('all'); // 'all' | 'today' | 'week' | 'month' | 'year' | 'custom_date'
+  const [selectedSpecificDate, setSelectedSpecificDate] = useState(null); // 'YYYY-MM-DD' or null
   const [selectedField, setSelectedField] = useState('all');
   const [fieldsList, setFieldsList] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [openExport, setOpenExport] = useState(false);
+
+  // Danh sách 30 ngày đã qua để chọn xem doanh thu theo ngày
+  const pastDatesList = useMemo(() => {
+    const list = [];
+    const now = new Date();
+    for (let i = 0; i <= 30; i++) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      const iso = d.toISOString().split('T')[0];
+      const [year, month, day] = iso.split('-');
+      let label = '';
+      if (i === 0) label = `Hôm nay (${day}/${month}/${year})`;
+      else if (i === 1) label = `Hôm qua (${day}/${month}/${year})`;
+      else label = `${i} ngày trước (${day}/${month}/${year})`;
+      list.push({ iso, label, displayDate: `${day}/${month}/${year}`, year: Number(year) });
+    }
+    return list;
+  }, []);
 
   const ISSUES_STORAGE_KEY = 'pitch_maintenance_issues';
 
@@ -971,10 +1011,9 @@ export default function Revenue() {
     });
   }, [maintenanceIssues, selectedField, fieldsList]);
 
-  // Kiểm tra ngày trong kỳ lọc nhanh
-  const isDateInPeriod = (dStr, period) => {
-    if (!dStr || period === 'all') return true;
-    const now = new Date();
+  // Kiểm tra ngày trong kỳ lọc nhanh hoặc ngày cụ thể
+  const isDateInPeriod = (dStr, period, specificDate = null) => {
+    if (!dStr) return true;
     let tDate = null;
     if (typeof dStr === 'string' && dStr.includes('/')) {
       const parts = dStr.split(' ')[0].split('/');
@@ -984,6 +1023,19 @@ export default function Revenue() {
     }
     if (!tDate || isNaN(tDate.getTime())) return true;
 
+    // Nếu đang chọn một ngày cụ thể từ danh sách các ngày đã qua
+    if (specificDate) {
+      const [sYear, sMonth, sDay] = specificDate.split('-').map(Number);
+      return (
+        tDate.getFullYear() === sYear &&
+        tDate.getMonth() + 1 === sMonth &&
+        tDate.getDate() === sDay
+      );
+    }
+
+    if (!period || period === 'all') return true;
+
+    const now = new Date();
     if (period === 'today') {
       return (
         tDate.getFullYear() === now.getFullYear() &&
@@ -1007,11 +1059,11 @@ export default function Revenue() {
   // Tính toán KPI doanh thu theo kỳ đã chọn (Chỉ tính đơn Completed vào Doanh thu thực tế)
   const activeSummary = useMemo(() => {
     if (!revenueData?.summary) return null;
-    if (selectedPeriod === 'all') return revenueData.summary;
+    if (selectedPeriod === 'all' && !selectedSpecificDate) return revenueData.summary;
 
     const txs = revenueData.transactions || [];
     const filteredTxs = txs.filter((t) =>
-      isDateInPeriod(t.booking_date || t.date || t.created_at, selectedPeriod)
+      isDateInPeriod(t.booking_date || t.date || t.created_at, selectedPeriod, selectedSpecificDate)
     );
 
     const completedTxs = filteredTxs.filter((t) => t.status_class === 'success');
@@ -1033,7 +1085,7 @@ export default function Revenue() {
       cancelled_orders: cancelledOrders,
       avg_order_value: avgOrderValue,
     };
-  }, [revenueData, selectedPeriod]);
+  }, [revenueData, selectedPeriod, selectedSpecificDate]);
 
   // Xuất file Excel / CSV
   const handleExportCSV = () => {
@@ -1175,7 +1227,7 @@ export default function Revenue() {
                 onChange={(e) => setSelectedField(e.target.value)}
                 title="Lọc theo sân bóng"
               >
-                <option value="all">🏟️ Tất cả sân bóng</option>
+                <option value="all">Tất cả sân bóng</option>
                 {fieldsList.map((f) => (
                   <option key={f.id} value={f.id}>
                     {f.field_name}
@@ -1183,18 +1235,42 @@ export default function Revenue() {
                 ))}
               </select>
 
-              {/* Lọc theo năm */}
+              {/* Lọc theo ngày đã qua hoặc theo năm */}
               <select
                 className="dashboard-select-year"
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(Number(e.target.value))}
-                title="Chọn năm tài chính"
+                value={selectedSpecificDate ? `date:${selectedSpecificDate}` : `year:${selectedYear}`}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val.startsWith('date:')) {
+                    const dateStr = val.replace('date:', '');
+                    setSelectedSpecificDate(dateStr);
+                    setSelectedPeriod('custom_date');
+                    const [y] = dateStr.split('-');
+                    if (Number(y) !== selectedYear) {
+                      setSelectedYear(Number(y));
+                    }
+                  } else if (val.startsWith('year:')) {
+                    setSelectedSpecificDate(null);
+                    setSelectedYear(Number(val.replace('year:', '')));
+                    setSelectedPeriod('all');
+                  }
+                }}
+                title="Sổ xuống để chọn ngày đã qua hoặc năm tài chính để xem doanh thu"
               >
-                {revenueData?.available_years?.map((y) => (
-                  <option key={y} value={y}>
-                    Năm {y}
-                  </option>
-                ))}
+                <optgroup label="📅 Xem doanh thu theo ngày đã qua">
+                  {pastDatesList.map((item) => (
+                    <option key={item.iso} value={`date:${item.iso}`}>
+                      {item.label}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="📆 Xem doanh thu theo năm">
+                  {(revenueData?.available_years || [2026, 2025]).map((y) => (
+                    <option key={y} value={`year:${y}`}>
+                      Năm {y}
+                    </option>
+                  ))}
+                </optgroup>
               </select>
 
               <button
@@ -1251,8 +1327,11 @@ export default function Revenue() {
                     <button
                       key={p.key}
                       type="button"
-                      className={`revenue-period-pill ${selectedPeriod === p.key ? 'active' : ''}`}
-                      onClick={() => setSelectedPeriod(p.key)}
+                      className={`revenue-period-pill ${selectedPeriod === p.key && !selectedSpecificDate ? 'active' : ''}`}
+                      onClick={() => {
+                        setSelectedPeriod(p.key);
+                        setSelectedSpecificDate(null);
+                      }}
                     >
                       {p.label}
                     </button>
@@ -1274,14 +1353,21 @@ export default function Revenue() {
             /* ── TAB 1: TỔNG QUAN DOANH THU ── */
             <>
               {/* Summary Metrics */}
-              <SummaryCards summary={activeSummary || revenueData?.summary} selectedPeriod={selectedPeriod} />
+              <SummaryCards
+                summary={activeSummary || revenueData?.summary}
+                selectedPeriod={selectedPeriod}
+                selectedSpecificDate={selectedSpecificDate}
+              />
 
               {/* Charts Section */}
               <div className="charts-grid">
                 <BarChart
                   monthlyStats={revenueData?.monthly_stats}
                   selectedYear={selectedYear}
-                  onYearChange={setSelectedYear}
+                  onYearChange={(year) => {
+                    setSelectedYear(year);
+                    setSelectedSpecificDate(null);
+                  }}
                   availableYears={revenueData?.available_years}
                 />
                 <DonutChart
@@ -1295,7 +1381,11 @@ export default function Revenue() {
                 transactions={revenueData?.transactions || []}
                 searchTerm={searchTerm}
                 selectedPeriod={selectedPeriod}
-                onPeriodChange={setSelectedPeriod}
+                selectedSpecificDate={selectedSpecificDate}
+                onPeriodChange={(period) => {
+                  setSelectedPeriod(period);
+                  setSelectedSpecificDate(null);
+                }}
               />
             </>
           ) : (

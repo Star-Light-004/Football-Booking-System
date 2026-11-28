@@ -857,18 +857,6 @@ export default function Dashboard() {
                     </option>
                   ))}
                 </select>
-                <input
-                  type="date"
-                  className="dashboard-date-quick-input"
-                  value={selectedDate}
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      setSelectedDate(e.target.value);
-                      setDatePeriod(e.target.value === todayISO ? "today" : "custom");
-                    }
-                  }}
-                  title="Chọn ngày tự do từ lịch"
-                />
               </div>
             </section>
 
