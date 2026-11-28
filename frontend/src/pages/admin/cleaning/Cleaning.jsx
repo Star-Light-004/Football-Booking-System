@@ -1172,12 +1172,6 @@ export default function Cleaning() {
                 Thống kê ca dọn
               </button>
             </div>
-
-            {/* Khi vào trang không hiện mốc thời gian, chỉ hiển thị biểu tượng thời gian ngày hôm đó */}
-            <div className="facility-today-chip">
-              <span className="material-symbols-outlined">event</span>
-              <span>Hôm nay ({todayFormatted})</span>
-            </div>
           </div>
 
           {/* ── NẾU CHỌN TAB THỐNG KÊ CA DỌN ── */}
